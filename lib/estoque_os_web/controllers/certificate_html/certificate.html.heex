@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{@page_title} — {@transaction.recipient_name}</title>
+    <style>
+      @page { size: A4; margin: 18mm 16mm; }
+      * { box-sizing: border-box; }
+      body {
+        font-family: Georgia, "Times New Roman", serif;
+        color: #111;
+        line-height: 1.5;
+        margin: 0;
+        padding: 18mm 16mm;
+        max-width: 210mm;
+      }
+      header { border-bottom: 2px solid #111; padding-bottom: 8px; margin-bottom: 20px; }
+      header h1 { font-size: 15pt; margin: 0 0 2px; }
+      header p { margin: 0; font-size: 9pt; color: #444; }
+      h2 { font-size: 13pt; text-align: center; margin: 24px 0 16px; text-transform: uppercase; letter-spacing: .04em; }
+      .parties { display: flex; gap: 24px; margin-bottom: 16px; font-size: 10pt; }
+      .parties section { flex: 1; }
+      .parties h3 { font-size: 9pt; text-transform: uppercase; letter-spacing: .05em; color: #555; margin: 0 0 4px; }
+      .parties p { margin: 0; }
+      p.statement { font-size: 10.5pt; text-align: justify; margin: 16px 0; }
+      table { width: 100%; border-collapse: collapse; font-size: 9.5pt; margin-top: 8px; }
+      th, td { border: 1px solid #999; padding: 4px 6px; text-align: left; }
+      th { background: #f0f0f0; font-size: 8.5pt; text-transform: uppercase; letter-spacing: .03em; }
+      td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+      tfoot td { font-weight: bold; background: #f7f7f7; }
+      .note { font-size: 9pt; color: #444; margin-top: 8px; }
+      .signatures { display: flex; gap: 40px; margin-top: 48px; page-break-inside: avoid; }
+      .signatures div { flex: 1; text-align: center; }
+      .signatures .line { border-top: 1px solid #111; margin-bottom: 4px; padding-top: 4px; }
+      .signatures p { margin: 0; font-size: 9pt; }
+      .place { margin-top: 32px; font-size: 10pt; }
+      .print-bar { margin-bottom: 16px; }
+      .print-bar button { font: inherit; padding: 6px 14px; cursor: pointer; }
+      .print-bar a { margin-left: 12px; font-size: 10pt; }
+      @media print { .print-bar { display: none; } body { padding: 0; } }
+    </style>
+  </head>
+  <body>
+    <div class="print-bar">
+      <button onclick="window.print()">Imprimir / salvar em PDF</button>
+      <a href={~p"/issues"}>Voltar</a>
+    </div>
+
+    <header>
+      <h1>{@organization[:name]}</h1>
+      <p>
+        CNPJ {@organization[:document]} · {@organization[:address]} · {@organization[:contact]}
+      </p>
+    </header>
+
+    <h2>
+      {if @kind == "doacao", do: "Termo de Doação", else: "Termo de Recebimento"}
+    </h2>
+
+    <div class="parties">
+      <section>
+        <h3>{if @kind == "doacao", do: "Doadora", else: "Entregue por"}</h3>
+        <p>{@organization[:name]}</p>
+        <p>CNPJ {@organization[:document]}</p>
+      </section>
+      <section>
+        <h3>{if @kind == "doacao", do: "Donatária", else: "Recebido por"}</h3>
+        <p>{@transaction.recipient_name}</p>
+        <p :if={@transaction.recipient_tax_id}>CNPJ/CPF {@transaction.recipient_tax_id}</p>
+      </section>
+    </div>
+
+    <p :if={@kind == "doacao"} class="statement">
+      A {@organization[:name]}, acima qualificada, declara doar em caráter definitivo e
+      gratuito à instituição donatária os materiais médico-hospitalares relacionados abaixo,
+      oriundos da missão realizada em {@transaction.source_location.name}, que os recebe para uso
+      exclusivo em suas atividades assistenciais.
+    </p>
+
+    <p :if={@kind == "recebimento"} class="statement">
+      Declaramos, para os devidos fins, ter recebido da {@organization[:name]} os materiais
+      médico-hospitalares relacionados abaixo, nas quantidades e lotes discriminados,
+      em perfeitas condições de uso e conservação.
+    </p>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Produto</th>
+          <th>Lote</th>
+          <th>Validade</th>
+          <th class="num">Qtd.</th>
+          <th class="num">Valor unit.</th>
+          <th class="num">Total</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr :for={entry <- @transaction.entries}>
+          <td>{entry.lot.product.name}</td>
+          <td>{entry.lot.lot_number || "não informado"}</td>
+          <td>{date(entry.lot.expires_on)}</td>
+          <td class="num">{quantity(issued(entry))}</td>
+          <td class="num">{declared_money(entry.unit_cost)}</td>
+          <td class="num">{money(line_total(entry))}</td>
+        </tr>
+      </tbody>
+      <tfoot>
+        <tr>
+          <td colspan="3">Total</td>
+          <td class="num">{quantity(@totals.units)}</td>
+          <td></td>
+          <td class="num">{money(declared_total(@transaction))}</td>
+        </tr>
+      </tfoot>
+    </table>
+
+    <p :if={@totals.unpriced_lines > 0} class="note">
+      {@totals.unpriced_lines} item(ns) sem valor de mercado no registro — recebidos pela ONG
+      como doação. Declarados ao valor simbólico de R$ 0,01 por não haver como precificar
+      item doado; o total acima os inclui nesse valor.
+    </p>
+
+    <p :if={@transaction.notes} class="note">Observações: {@transaction.notes}</p>
+
+    <p class="place">
+      {@transaction.source_location.name}, {long_date(@transaction.occurred_at)}.
+    </p>
+
+    <div class="signatures">
+      <div>
+        <div class="line"></div>
+        <p>{@organization[:name]}</p>
+        <p :if={@transaction.user}>{@transaction.user.email}</p>
+      </div>
+      <div>
+        <div class="line"></div>
+        <p>{@transaction.recipient_name}</p>
+        <p>Nome legível, cargo e assinatura</p>
+      </div>
+    </div>
+  </body>
+</html>
