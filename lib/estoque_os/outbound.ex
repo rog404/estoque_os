@@ -1,0 +1,479 @@
+defmodule EstoqueOS.Outbound do
+  @moduledoc """
+  Stock leaving a place: the load-out ("derrubada de carga") that sends a
+  mission's supplies out of the warehouse.
+
+  Two things travel differently. Boxes travel whole — they are picked as
+  containers and their presumed contents go with them, no recount. Loose
+  stock, the goods that were never boxed, is picked by quantity, and there
+  FEFO decides which lot goes: the one expiring first, because what stays
+  behind is what will still be good next time.
+
+  Usually the entire stock leaves, so `plan/1` proposes exactly that and the
+  screen lets a human take things out of the load rather than add them one by
+  one.
+  """
+
+  use Gettext, backend: EstoqueOSWeb.Gettext
+
+  import Ecto.Query
+  import EstoqueOS.Coercion
+
+  alias Ecto.Multi
+  alias EstoqueOS.Catalog.Product
+  alias EstoqueOS.Inventory
+  alias EstoqueOS.Inventory.{Box, Lot, StockSnapshot}
+  alias EstoqueOS.Missions
+  alias EstoqueOS.Repo
+
+  @doc """
+  What is available to leave a location: boxes as whole containers, and the
+  loose stock that is in no box.
+  """
+  def plan(location_id) do
+    %{boxes: boxes_at(location_id), loose: loose_stock(location_id)}
+  end
+
+  defp boxes_at(location_id) do
+    quantities =
+      StockSnapshot
+      |> where([s], s.location_id == ^location_id and not is_nil(s.box_id) and s.quantity != 0)
+      |> group_by([s], s.box_id)
+      |> select([s], {s.box_id, %{quantity: sum(s.quantity), positions: count(s.id)}})
+      |> Repo.all()
+      |> Map.new()
+
+    Box
+    |> where([b], b.location_id == ^location_id and b.active and b.id in ^Map.keys(quantities))
+    |> order_by([b], asc: b.code)
+    |> Repo.all()
+    |> Enum.map(&Map.merge(%{box: &1}, Map.fetch!(quantities, &1.id)))
+  end
+
+  @doc """
+  Stock at a location that is in no box, per lot, FEFO first.
+  """
+  def loose_stock(location_id) do
+    StockSnapshot
+    |> join(:inner, [s], l in Lot, on: l.id == s.lot_id)
+    |> join(:inner, [s, l], p in Product, on: p.id == l.product_id)
+    |> where([s], s.location_id == ^location_id and is_nil(s.box_id) and s.quantity != 0)
+    |> order_by([s, l, p], asc_nulls_last: l.expires_on, asc: p.name)
+    |> select([s, l, p], %{
+      lot_id: l.id,
+      lot_number: l.lot_number,
+      expires_on: l.expires_on,
+      product_id: p.id,
+      product: p.name,
+      controlled: p.controlled,
+      quantity: s.quantity
+    })
+    |> Repo.all()
+  end
+
+  @doc """
+  Which lots to take for a quantity of a product, oldest expiry first.
+
+  Delegates to the ledger's FEFO ordering; the load-out screen uses it when
+  someone asks for "300 electrodes" instead of naming lots.
+  """
+  def suggest_picks(product_id, quantity, location_id) do
+    Inventory.suggest_fefo_picks(product_id, quantity, location_id: location_id, box_id: nil)
+  end
+
+  @doc """
+  Sends boxes and loose stock from one location to another.
+
+  Boxes change address and carry their contents. Only boxes travel: stock that is
+  not in one cannot be sent, because nothing identifies it at the other end and
+  nothing brings it back. A pallet of gauze that leaves loose is, in practice,
+  already written off — so the load-out refuses rather than pretending.
+
+  Loose stock at the warehouse is a real and temporary state: goods have arrived
+  and nobody has boxed them yet. The receiving conference is where that is
+  resolved, and it is the step this refusal sends you back to.
+
+  Everything lands in a single `load_out` transaction so the whole shipment is
+  one auditable event, and the boxes' `last_verified_at` is left alone — a
+  load-out is not a count.
+  """
+  def load_out(attrs) do
+    source_id = to_id(field(attrs, :source_location_id))
+    destination_id = to_id(field(attrs, :destination_location_id))
+    box_ids = Enum.map(field(attrs, :box_ids) || [], &to_id/1)
+    picks = normalize_picks(field(attrs, :picks) || [])
+
+    cond do
+      is_nil(source_id) or is_nil(destination_id) ->
+        {:error, :missing_location}
+
+      source_id == destination_id ->
+        {:error, :same_location}
+
+      box_ids == [] and picks == [] ->
+        {:error, :nothing_to_send}
+
+      true ->
+        do_load_out(source_id, destination_id, box_ids, picks, attrs)
+    end
+  end
+
+  defp do_load_out(source_id, destination_id, box_ids, picks, attrs) do
+    boxes = Repo.all(from b in Box, where: b.id in ^box_ids)
+
+    entries = box_entries(boxes, source_id, destination_id)
+
+    cond do
+      picks != [] ->
+        {:error, :unboxed_cannot_travel}
+
+      entries == [] ->
+        {:error, :nothing_to_send}
+
+      true ->
+        Multi.new()
+        |> Multi.run(:transaction, fn _repo, _changes ->
+          Inventory.post_transaction(%{
+            type: "load_out",
+            source_location_id: source_id,
+            destination_location_id: destination_id,
+            mission_id: mission_at(destination_id),
+            source_mission_id: mission_at(source_id),
+            user_id: field(attrs, :user_id),
+            notes: field(attrs, :notes),
+            entries: entries
+          })
+        end)
+        |> Multi.run(:boxes, fn repo, _changes ->
+          {count, _} =
+            Box
+            |> where([b], b.id in ^box_ids)
+            |> repo.update_all(
+              set: [location_id: destination_id, updated_at: DateTime.utc_now(:second)]
+            )
+
+          {:ok, count}
+        end)
+        |> Repo.transaction()
+        |> case do
+          {:ok, changes} ->
+            {:ok, %{transaction: changes.transaction, boxes_moved: changes.boxes}}
+
+          {:error, _step, reason, _changes} ->
+            {:error, reason}
+        end
+    end
+  end
+
+  defp box_entries([], _source_id, _destination_id), do: []
+
+  defp box_entries(boxes, source_id, destination_id) do
+    box_ids = Enum.map(boxes, & &1.id)
+
+    StockSnapshot
+    |> where([s], s.box_id in ^box_ids and s.location_id == ^source_id and s.quantity != 0)
+    |> select([s], %{lot_id: s.lot_id, box_id: s.box_id, quantity: s.quantity})
+    |> Repo.all()
+    |> Enum.flat_map(fn row ->
+      [
+        %{
+          lot_id: row.lot_id,
+          box_id: row.box_id,
+          location_id: source_id,
+          quantity: Decimal.negate(row.quantity)
+        },
+        %{
+          lot_id: row.lot_id,
+          box_id: row.box_id,
+          location_id: destination_id,
+          quantity: row.quantity
+        }
+      ]
+    end)
+  end
+
+  defp normalize_picks(picks) when is_map(picks) do
+    picks
+    |> Enum.map(fn {lot_id, quantity} ->
+      %{lot_id: to_id(lot_id), quantity: to_decimal(quantity)}
+    end)
+    |> Enum.reject(&(is_nil(&1.quantity) or Decimal.compare(&1.quantity, 0) != :gt))
+  end
+
+  defp normalize_picks(picks) when is_list(picks) do
+    picks
+    |> Enum.map(fn pick ->
+      %{
+        lot_id: to_id(field(pick, :lot_id)),
+        quantity: to_decimal(field(pick, :quantity))
+      }
+    end)
+    |> Enum.reject(&(is_nil(&1.quantity) or Decimal.compare(&1.quantity, 0) != :gt))
+  end
+
+  ## Manual issue
+
+  @doc """
+  Issues stock by product and quantity, oldest expiry first.
+
+  This is the everyday "someone came and took 30 gauzes" — no invoice, no kit,
+  just goods leaving. Per-patient tracking is out of scope, so the destination
+  names a place or a purpose, not a person: `Transaction.destinations/0`. It is
+  a closed list rather than prose because "what did we donate" has to be a
+  query, and a donation carries who received it.
+  """
+  def issue(product_id, quantity, attrs) do
+    issue_many([%{product_id: product_id, quantity: quantity}], attrs)
+  end
+
+  @doc """
+  Several products leaving together, as one movement.
+
+  Somebody came to the counter and took six things. That is one event, and
+  filing it as six makes the log unreadable and the paperwork six times over —
+  but more to the point, a basket can be corrected before it is written, and a
+  posted transaction cannot: nothing here is ever deleted, so a mistyped line
+  becomes a correcting adjustment on the record forever.
+
+  Every line is picked FEFO and the whole thing posts in one transaction, so a
+  shortfall on the last line leaves nothing behind from the first.
+  """
+  def issue_many(lines, attrs) do
+    location_id = to_id(field(attrs, :location_id))
+
+    cond do
+      is_nil(location_id) -> {:error, :missing_location}
+      lines == [] -> {:error, :nothing_to_issue}
+      true -> do_issue_many(lines, location_id, attrs)
+    end
+  end
+
+  defp do_issue_many(lines, location_id, attrs) do
+    lines
+    |> Enum.reduce_while({:ok, []}, fn line, {:ok, entries} ->
+      quantity = to_decimal(field(line, :quantity))
+      product_id = to_id(field(line, :product_id))
+
+      if is_nil(quantity) or Decimal.compare(quantity, 0) != :gt do
+        {:halt, {:error, :invalid_quantity}}
+      else
+        box_id = to_id(field(line, :box_id))
+
+        case Inventory.suggest_fefo_positions(product_id, quantity,
+               location_id: location_id,
+               box_id: box_id
+             ) do
+          {:insufficient_stock, _picks, missing} ->
+            {:halt, {:error, {:insufficient_stock, %{missing: missing, item: product_id}}}}
+
+          {:ok, picks} ->
+            {:cont, {:ok, entries ++ Enum.map(picks, &entry_for/1)}}
+        end
+      end
+    end)
+    |> case do
+      {:ok, entries} ->
+        Inventory.post_transaction(%{
+          type: "manual_out",
+          source_location_id: location_id,
+          mission_id: mission_at(location_id),
+          user_id: field(attrs, :user_id),
+          destination: field(attrs, :destination),
+          recipient_name: field(attrs, :recipient_name),
+          recipient_tax_id: field(attrs, :recipient_tax_id),
+          notes: field(attrs, :notes),
+          entries: entries
+        })
+
+      error ->
+        error
+    end
+  end
+
+  defp entry_for(pick) do
+    %{
+      lot_id: pick.lot_id,
+      location_id: pick.location_id,
+      box_id: pick.box_id,
+      quantity: Decimal.negate(pick.take)
+    }
+  end
+
+  ## Returns
+
+  @doc """
+  What the ledger believes is still at a location, position by position, for
+  the return conference.
+
+  After a mission this list is a hypothesis, not a fact: things were consumed,
+  things moved between boxes, and nobody wrote it down. The screen exists to
+  turn it into a fact.
+  """
+  def plan_return(location_id) do
+    StockSnapshot
+    |> join(:inner, [s], l in Lot, on: l.id == s.lot_id)
+    |> join(:inner, [s, l], p in Product, on: p.id == l.product_id)
+    |> join(:left, [s], b in Box, on: b.id == s.box_id)
+    |> where([s], s.location_id == ^location_id and s.quantity != 0)
+    |> order_by([s, l, p], asc: p.name, asc_nulls_last: l.expires_on)
+    |> select([s, l, p, b], %{
+      lot_id: l.id,
+      lot_number: l.lot_number,
+      expires_on: l.expires_on,
+      product_id: p.id,
+      product: p.name,
+      controlled: p.controlled,
+      box_id: s.box_id,
+      box_code: b.code,
+      expected: s.quantity
+    })
+    |> Repo.all()
+  end
+
+  @doc """
+  Receives a return from a mission, counting what actually came back.
+
+  Each line says how much of a position returned and into which box at the
+  destination — after a mission things come back in different boxes than they
+  left in, so re-boxing is the normal case, not an exception.
+
+  What did not come back is not silently forgotten. With
+  `consume_missing: true` the remainder is written off as `manual_out` at the
+  mission, which is what actually happened to it; otherwise it stays on the
+  mission's books for someone to explain.
+  """
+  def receive_return(attrs) do
+    source_id = to_id(field(attrs, :source_location_id))
+    destination_id = to_id(field(attrs, :destination_location_id))
+    lines = normalize_return_lines(field(attrs, :lines) || [])
+    consume_missing? = truthy?(field(attrs, :consume_missing))
+
+    cond do
+      is_nil(source_id) or is_nil(destination_id) ->
+        {:error, :missing_location}
+
+      source_id == destination_id ->
+        {:error, :same_location}
+
+      lines == [] ->
+        {:error, :nothing_returned}
+
+      true ->
+        do_receive_return(source_id, destination_id, lines, consume_missing?, attrs)
+    end
+  end
+
+  defp do_receive_return(source_id, destination_id, lines, consume_missing?, attrs) do
+    user_id = field(attrs, :user_id)
+
+    returned =
+      Enum.flat_map(lines, fn line ->
+        if Decimal.compare(line.quantity, 0) == :gt do
+          [
+            %{
+              lot_id: line.lot_id,
+              location_id: source_id,
+              box_id: line.from_box_id,
+              quantity: Decimal.negate(line.quantity)
+            },
+            %{
+              lot_id: line.lot_id,
+              location_id: destination_id,
+              box_id: line.to_box_id,
+              quantity: line.quantity
+            }
+          ]
+        else
+          []
+        end
+      end)
+
+    missing =
+      if consume_missing? do
+        Enum.flat_map(lines, fn line ->
+          left_behind = Decimal.sub(line.expected, line.quantity)
+
+          if Decimal.compare(left_behind, 0) == :gt do
+            [
+              %{
+                lot_id: line.lot_id,
+                location_id: source_id,
+                box_id: line.from_box_id,
+                quantity: Decimal.negate(left_behind)
+              }
+            ]
+          else
+            []
+          end
+        end)
+      else
+        []
+      end
+
+    Multi.new()
+    |> maybe_post(:return, returned, %{
+      type: "return_in",
+      source_location_id: source_id,
+      destination_location_id: destination_id,
+      mission_id: mission_at(source_id),
+      user_id: user_id,
+      notes: field(attrs, :notes)
+    })
+    |> maybe_post(:consumed, missing, %{
+      type: "manual_out",
+      source_location_id: source_id,
+      mission_id: mission_at(source_id),
+      user_id: user_id,
+      notes: gettext("Used during the mission (did not come back)")
+    })
+    |> Repo.transaction()
+    |> case do
+      {:ok, changes} ->
+        {:ok, %{return: changes[:return], consumed: changes[:consumed]}}
+
+      {:error, _step, reason, _changes} ->
+        {:error, reason}
+    end
+  end
+
+  defp maybe_post(multi, _name, [], _attrs), do: multi
+
+  defp maybe_post(multi, name, entries, attrs) do
+    Multi.run(multi, name, fn _repo, _changes ->
+      Inventory.post_transaction(Map.put(attrs, :entries, entries))
+    end)
+  end
+
+  defp normalize_return_lines(lines) when is_map(lines) do
+    lines |> Map.values() |> normalize_return_lines()
+  end
+
+  defp normalize_return_lines(lines) when is_list(lines) do
+    lines
+    |> Enum.map(fn line ->
+      %{
+        lot_id: to_id(field(line, :lot_id)),
+        from_box_id: to_id(field(line, :from_box_id)),
+        to_box_id: to_id(field(line, :to_box_id)),
+        quantity: to_decimal(field(line, :quantity)) || Decimal.new(0),
+        expected: to_decimal(field(line, :expected)) || Decimal.new(0)
+      }
+    end)
+    |> Enum.reject(&is_nil(&1.lot_id))
+  end
+
+  # A movement at a mission site belongs to whichever trip was under way there.
+  # Nobody is asked to pick: the location and the date already say it, and being
+  # asked to name the trip you are standing in is how a field gets left blank.
+  # Which trip a movement at this place belongs to. Derived from the location and
+  # nothing else — a mission's dates are for a person to read, not a gate the
+  # stock consults.
+  defp mission_at(location_id) do
+    case Missions.for_location(location_id) do
+      nil -> nil
+      mission -> mission.id
+    end
+  end
+
+  defp truthy?(value), do: value in [true, "true", "on", "1", 1]
+end
