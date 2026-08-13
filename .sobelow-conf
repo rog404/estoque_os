@@ -1,0 +1,26 @@
+[
+  verbose: false,
+  private: false,
+  skip: true,
+  router: "lib/estoque_os_web/router.ex",
+  exit: "Low",
+  format: "txt",
+  out: "",
+  threshold: "low",
+  ignore: ["Config.CSP", "Traversal.FileModule"],
+  ignore_files: []
+]
+
+# Two rules are ignored, both false positives, both checked by hand:
+#
+# Config.CSP — a policy IS set, in `EstoqueOSWeb.Router.put_csp/2`. Sobelow only
+# recognises one passed inline to `put_secure_browser_headers` in the pipeline
+# itself, and an inline policy is a compile-time constant, which cannot carry a
+# per-request nonce. The theme script must run before first paint, so the choice
+# was a nonce or `unsafe-inline`; the nonce is worth more than the scanner's
+# pattern match. `test/estoque_os_web/csp_test.exs` asserts the header exists,
+# that the inline script carries the nonce it allows, and that it never repeats.
+#
+# Traversal.FileModule — the three `File.read!(path)` calls it flags take `path`
+# from `consume_uploaded_entries`, which LiveView writes to a temporary directory
+# of its own choosing. The name never comes from the request.

@@ -1,0 +1,75 @@
+name: CI
+
+# There is no remote yet. This runs the moment one exists, and until then it is
+# the written form of what `mix precommit` already does locally — so the two
+# cannot drift into disagreeing about what "green" means.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+env:
+  MIX_ENV: test
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      db:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: estoque_os_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: erlef/setup-beam@v1
+        with:
+          elixir-version: "1.20.2"
+          otp-version: "29.0"
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            deps
+            _build
+          key: ${{ runner.os }}-mix-${{ hashFiles('mix.lock') }}
+          restore-keys: ${{ runner.os }}-mix-
+
+      - run: mix deps.get
+
+      # Warnings become errors here and nowhere else, which is the point: the
+      # editor is free to be noisy while you work.
+      - run: mix compile --warnings-as-errors
+
+      - run: mix format --check-formatted
+
+      - run: mix deps.unlock --check-unused
+
+      # A translation that was never extracted must not ship. The gate merges
+      # into the .po with an empty string, where gettext_test.exs fails on it by
+      # name.
+      - run: mix gettext.extract --merge
+
+      - run: mix credo
+
+      - run: mix sobelow
+
+      # Advisories published after the lockfile was written. Fails the build so
+      # the news arrives here rather than in an audit.
+      - run: mix hex.audit
+
+      - run: mix test
+        env:
+          # The service container publishes on the default port; local dev uses
+          # 5433, so the two configurations must not assume each other.
+          PGPORT: 5432

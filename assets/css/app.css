@@ -1,0 +1,643 @@
+/* See the Tailwind configuration guide for advanced usage
+   https://tailwindcss.com/docs/configuration */
+
+@import "tailwindcss" source(none);
+@import "phoenix-colocated/estoque_os/colocated.css";
+@source "../css";
+@source "../js";
+@source "../../lib/estoque_os_web";
+/* Required for Tailwind to automatically pick up changes in colocated CSS files in dev */
+@source "../../_build/dev/phoenix-colocated/estoque_os/*/";
+
+/* A Tailwind plugin that makes "hero-#{ICON}" classes available.
+   The heroicons installation itself is managed by your mix.exs */
+@plugin "../vendor/heroicons";
+
+/* daisyUI Tailwind Plugin. */
+@plugin "daisyui/packages/bundle/daisyui" {
+  themes: false;
+}
+
+/* Archivo (SIL OFL), self-hosted variable — weight 400–700 and width 62–125%.
+   One family carries every role: the width axis gives headings their own voice
+   without a second face, and the figures are tabular, which is what a screen
+   full of quantities and money actually needs. */
+@font-face {
+  font-family: "Archivo";
+  font-style: normal;
+  font-weight: 400 700;
+  font-stretch: 62% 125%;
+  font-display: swap;
+  src: url("/fonts/archivo-latin.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+    U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+    U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: "Archivo";
+  font-style: normal;
+  font-weight: 400 700;
+  font-stretch: 62% 125%;
+  font-display: swap;
+  src: url("/fonts/archivo-latin-ext.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF,
+    U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020,
+    U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+@theme {
+  --font-sans: "Archivo", ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Theme — PROVISIONAL.
+   Operação Sorriso has an official visual identity, but we do not have the
+   asset files yet (see PRODUCT.md). This palette is *inspired by* the blue the
+   organization uses publicly; it is not their brand and must not be presented
+   as such. Everything brand-bearing lives in these two blocks, so swapping in
+   the real identity is a one-file change.
+
+   Light is the default because the use scene is a bright office and daylit
+   warehouse; dark exists for the badly lit storage rooms of a mission. */
+@plugin "daisyui/packages/bundle/daisyui-theme" {
+  name: "light";
+  default: true;
+  prefersdark: false;
+  color-scheme: "light";
+  /* Cool near-white content surface, with a second, cooler layer for bars and
+     panels so toolbars read as a different plane from the data. */
+  --color-base-100: oklch(99% 0.003 250);
+  --color-base-200: oklch(96.5% 0.006 250);
+  --color-base-300: oklch(91.5% 0.011 250);
+  /* Deep navy ink rather than gray: same family as the brand, ~15:1 on white. */
+  --color-base-content: oklch(26% 0.028 258);
+  --color-primary: oklch(52% 0.17 252);
+  --color-primary-content: oklch(98% 0.01 250);
+  --color-secondary: oklch(46% 0.035 256);
+  --color-secondary-content: oklch(98% 0.005 250);
+  /* Warm accent, spent only where the work is humane: donations and
+     confirmations. Never decoration. */
+  --color-accent: oklch(64% 0.15 38);
+  --color-accent-content: oklch(99% 0.01 60);
+  --color-neutral: oklch(38% 0.03 257);
+  --color-neutral-content: oklch(98% 0.003 250);
+  --color-info: oklch(55% 0.13 236);
+  --color-info-content: oklch(98% 0.012 236);
+  --color-success: oklch(52% 0.13 160);
+  --color-success-content: oklch(98% 0.014 160);
+  --color-warning: oklch(62% 0.16 68);
+  --color-warning-content: oklch(99% 0.02 90);
+  --color-error: oklch(53% 0.21 25);
+  --color-error-content: oklch(98% 0.015 20);
+  --radius-selector: 0.1875rem;
+  --radius-field: 0.25rem;
+  --radius-box: 0.375rem;
+  /* Controls are sized for a gloved hand in a warehouse, not a mouse in an
+     office: a field is 0.25 × 10 = 2.5rem tall and a checkbox 0.25 × 6 =
+     1.5rem. The two used to be 2.1875rem and 1.3125rem, which is where the
+     checkboxes got their apologetic look. */
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+  --border: 1px;
+  --depth: 1;
+  --noise: 0;
+}
+
+@plugin "daisyui/packages/bundle/daisyui-theme" {
+  name: "dark";
+  default: false;
+  prefersdark: true;
+  color-scheme: "dark";
+  --color-base-100: oklch(24% 0.022 258);
+  --color-base-200: oklch(20.5% 0.02 258);
+  --color-base-300: oklch(17% 0.018 258);
+  --color-base-content: oklch(94% 0.012 250);
+  --color-primary: oklch(68% 0.15 252);
+  --color-primary-content: oklch(18% 0.04 255);
+  --color-secondary: oklch(72% 0.03 255);
+  --color-secondary-content: oklch(20% 0.02 255);
+  --color-accent: oklch(72% 0.14 45);
+  --color-accent-content: oklch(20% 0.04 40);
+  --color-neutral: oklch(32% 0.025 257);
+  --color-neutral-content: oklch(95% 0.005 250);
+  --color-info: oklch(70% 0.12 236);
+  --color-info-content: oklch(18% 0.03 236);
+  --color-success: oklch(70% 0.13 162);
+  --color-success-content: oklch(18% 0.03 162);
+  --color-warning: oklch(76% 0.14 70);
+  --color-warning-content: oklch(20% 0.04 70);
+  --color-error: oklch(68% 0.18 22);
+  --color-error-content: oklch(18% 0.04 20);
+  --radius-selector: 0.1875rem;
+  --radius-field: 0.25rem;
+  --radius-box: 0.375rem;
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+  --border: 1px;
+  --depth: 1;
+  --noise: 0;
+}
+
+/* Add variants based on LiveView classes */
+@custom-variant phx-click-loading (.phx-click-loading&, .phx-click-loading &);
+@custom-variant phx-submit-loading (.phx-submit-loading&, .phx-submit-loading &);
+@custom-variant phx-change-loading (.phx-change-loading&, .phx-change-loading &);
+
+/* Use the data attribute for dark mode  */
+@custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *));
+
+/* Make LiveView wrapper divs transparent for layout */
+[data-phx-session], [data-phx-teleported-src] { display: contents }
+
+/* Read at arm's length, in a warehouse, often on a phone: the base is a step
+   up from the 16px web default and the dense tables come up with it. */
+html { font-size: 17px; }
+
+/* ==========================================================================
+   SECTION IDENTITY
+
+   The menu is grouped the way the operation is sequenced — what comes in, what
+   is done by hand, what we hold, what is checked — and each group carries a
+   hue. On a phone held in a storage room you know which part of the system you
+   are in before you read the title.
+
+   These four never appear at the same scale as a status colour. A section is a
+   field: a tinted band, a rail, a nav marker. A status is a mark: a badge, a
+   word, a row border. Same page, different channels, so "violet" can never be
+   misread as "warning".
+
+   Reports takes gold rather than a second blue, and nothing takes green or red
+   — those two belong to the ledger's own answers and are not for decoration.
+
+   Only the hue is a variable. The lightness and chroma of each role are written
+   at the point of use, because a custom property that contains `var()` is
+   substituted where it is *declared*, not where it is read: deriving
+   `--section-tint: oklch(96.5% 0.028 var(--section-h))` on `:root` froze every
+   section at the root's own hue, and the whole app came out blue. The scale is
+   the system here, and it is four lines long:
+
+     rail   56% / 0.15   the spine beside a page title
+     ink    44% / 0.13   the section's own name, on the tint
+     tint   96.5% / 0.028  the header band
+     edge   89% / 0.045  that band's bottom rule
+     mark   74% / 0.15   read against the near-black bar
+   ========================================================================== */
+:root { --section-h: 252; }
+[data-section="incoming"] { --section-h: 200; }
+[data-section="operation"] { --section-h: 295; }
+[data-section="stock"] { --section-h: 252; }
+[data-section="reports"] { --section-h: 75; }
+
+.page-head {
+  border-bottom: 1px solid oklch(89% 0.045 var(--section-h));
+}
+
+.section-rail { background: oklch(56% 0.15 var(--section-h)); }
+.section-label { color: oklch(44% 0.13 var(--section-h)); }
+.section-mark { background: oklch(74% 0.15 var(--section-h)); }
+
+.app-bar .btn.btn-active {
+  box-shadow: inset 0 -3px 0 0 oklch(74% 0.15 var(--section-h));
+}
+
+[data-theme="dark"] .page-head {
+  border-bottom-color: oklch(36% 0.05 var(--section-h));
+}
+
+[data-theme="dark"] .section-rail { background: oklch(70% 0.14 var(--section-h)); }
+[data-theme="dark"] .section-label { color: oklch(80% 0.11 var(--section-h)); }
+
+:root {
+  /* The bar is the one constant: whatever section you are in, the app is the
+     same app. Deep enough to sit under the status bar of a phone without
+     looking like a light theme that lost its way. */
+  --bar: oklch(28% 0.045 258);
+  --bar-ink: oklch(97% 0.008 250);
+  --bar-edge: oklch(38% 0.05 258);
+  --app-bar-h: 3.5rem;
+}
+
+[data-theme="dark"] {
+  --bar: oklch(18% 0.025 258);
+  --bar-ink: oklch(95% 0.008 250);
+  --bar-edge: oklch(29% 0.03 258);
+}
+
+/* ==========================================================================
+   SURFACES
+
+   Three planes, and the reason the app used to look flat is that it only had
+   one: panels were base-100 on a base-100 ground, separated by a hairline and
+   nothing else. Now the ground recedes, the panels sit on it, and the bar sits
+   above both.
+   ========================================================================== */
+/* daisyUI paints the root with `--root-bg` (base-100 by default), and a painted
+   root stops the body's own background from propagating to the canvas — the
+   ground ended where the content ended and the rest of the window went white.
+   Setting its variable rather than fighting it with a selector. */
+:root {
+  --root-bg: var(--color-base-200);
+}
+
+body {
+  background: var(--color-base-200);
+}
+
+.app-bar {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  min-height: var(--app-bar-h);
+  background: var(--bar);
+  color: var(--bar-ink);
+  border-bottom: 1px solid var(--bar-edge);
+}
+
+/* daisyUI's button and menu colours are derived from base-content, which is
+   ink-on-paper. Inside the bar the paper is dark, so the controls are told
+   directly rather than through the theme. */
+.app-bar .btn {
+  color: var(--bar-ink);
+  border-color: transparent;
+  background: transparent;
+}
+
+.app-bar .btn:hover,
+.app-bar .btn.btn-active {
+  background: color-mix(in oklch, var(--bar-ink) 14%, transparent);
+  border-color: transparent;
+}
+
+/* A dropdown hangs off the bar in the DOM but is painted on paper. Without
+   this, the rule above sent the bar's near-white ink into the menu and the
+   "view as" buttons came out at 1.05:1 against a white panel — present in the
+   markup, invisible on a light theme, and fine on a dark one, which is how it
+   got past me. */
+.app-bar .dropdown-content .btn {
+  color: var(--color-base-content);
+  background: var(--color-base-100);
+  border-color: var(--color-base-300);
+}
+
+.app-bar .dropdown-content .btn:hover {
+  background: var(--color-base-200);
+  border-color: color-mix(in oklch, var(--color-base-content) 40%, transparent);
+}
+
+/* A panel is the one container. Everything that used to be `card bg-base-100
+   border border-base-300` in twenty-six different spellings is this. */
+.panel {
+  background: var(--color-base-100);
+  border: 1px solid var(--color-base-300);
+  border-radius: var(--radius-box);
+}
+
+.panel-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--color-base-200);
+}
+
+.panel-body {
+  padding: 1rem;
+}
+
+/* Tables run to the panel's own edge; padding on the cells does the work. */
+.panel-body.is-flush {
+  padding: 0;
+}
+
+/* ==========================================================================
+   CONTROLS
+
+   A checkbox used to be 1.3125rem next to a 2.1875rem input, and four screens
+   shrank it further with `checkbox-sm`. Now the box is 1.5rem everywhere and
+   the control it sits in has the input's exact height, border and radius — so
+   a checkbox in a form grid is the same object as the field beside it.
+   ========================================================================== */
+.check-field {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  min-height: calc(var(--size-field) * 10);
+  padding: 0 0.75rem;
+  border: var(--border) solid var(--color-base-300);
+  border-radius: var(--radius-field);
+  background: var(--color-base-100);
+  cursor: pointer;
+  user-select: none;
+}
+
+.check-field:hover {
+  border-color: color-mix(in oklch, var(--color-base-content) 30%, transparent);
+}
+
+.check-field:has(:checked) {
+  border-color: var(--color-primary);
+  background: color-mix(in oklch, var(--color-primary) 7%, var(--color-base-100));
+}
+
+.check-field:has(:focus-visible) {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.check-field input[type="checkbox"] {
+  flex-shrink: 0;
+}
+
+/* A row where some controls carry a label above them and some do not — a search
+   box, a quantity, a select, and the button that submits them.
+
+   daisyUI's `.fieldset` puts 4.25px of padding below the field it wraps, so
+   `items-end` was aligning the bare button to the bottom of the *label's box*
+   rather than to the bottom of the input inside it, and every button in the app
+   sat five pixels lower than the fields beside it. Measured, not guessed.
+
+   Zeroing the block padding here rather than globally: `.fieldset` is also used
+   for stacked forms, where that padding is the spacing between rows. */
+.field-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.75rem;
+}
+
+.field-row .fieldset {
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+/* `<.input>` carries `mb-2` for stacked forms; on one line it is the same
+   five-pixel problem wearing a different name. */
+.field-row .fieldset.mb-2 {
+  margin-bottom: 0;
+}
+
+/* ==========================================================================
+   HIDDEN AMOUNTS
+
+   The coordinator reads this screen in a warehouse with people around. The eye
+   in the bar swaps which of the two spans is shown — never a blur, which still
+   says "a number is here, lean closer", and never absolute positioning, which
+   breaks the moment a cell turns into a flex row on a phone.
+
+   Not a security control. The amount is in the markup either way; what keeps a
+   price from a partner outside the ONG is not rendering it at all.
+   ========================================================================== */
+.money-mask {
+  display: none;
+  letter-spacing: 0.08em;
+  opacity: 0.55;
+}
+
+[data-money="hidden"] .money-real {
+  display: none;
+}
+
+[data-money="hidden"] .money-mask {
+  display: inline;
+}
+
+/* ==========================================================================
+   TYPE ROLES
+
+   Headings take the width axis rather than a second family: slightly expanded
+   and tighter tracked, they read as decided instead of as the default sans.
+   Numbers everywhere are tabular so columns of quantities line up.
+   ========================================================================== */
+h1, h2, h3, .card-title, .menu-title, .panel-head {
+  font-stretch: 108%;
+  letter-spacing: -0.015em;
+}
+
+table, .tabular-nums, input[inputmode="decimal"], input[inputmode="numeric"] {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Data columns hold their own rhythm even when the row wraps. */
+th, td { font-feature-settings: "tnum" 1; }
+
+/* A label that names a group of things, in the operation's own register. */
+.eyebrow {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-stretch: 100%;
+}
+
+/* ==========================================================================
+   THE DATA TABLE
+
+   One DOM, two shapes. Rendering a desktop table and a mobile card list as
+   separate markup duplicates every id inside a cell, which is invalid HTML and
+   breaks LiveView — so the table collapses into blocks with CSS instead.
+
+   No zebra striping: alternating fills say "record set", and these rows are
+   positions of real stock.
+   ========================================================================== */
+.data-table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+/* The column labels. Scaffolding, not content.
+
+   They used to carry four emphases at once — uppercase, semibold, near-full
+   contrast, on a flat base-200 slab cut off by a hard base-300 rule — for text
+   whose whole job is to name the column under it. Six words of that above a
+   table of real numbers and the labels shouted louder than the stock.
+
+   What is left is the smallest thing that still reads as a label: the eyebrow's
+   register, a weight below the data, and about half the ink. The separation is
+   a hairline and a breath of tint, not a bar. */
+.data-table thead th {
+  font-size: 0.75rem;
+  font-weight: 500;
+  /* Sentence case, deliberately. The labels were uppercase — but only on the
+     tables with no sortable column, because a sortable header renders a
+     `button` and that reset the transform. So half the app shouted "CAIXA
+     LOCAL" and the other half said "Produto  Lote  Validade", and the quiet
+     half was plainly the better one. Now both read the way the string was
+     written. */
+  text-transform: none;
+  letter-spacing: 0.005em;
+  color: color-mix(in oklch, var(--color-base-content) 60%, transparent);
+  background: color-mix(in oklch, var(--color-base-200) 45%, var(--color-base-100));
+  border-bottom: 1px solid var(--color-base-200);
+  /* Cap heights only, so the label sits on the same optical line as the rule
+     beneath it whether or not it has descenders. */
+  line-height: 1.15;
+}
+
+/* The head is the top of the panel when the body is flush, so it takes the
+   panel's corners rather than squaring them off. */
+.panel-body.is-flush .data-table thead tr:first-child th:first-child {
+  border-top-left-radius: calc(var(--radius-box) - 1px);
+}
+
+.panel-body.is-flush .data-table thead tr:first-child th:last-child {
+  border-top-right-radius: calc(var(--radius-box) - 1px);
+}
+
+/* A sortable header is a control and says so on approach — but only by
+   darkening the ink, never by growing or moving, which would shift the column
+   under the cursor. */
+.data-table thead th button {
+  color: inherit;
+  transition: color 120ms ease;
+}
+
+.data-table thead th button:hover {
+  color: var(--color-base-content);
+}
+
+/* The row owns the background so the hover reads through a sticky cell. */
+.data-table tbody tr {
+  background: var(--color-base-100);
+}
+
+.data-table tbody tr:hover {
+  background: color-mix(in oklch, var(--color-base-200) 60%, var(--color-base-100));
+}
+
+/* Forty-five rows of stock scrolled past a header that left with them: the
+   columns stick under the app bar instead. */
+@media (min-width: 48rem) {
+  .data-table thead th {
+    position: sticky;
+    top: var(--app-bar-h);
+    z-index: 10;
+    /* Opaque, or forty-five rows of stock scroll through it. The mix above is
+       already opaque — restated here so the sticky case cannot drift from the
+       resting one. */
+    background: color-mix(in oklch, var(--color-base-200) 45%, var(--color-base-100));
+  }
+
+  /* A money column that wraps mid-value reads as two numbers. It never wraps. */
+  .data-table td.is-primary,
+  .data-table td.is-numeric,
+  .data-table th.is-numeric {
+    white-space: nowrap;
+  }
+
+  /* Columns grouped by the question they answer — what it is, where it is,
+     what it is worth — with a hairline between the groups rather than around
+     every cell. */
+  .data-table :is(th, td).group-start:not(:first-child) {
+    border-left: 1px solid var(--color-base-200);
+  }
+}
+
+/* The totals line. A table that ends without saying what the set adds up to
+   makes the reader do the arithmetic the system already did. */
+.data-table tfoot td {
+  background: var(--color-base-200);
+  font-weight: 600;
+  border-top: 1px solid var(--color-base-300);
+}
+
+@media (max-width: 47.999rem) {
+  .data-table thead {
+    display: none;
+  }
+
+  .data-table tfoot td {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+
+  .data-table tbody tr {
+    display: block;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid var(--color-base-200);
+  }
+
+  .data-table td {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    /* A cell that holds a value *and* a note — "PR01 · Missão Manacapuru" plus
+       "presumido · nunca contada" — had both squeezed onto one line and the
+       note ran off the right edge of the phone. They wrap to their own lines
+       instead, and a long word breaks rather than escaping the card. */
+    flex-wrap: wrap;
+    overflow-wrap: anywhere;
+    gap: 0.125rem 1rem;
+    padding: 0.125rem 0;
+    border: 0;
+    text-align: right;
+  }
+
+  /* Once wrapped, a note takes the whole line and stays right-aligned with the
+     value above it. */
+  .data-table td > p {
+    flex-basis: 100%;
+  }
+
+  /* The label lives in the header on a wide screen and in front of the value
+     on a narrow one. */
+  .data-table td[data-label]::before {
+    content: attr(data-label);
+    font-size: 0.875rem;
+    color: var(--color-base-content);
+    opacity: 0.7;
+    text-align: left;
+    flex-shrink: 0;
+  }
+
+  /* What the row *is* leads, full width; the number that matters is loud. */
+  .data-table td.is-identity {
+    display: block;
+    text-align: left;
+    font-size: 1.0625rem;
+    padding-bottom: 0.375rem;
+  }
+
+  .data-table td.is-primary {
+    font-size: 1.125rem;
+  }
+
+  /* A cell the operator types into. The field *is* the value, so it stays on
+     the right of its label like every other cell — the card keeps one reading
+     order and the numbers keep their edge. It only grows enough to be hit with
+     a thumb. */
+  .data-table td.is-field {
+    align-items: center;
+    padding: 0.25rem 0;
+  }
+
+  .data-table td.is-field :is(input, select, textarea):not([type="checkbox"]):not([type="radio"]) {
+    width: 100%;
+    max-width: 11rem;
+    min-height: 2.75rem;
+    font-size: 1rem; /* under 16px iOS zooms the page on focus */
+  }
+
+  /* A box can't be stretched to the width of a phone, so it grows and the cell
+     padding carries the rest of the target. */
+  .data-table td.is-field :is([type="checkbox"], [type="radio"]) {
+    width: 1.75rem;
+    height: 1.75rem;
+    margin: 0.5rem 0;
+  }
+
+  /* The escape hatch: a field too complex to share a line with its label. */
+  .data-table td.is-block {
+    display: block;
+    text-align: left;
+  }
+
+  .data-table td.is-block[data-label]::before {
+    display: block;
+    margin-bottom: 0.375rem;
+  }
+
+  .data-table td.is-block :is(input, select, textarea) {
+    max-width: none;
+  }
+}

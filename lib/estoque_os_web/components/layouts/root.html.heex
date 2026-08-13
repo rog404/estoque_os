@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="csrf-token" content={get_csrf_token()} />
+    <.live_title default="Estoque OS" suffix=" · Estoque Operação Sorriso" phx-no-format>{assigns[:page_title]}</.live_title>
+    <link phx-track-static rel="stylesheet" href={~p"/assets/css/app.css"} />
+    <script defer phx-track-static type="text/javascript" src={~p"/assets/js/app.js"}>
+    </script>
+    <script nonce={assigns[:csp_nonce]}>
+      (() => {
+        const systemTheme = () => matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+
+        const setTheme = (theme) => {
+          if (theme === "system") {
+            localStorage.removeItem("phx:theme");
+            document.documentElement.setAttribute("data-theme", systemTheme());
+            document.documentElement.setAttribute("data-theme-source", "system");
+          } else {
+            localStorage.setItem("phx:theme", theme);
+            document.documentElement.setAttribute("data-theme", theme);
+            document.documentElement.setAttribute("data-theme-source", "user");
+          }
+        };
+        if (!document.documentElement.hasAttribute("data-theme")) {
+          setTheme(localStorage.getItem("phx:theme") || "system");
+        }
+
+        // Amounts start hidden, always. A default that reveals is a default that
+        // has already shown the figures to whoever was standing there; showing
+        // them is the deliberate act, not hiding them.
+        //
+        // Applied here rather than after mount so they never flash on and then
+        // vanish, which would defeat the whole point.
+        //
+        // Kept in sessionStorage, so revealing lasts while you work and a new
+        // browser starts covered again. localStorage would turn one click into
+        // a permanent decision, which is the default this replaces.
+        const setMoney = (mode) => {
+          if (mode === "shown") {
+            sessionStorage.setItem("phx:money", "shown");
+            document.documentElement.removeAttribute("data-money");
+          } else {
+            sessionStorage.removeItem("phx:money");
+            document.documentElement.setAttribute("data-money", "hidden");
+          }
+        };
+        setMoney(sessionStorage.getItem("phx:money"));
+        window.addEventListener("phx:toggle-money", () => {
+          setMoney(document.documentElement.hasAttribute("data-money") ? "shown" : "hidden");
+        });
+        window.addEventListener("storage", (e) => e.key === "phx:theme" && setTheme(e.newValue || "system"));
+        window.addEventListener("phx:set-theme", (e) => setTheme(e.target.dataset.phxTheme));
+
+        matchMedia("(prefers-color-scheme: dark)").addEventListener("change", (e) => {
+          if (document.documentElement.getAttribute("data-theme-source") === "system") {
+            document.documentElement.setAttribute("data-theme", systemTheme());
+          }
+        });
+      })();
+    </script>
+  </head>
+  <body>
+    {@inner_content}
+  </body>
+</html>

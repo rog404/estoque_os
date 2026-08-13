@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(mix compile*)",
+      "Bash(mix test*)",
+      "Bash(mix format*)",
+      "Bash(mix credo*)",
+      "Bash(mix precommit*)",
+      "Bash(mix hex.audit*)",
+      "Bash(mix gettext.extract*)",
+      "Bash(mix ecto.migrate*)",
+      "Bash(mix ecto.migrations*)",
+      "Bash(mix assets.build*)",
+      "Bash(MIX_ENV=test mix *)",
+      "Bash(MIX_ENV=dev mix *)",
+      "Bash(git status*)",
+      "Bash(git log*)",
+      "Bash(git diff*)",
+      "Bash(git show*)",
+      "Bash(git branch*)",
+      "Bash(git add*)"
+    ],
+    "ask": [
+      "Bash(mix ecto.reset*)",
+      "Bash(mix ecto.drop*)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -r '.tool_response.filePath // .tool_input.file_path' | { read -r f; case \"$f\" in *.ex|*.exs|*.heex) mix format \"$f\";; esac; } 2>/dev/null || true",
+            "statusMessage": "mix format"
+          }
+        ]
+      }
+    ]
+  }
+}
