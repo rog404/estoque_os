@@ -13,16 +13,29 @@ defmodule EstoqueOSWeb.UserLive.SettingsTest do
         |> live(~p"/users/settings")
 
       assert html =~ "Alterar e-mail"
-      assert html =~ "esqueceu sua senha"
+      assert html =~ ~s(id="password_form")
     end
 
-    test "no longer offers a free-form password change", %{conn: conn} do
-      {:ok, _lv, html} =
-        conn
-        |> log_in_user(user_fixture())
-        |> live(~p"/users/settings")
+    # The screen requires sudo mode to render, but the form posts to a
+    # controller, and a controller is reachable without ever rendering it.
+    test "posting a new password without sudo mode is refused", %{conn: conn} do
+      user = user_fixture()
 
-      refute html =~ ~s(id="password_form")
+      conn =
+        conn
+        |> log_in_user(user,
+          token_authenticated_at: DateTime.add(DateTime.utc_now(:second), -21, :minute)
+        )
+        |> post(~p"/users/update-password", %{
+          "user" => %{
+            "password" => "uma senha nova bem longa",
+            "password_confirmation" => "uma senha nova bem longa"
+          }
+        })
+
+      assert redirected_to(conn) == ~p"/"
+      assert Phoenix.Flash.get(conn.assigns.flash, :error) =~ "permissão"
+      refute Accounts.get_user_by_email_and_password(user.email, "uma senha nova bem longa")
     end
 
     test "redirects if user is not logged in", %{conn: conn} do

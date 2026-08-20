@@ -21,7 +21,7 @@ defmodule EstoqueOSWeb.UserLive.Login do
           </.header>
         </div>
 
-        <div :if={local_mail_adapter?()} class="alert alert-info">
+        <div :if={@email_enabled? and local_mail_adapter?()} class="alert alert-info">
           <.icon name="hero-information-circle" class="size-6 shrink-0" />
           <div>
             <p>{gettext("You are running the local mail adapter.")}</p>
@@ -35,6 +35,7 @@ defmodule EstoqueOSWeb.UserLive.Login do
 
         <.form
           :let={f}
+          :if={@email_enabled?}
           for={@form}
           id="login_form_magic"
           action={~p"/users/log-in"}
@@ -55,7 +56,7 @@ defmodule EstoqueOSWeb.UserLive.Login do
           </.button>
         </.form>
 
-        <div class="divider">{gettext("or")}</div>
+        <div :if={@email_enabled?} class="divider">{gettext("or")}</div>
 
         <.form
           :let={f}
@@ -89,11 +90,17 @@ defmodule EstoqueOSWeb.UserLive.Login do
           </.button>
         </.form>
 
-        <div class="text-center">
+        <div :if={@email_enabled?} class="text-center">
           <.link navigate={~p"/users/reset-password"} class="link link-hover text-sm">
             {gettext("Forgot your password?")}
           </.link>
         </div>
+
+        <p :if={not @email_enabled?} class="text-center text-sm opacity-70">
+          {gettext(
+            "Forgot your password? Ask an administrator to reset it — this installation does not send email."
+          )}
+        </p>
       </div>
     </Layouts.app>
     """
@@ -107,7 +114,12 @@ defmodule EstoqueOSWeb.UserLive.Login do
 
     form = to_form(%{"email" => email}, as: "user")
 
-    {:ok, assign(socket, form: form, trigger_submit: false)}
+    {:ok,
+     assign(socket,
+       form: form,
+       trigger_submit: false,
+       email_enabled?: Accounts.email_enabled?()
+     )}
   end
 
   @impl true
@@ -116,6 +128,19 @@ defmodule EstoqueOSWeb.UserLive.Login do
   end
 
   def handle_event("submit_magic", %{"user" => %{"email" => email}}, socket) do
+    if Accounts.email_enabled?() do
+      deliver_magic_link(email, socket)
+    else
+      {:noreply,
+       put_flash(
+         socket,
+         :error,
+         gettext("This installation does not send email. Log in with your password instead.")
+       )}
+    end
+  end
+
+  defp deliver_magic_link(email, socket) do
     if user = Accounts.get_user_by_email(email) do
       Accounts.deliver_login_instructions(
         user,

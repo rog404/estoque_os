@@ -6,7 +6,23 @@ defmodule EstoqueOS.Accounts do
   import Ecto.Query, warn: false
   alias EstoqueOS.Repo
 
-  alias EstoqueOS.Accounts.{User, UserToken, UserNotifier}
+  alias EstoqueOS.Accounts.{User, UserNotifier, UserToken}
+
+  @doc """
+  Whether this installation can send email.
+
+  It cannot, by default. The operation runs on accounts an administrator hands
+  out (see `create_user_with_temporary_password/3`), so nothing about getting
+  in or staying in depends on a message arriving — which means a deployment
+  with no mailer configured is a supported deployment rather than a broken one,
+  and the demo does not need a domain and an outbound provider to be usable.
+
+  Every flow that can only work by email — the magic link, "esqueci minha
+  senha", confirming a changed address — is gated on this, at the router and
+  in the screens both. Turning it back on is this flag plus a Swoosh adapter;
+  the flows themselves are intact and tested.
+  """
+  def email_enabled?, do: Application.get_env(:estoque_os, :email_enabled, false)
 
   ## Database getters
 

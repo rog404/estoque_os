@@ -83,16 +83,21 @@ defmodule EstoqueOSWeb.UserSessionController do
     )
   end
 
-  # Completes the forced first-login/first-reset password change — the only
-  # session state that reaches this action is `must_reset_password: true`
-  # (the "required" page is the only thing that posts here). A stale or
-  # double-submitted form after the flag already cleared is a real path here
-  # (unlike the old sudo-mode gate this replaces), so it's refused with a
-  # flash and a redirect, never a crash.
+  # Sets a password, from either of the two screens that do it: the forced
+  # first-login change, and the settings page.
+  #
+  # Two gates, not one. `must_reset_password` covers the forced change, where
+  # the person is holding a password somebody else chose and sudo mode is beside
+  # the point. Sudo mode covers the ordinary change, and is what stops a
+  # borrowed session from locking its owner out — with no mailer there is no
+  # emailed link to reclaim the account with, so this is the only lock on that
+  # door. A stale or double-submitted form after the flag cleared is refused
+  # with a flash rather than a crash.
   def update_password(conn, %{"user" => user_params}) do
     user = conn.assigns.current_scope.user
+    forced? = user.must_reset_password
 
-    if user.must_reset_password do
+    if forced? or Accounts.sudo_mode?(user) do
       case Accounts.update_user_password(user, user_params) do
         {:ok, {updated_user, expired_tokens}} ->
           UserAuth.disconnect_sessions(expired_tokens)
@@ -102,9 +107,11 @@ defmodule EstoqueOSWeb.UserSessionController do
           |> UserAuth.log_in_user(updated_user, user_params)
 
         {:error, %Ecto.Changeset{}} ->
+          back_to = if forced?, do: ~p"/users/reset-password/required", else: ~p"/users/settings"
+
           conn
           |> put_flash(:error, gettext("That password could not be saved."))
-          |> redirect(to: ~p"/users/reset-password/required")
+          |> redirect(to: back_to)
       end
     else
       conn

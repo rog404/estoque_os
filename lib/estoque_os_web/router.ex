@@ -235,13 +235,31 @@ defmodule EstoqueOSWeb.Router do
     live_session :current_user,
       on_mount: [{EstoqueOSWeb.UserAuth, :mount_current_scope}] do
       live "/users/log-in", UserLive.Login, :new
+    end
+
+    post "/users/log-in", UserSessionController, :create
+    delete "/users/log-out", UserSessionController, :delete
+  end
+
+  # Everything here needs a message to arrive to be worth anything: the magic
+  # link, and the "esqueci minha senha" round trip. An installation without a
+  # mailer answers them with an explanation rather than a form that leads
+  # nowhere — see `EstoqueOS.Accounts.email_enabled?/0`. Grouped into their own
+  # live_session so the gate is one line in the router rather than a condition
+  # inside each view.
+  scope "/", EstoqueOSWeb do
+    pipe_through [:browser, :require_email_enabled]
+
+    live_session :email_flows,
+      on_mount: [
+        {EstoqueOSWeb.UserAuth, :mount_current_scope},
+        {EstoqueOSWeb.UserAuth, :require_email_enabled}
+      ] do
       live "/users/log-in/:token", UserLive.Confirmation, :new
       live "/users/reset-password", UserLive.ResetPassword, :new
       live "/users/reset-password/:token", UserLive.ResetPassword, :edit
     end
 
-    post "/users/log-in", UserSessionController, :create
     post "/users/reset-password/:token", UserSessionController, :create_from_reset_token
-    delete "/users/log-out", UserSessionController, :delete
   end
 end

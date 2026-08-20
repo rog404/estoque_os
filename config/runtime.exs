@@ -125,21 +125,26 @@ if config_env() == :prod do
   #
   # Check `Plug.SSL` for all available options in `force_ssl`.
 
-  # ## Configuring the mailer
+  # ## The mailer
   #
-  # In production you need to configure the mailer to use a different adapter.
-  # Here is an example configuration for Mailgun:
+  # Deliberately not configured, and `:email_enabled` stays false here (see
+  # `EstoqueOS.Accounts.email_enabled?/0`). Accounts are handed out by an
+  # administrator with a temporary password, so nothing about getting in
+  # depends on a message arriving, and the deployment needs no sending domain
+  # and no outbound provider.
+  #
+  # To turn it on: set `EMAIL_ENABLED=true` alongside an adapter, e.g.
+  #
+  #     config :estoque_os, :email_enabled, true
   #
   #     config :estoque_os, EstoqueOS.Mailer,
   #       adapter: Swoosh.Adapters.Mailgun,
   #       api_key: System.get_env("MAILGUN_API_KEY"),
   #       domain: System.get_env("MAILGUN_DOMAIN")
   #
-  # Most non-SMTP adapters require an API client. Swoosh supports Req, Hackney,
-  # and Finch out-of-the-box. This configuration is typically done at
-  # compile-time in your config/prod.exs:
-  #
-  #     config :swoosh, :api_client, Swoosh.ApiClient.Req
-  #
-  # See https://swoosh.hexdocs.pm/Swoosh.html#module-installation for details.
+  # `config/prod.exs` already sets `Swoosh.ApiClient.Req`, which every non-SMTP
+  # adapter needs.
+  if System.get_env("EMAIL_ENABLED") in ~w(true 1) do
+    config :estoque_os, :email_enabled, true
+  end
 end

@@ -70,6 +70,12 @@ config :phoenix_live_view,
 # at the `config/runtime.exs`.
 config :estoque_os, EstoqueOS.Mailer, adapter: Swoosh.Adapters.Local
 
+# Off by default, and prod leaves it off: accounts are handed out by an
+# administrator, so no login path needs a message to arrive. `dev` and `test`
+# turn it on to exercise the flows that do use email. See
+# `EstoqueOS.Accounts.email_enabled?/0`.
+config :estoque_os, :email_enabled, false
+
 # Configure esbuild (the version is required)
 config :esbuild,
   version: "0.25.4",

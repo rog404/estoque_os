@@ -29,6 +29,10 @@ config :estoque_os, EstoqueOSWeb.Endpoint,
 # In test we don't send emails
 config :estoque_os, EstoqueOS.Mailer, adapter: Swoosh.Adapters.Test
 
+# On, so the email flows stay tested even though production runs without them.
+# `email_disabled_test.exs` flips it off for the other half.
+config :estoque_os, :email_enabled, true
+
 # Disable swoosh api client as it is only required for production adapters
 config :swoosh, :api_client, false
 

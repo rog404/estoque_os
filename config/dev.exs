@@ -76,3 +76,7 @@ config :phoenix_live_view,
 
 # Disable swoosh api client as it is only required for production adapters.
 config :swoosh, :api_client, false
+
+# The local adapter collects them at /dev/mailbox, so the email flows are
+# worth having on while developing.
+config :estoque_os, :email_enabled, true

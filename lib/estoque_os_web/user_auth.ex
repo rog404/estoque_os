@@ -334,6 +334,21 @@ defmodule EstoqueOSWeb.UserAuth do
     end
   end
 
+  @doc false
+  # Guards the flows that only work if a message arrives. `mount_current_scope`
+  # runs before this in the same live_session, so there may or may not be a
+  # user; either way the answer is the login page and a sentence saying why.
+  def on_mount(:require_email_enabled, _params, _session, socket) do
+    if EstoqueOS.Accounts.email_enabled?() do
+      {:cont, socket}
+    else
+      {:halt,
+       socket
+       |> Phoenix.LiveView.put_flash(:error, email_disabled_message())
+       |> Phoenix.LiveView.redirect(to: ~p"/users/log-in")}
+    end
+  end
+
   def on_mount(:require_sudo_mode, _params, session, socket) do
     socket = mount_current_scope(socket, session)
 
@@ -494,6 +509,27 @@ defmodule EstoqueOSWeb.UserAuth do
     else
       conn
     end
+  end
+
+  @doc """
+  Plug equivalent of the `:require_email_enabled` on_mount clause, for the
+  controller routes in the same scope.
+  """
+  def require_email_enabled(conn, _opts) do
+    if EstoqueOS.Accounts.email_enabled?() do
+      conn
+    else
+      conn
+      |> put_flash(:error, email_disabled_message())
+      |> redirect(to: ~p"/users/log-in")
+      |> halt()
+    end
+  end
+
+  defp email_disabled_message do
+    gettext(
+      "This installation does not send email. Log in with your password, or ask an administrator to reset it."
+    )
   end
 
   defp refuse(conn) do
