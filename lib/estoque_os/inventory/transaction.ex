@@ -20,7 +20,13 @@ defmodule EstoqueOS.Inventory.Transaction do
   # Where a manual issue went. A closed list because the point is to be able to
   # ask the ledger what was donated; free prose in `notes` could never answer
   # that.
-  @destinations ~w(pacu operating_room donation pre_and_post triage)
+  #
+  # `disposal` is last and is the odd one out: every other entry is a place the
+  # goods were used or given to, and this is the one where they were thrown
+  # away. It exists for the same reason as the rest — it was being recorded as a
+  # donation with an explanatory note, which makes "how much did we throw out"
+  # a question only a human reading notes can answer.
+  @destinations ~w(pacu operating_room donation pre_and_post triage disposal)
 
   @types_requiring_both_locations ~w(transfer load_out)
 

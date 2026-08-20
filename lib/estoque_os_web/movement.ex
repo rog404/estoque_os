@@ -73,12 +73,19 @@ defmodule EstoqueOSWeb.Movement do
   def reason_label("other"), do: gettext("other")
   def reason_label(nil), do: "—"
 
-  @doc "Where a manual issue went."
+  @doc """
+  Where a manual issue went.
+
+  The one copy. There used to be three — this module, the write-off screen and
+  the list of write-offs — which is two chances to rename a destination and
+  forget the others, and it went wrong the moment a sixth one was added.
+  """
   def destination_label("pacu"), do: gettext("PACU")
   def destination_label("operating_room"), do: gettext("Operating room")
   def destination_label("donation"), do: gettext("Donation")
   def destination_label("pre_and_post"), do: gettext("Pre and post")
   def destination_label("triage"), do: gettext("Triage")
+  def destination_label("disposal"), do: gettext("Disposal")
   def destination_label(nil), do: nil
 
   @doc "From where to where, for the movements that travel."
