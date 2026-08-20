@@ -19,9 +19,9 @@ defmodule EstoqueOSWeb.StockLive.Index do
 
   import EstoqueOS.Coercion
 
+  alias EstoqueOS.Inventory.Locations
   alias EstoqueOS.Reports
   alias EstoqueOSWeb.UserAuth
-  alias EstoqueOS.Inventory.Locations
 
   @stale_after_days 30
 

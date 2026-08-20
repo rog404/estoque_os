@@ -13,8 +13,8 @@ defmodule EstoqueOSWeb.ConferenceLive.Index do
 
   use EstoqueOSWeb, :live_view
 
-  alias EstoqueOS.Receiving
   alias EstoqueOS.Inventory.Locations
+  alias EstoqueOS.Receiving
 
   @impl true
   def mount(_params, _session, socket) do

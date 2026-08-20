@@ -3,8 +3,8 @@ defmodule EstoqueOS.Accounts.UserNotifier do
 
   import Swoosh.Email
 
-  alias EstoqueOS.Mailer
   alias EstoqueOS.Accounts.User
+  alias EstoqueOS.Mailer
 
   # Delivers the email using the application mailer.
   defp deliver(recipient, subject, body) do

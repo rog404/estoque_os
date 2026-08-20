@@ -14,8 +14,9 @@ defmodule EstoqueOSWeb.ManualEntryTest do
   import EstoqueOS.InventoryFixtures
 
   alias EstoqueOS.Catalog.Product
+  alias EstoqueOS.Inventory
   alias EstoqueOS.Inventory.Lot
-  alias EstoqueOS.{Inventory, Repo}
+  alias EstoqueOS.Repo
 
   setup :register_and_log_in_operator
 

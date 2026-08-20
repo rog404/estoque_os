@@ -10,9 +10,9 @@ defmodule EstoqueOSWeb.ReceiptLive.Show do
 
   use EstoqueOSWeb, :live_view
 
+  alias EstoqueOS.Inventory.Locations
   alias EstoqueOS.Receiving
   alias EstoqueOS.Receiving.ReceiptLine
-  alias EstoqueOS.Inventory.Locations
 
   @impl true
   def mount(%{"id" => id}, _session, socket) do

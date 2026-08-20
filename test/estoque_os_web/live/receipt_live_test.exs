@@ -6,8 +6,8 @@ defmodule EstoqueOSWeb.ReceiptLiveTest do
   import EstoqueOS.CatalogFixtures
   import EstoqueOS.InventoryFixtures
 
-  alias EstoqueOS.Inventory.Locations
   alias EstoqueOS.{Inventory, Invoices, Receiving}
+  alias EstoqueOS.Inventory.Locations
 
   @samples Path.expand("../../../samples", __DIR__)
   @atlantica "35260455666777000181550040019851671590327796-nfe.xml"

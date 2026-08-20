@@ -12,8 +12,8 @@ defmodule EstoqueOSWeb.IssueLive.Index do
   import EstoqueOS.Coercion, only: [to_decimal: 1, to_id: 1]
 
   alias EstoqueOS.{Catalog, Inventory, Outbound}
-  alias EstoqueOS.Inventory.Transaction
   alias EstoqueOS.Inventory.Locations
+  alias EstoqueOS.Inventory.Transaction
 
   @impl true
   def mount(_params, _session, socket) do

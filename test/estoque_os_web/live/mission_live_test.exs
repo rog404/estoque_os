@@ -13,8 +13,8 @@ defmodule EstoqueOSWeb.MissionLiveTest do
   import EstoqueOS.CatalogFixtures
   import EstoqueOS.InventoryFixtures
 
-  alias EstoqueOS.Inventory.Location
   alias EstoqueOS.{Inventory, Missions, Outbound, Repo}
+  alias EstoqueOS.Inventory.Location
 
   setup :register_and_log_in_operator
 

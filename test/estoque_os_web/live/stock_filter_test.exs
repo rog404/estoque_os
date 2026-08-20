@@ -12,6 +12,7 @@ defmodule EstoqueOSWeb.StockFilterTest do
   import EstoqueOS.InventoryFixtures
 
   alias EstoqueOS.{Catalog, Inventory}
+  alias EstoqueOS.Inventory.Locations
 
   setup :register_and_log_in_user
 
@@ -194,7 +195,7 @@ defmodule EstoqueOSWeb.StockFilterTest do
   end
 
   test "pages instead of rendering the whole warehouse at once", %{conn: conn} do
-    warehouse = EstoqueOS.Inventory.Locations.default_location()
+    warehouse = Locations.default_location()
     product = product_fixture(%{name: "Gaze paginada"})
 
     # 60 positions of one product: more than a page.
@@ -224,7 +225,7 @@ defmodule EstoqueOSWeb.StockFilterTest do
   test "finds a product by the GTIN on the box", %{conn: conn} do
     product = product_fixture(%{name: "Cateter intravenoso 22G"})
     product_identifier_fixture(%{kind: "gtin", value: "7898733218198", product_id: product.id})
-    warehouse = EstoqueOS.Inventory.Locations.default_location()
+    warehouse = Locations.default_location()
     stock_in(lot_fixture(%{product_id: product.id}), warehouse, 100)
 
     {:ok, view, _html} = live(conn, ~p"/stock")

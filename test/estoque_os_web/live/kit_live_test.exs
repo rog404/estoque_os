@@ -5,8 +5,8 @@ defmodule EstoqueOSWeb.KitLiveTest do
   import EstoqueOS.CatalogFixtures
   import EstoqueOS.InventoryFixtures
 
-  alias EstoqueOS.Inventory.Locations
   alias EstoqueOS.{Inventory, Kits}
+  alias EstoqueOS.Inventory.Locations
 
   # Packing and consuming a kit move stock. These passed as a viewer only because
   # the events were unguarded.

@@ -22,8 +22,8 @@ defmodule EstoqueOSWeb.ProductLive.Show do
   """
   def viewer_events, do: ~w()
 
-  alias EstoqueOS.Accounts.User
   alias EstoqueOS.Accounts.Scope
+  alias EstoqueOS.Accounts.User
   alias EstoqueOS.Catalog
   alias EstoqueOS.Reports.ProductHistory
   alias EstoqueOSWeb.Movement

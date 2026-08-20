@@ -6,8 +6,8 @@ defmodule EstoqueOSWeb.AuditLiveTest do
   import EstoqueOS.InventoryFixtures
 
   alias EstoqueOS.Inventory
-  alias EstoqueOS.Repo
   alias EstoqueOS.Inventory.Locations
+  alias EstoqueOS.Repo
 
   setup :register_and_log_in_operator
 

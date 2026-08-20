@@ -1,10 +1,10 @@
 defmodule EstoqueOSWeb.UserAuthTest do
   use EstoqueOSWeb.ConnCase, async: true
 
-  alias Phoenix.LiveView
   alias EstoqueOS.Accounts
   alias EstoqueOS.Accounts.Scope
   alias EstoqueOSWeb.UserAuth
+  alias Phoenix.LiveView
 
   import EstoqueOS.AccountsFixtures
 

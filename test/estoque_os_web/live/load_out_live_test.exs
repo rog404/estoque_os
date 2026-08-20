@@ -7,7 +7,6 @@ defmodule EstoqueOSWeb.LoadOutLiveTest do
 
   alias EstoqueOS.Inventory
   alias EstoqueOS.Repo
-  alias EstoqueOS.Inventory.Locations
 
   setup :register_and_log_in_operator
 

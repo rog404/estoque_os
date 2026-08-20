@@ -43,10 +43,10 @@
       #
       requires: [],
       #
-      # If you want to enforce a style guide and need a more traditional linting
-      # experience, you can change `strict` to `true` below:
-      #
-      strict: false,
+      # Strict, so `mix credo` and CI mean the same thing without a flag, and
+      # the low-priority checks — alias order, alias usage, line length — are
+      # decided once here rather than argued about in a diff.
+      strict: true,
       #
       # To modify the timeout for parsing files, change this value:
       #
@@ -82,8 +82,14 @@
           # You can customize the priority of any check
           # Priority values are: `low, normal, high, higher`
           #
+          # `if_called_more_often_than: 1`: a nested module named once, inline,
+          # reads better where it is than as an entry in a header of aliases
+          # the reader has to scroll back to. Name it twice and the alias earns
+          # its place. Mostly this is setup lines in tests
+          # (`Inventory.Locations.default_id()`), which is exactly the case
+          # where the full name is the clearer of the two.
           {Credo.Check.Design.AliasUsage,
-           [priority: :low, if_nested_deeper_than: 2, if_called_more_often_than: 0]},
+           [priority: :low, if_nested_deeper_than: 2, if_called_more_often_than: 1]},
           {Credo.Check.Design.TagFIXME, []},
           # You can also customize the exit_status of each check.
           # If you don't want TODO comments to cause `mix credo` to fail, just

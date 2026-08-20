@@ -418,12 +418,10 @@ defmodule EstoqueOSWeb.KitLive.Show do
   defp box_list([]), do: gettext("nowhere at this location")
 
   defp box_list(boxes) do
-    boxes
-    |> Enum.map(fn
+    Enum.map_join(boxes, " · ", fn
       %{box_code: nil, quantity: qty} -> gettext("loose: %{qty}", qty: quantity(qty))
       %{box_code: code, quantity: qty} -> "#{code} (#{quantity(qty)})"
     end)
-    |> Enum.join(" · ")
   end
 
   # One row per resolved component: how much `quantity` kits need, how much is
