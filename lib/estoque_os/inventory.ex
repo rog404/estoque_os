@@ -145,11 +145,21 @@ defmodule EstoqueOS.Inventory do
           product_id: product_id,
           lot_number: number,
           expires_on: blank_to_nil(expires_on),
-          # No lot number means nobody knows which batch this is, which is
-          # exactly what the review flag is for.
-          needs_review: is_nil(number)
+          needs_review: is_nil(number) and lot_expected?(product_id)
         })
         |> Repo.insert()
+    end
+  end
+
+  # A missing lot number is two different facts, the same way a missing expiry
+  # date is. On gauze it means nobody read the pack; on a blanket a volunteer
+  # brought there is nothing to read, and flagging that fills the review list
+  # with items nobody can ever resolve — which is how the list stops being read.
+  # `products.lot_expected` is what tells them apart.
+  defp lot_expected?(product_id) do
+    case Repo.one(from p in Product, where: p.id == ^product_id, select: p.lot_expected) do
+      nil -> true
+      expected -> expected
     end
   end
 

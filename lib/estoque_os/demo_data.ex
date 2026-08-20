@@ -261,8 +261,9 @@ defmodule EstoqueOS.DemoData do
   ## What
 
   # Office equipment and stationery are ordinary products, not a new concept.
-  # What separates them is `sector` and `expiry_expected` — paper does not
-  # expire, and a scanner missing an expiry date is not an alarm.
+  # What separates them is `sector`, `expiry_expected` and `lot_expected` —
+  # paper does not expire and a scanner has no lot number, so neither blank is
+  # an alarm.
   defp office_stock do
     for {name, unit, quantity} <- @office_items do
       {:ok, product} =
@@ -271,6 +272,7 @@ defmodule EstoqueOS.DemoData do
           stock_unit: unit,
           sector: "ESCRITÓRIO",
           expiry_expected: false,
+          lot_expected: false,
           min_stock_override: Decimal.new(quantity)
         })
 
