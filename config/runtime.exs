@@ -147,4 +147,15 @@ if config_env() == :prod do
   if System.get_env("EMAIL_ENABLED") in ~w(true 1) do
     config :estoque_os, :email_enabled, true
   end
+
+  # Letterhead for the donation certificates. `config/config.exs` ships
+  # placeholders on purpose — a public repository is the wrong place for the
+  # registration number that goes on a document handed to a hospital.
+  organization = Application.get_env(:estoque_os, :organization, [])
+
+  config :estoque_os, :organization,
+    name: System.get_env("ORGANIZATION_NAME") || Keyword.fetch!(organization, :name),
+    document: System.get_env("ORGANIZATION_DOCUMENT") || Keyword.fetch!(organization, :document),
+    address: System.get_env("ORGANIZATION_ADDRESS") || Keyword.fetch!(organization, :address),
+    contact: System.get_env("ORGANIZATION_CONTACT") || Keyword.fetch!(organization, :contact)
 end

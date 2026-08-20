@@ -3,7 +3,7 @@
 ## 1. Purpose
 
 Build an inventory management system for **Operação Sorriso do Brasil** (Operation
-Smile Brazil, CNPJ 00.000.000/0000-00), a non-profit that runs week-long surgical
+Smile Brazil, CNPJ 22.333.444/0001-81), a non-profit that runs week-long surgical
 missions (cleft lip/palate) in remote Brazilian cities. The system replaces a
 fully manual Excel-based workflow that costs the supply coordinator more
 than a week of manual work per mission and leaves the stock effectively

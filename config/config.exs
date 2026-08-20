@@ -25,7 +25,10 @@ config :estoque_os,
   ecto_repos: [EstoqueOS.Repo],
   generators: [timestamp_type: :utc_datetime]
 
-# Letterhead data printed on the donation certificates.
+# Letterhead printed on the donation certificates. Placeholders, deliberately:
+# this repository is public, and the real registration and contact belong in the
+# deployment rather than in version control. `config/runtime.exs` reads them
+# from ORGANIZATION_DOCUMENT, ORGANIZATION_ADDRESS and ORGANIZATION_CONTACT.
 config :estoque_os, :organization,
   name: "Operação Sorriso do Brasil",
   document: "00.000.000/0000-00",

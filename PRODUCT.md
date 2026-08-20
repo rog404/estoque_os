@@ -112,8 +112,10 @@ purchase-order lifecycle, supplier invoicing/AP, budget codes.
 
 ## Brand Commitments
 
-- Name: **Operação Sorriso do Brasil**, CNPJ 00.000.000/0000-00. It appears on
-  the printed certificates as letterhead.
+- Name: **Operação Sorriso do Brasil**. The name, registration and contact
+  appear on the printed certificates as letterhead. The registration itself is
+  not in this repository — it comes from `ORGANIZATION_DOCUMENT` in the
+  deployment, because this repository is public.
 - The organization **has an official visual identity (logo, colors, typography),
   but the files are not available yet.** This is a binding constraint with an
   open decision attached: no color, mark or typeface may be presented as the
