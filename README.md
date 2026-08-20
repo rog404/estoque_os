@@ -165,8 +165,19 @@ priv/repo/migrations/    seven, one per context
 priv/samples/            the fiscal documents and spreadsheets the seeds and
                          the parser tests read
 docs/SPEC.md             the source of truth for domain and design decisions
+docs/production-acceptance.html
+                         fifty acceptance tests to run against a deployment,
+                         with steps and acceptance criteria
 PRODUCT.md               who this is for and what it must not become
 ```
+
+Before showing a deployment to anyone, run
+[`docs/production-acceptance.html`](docs/production-acceptance.html) — fifty
+tests in the order they have to happen, each with what to do and what must be
+true afterwards. Three of them exist because the failure is invisible from the
+app: the donation certificate's letterhead comes from the environment, the email
+flows are meant to be off, and the free tier sleeps after thirty days without a
+deploy.
 
 ## A note on the sample data
 

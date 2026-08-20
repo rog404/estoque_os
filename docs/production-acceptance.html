@@ -1,0 +1,1539 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!--
+  A conferência de aceite em produção. Versionada com o código de propósito: um
+  roteiro que mora fora do repositório envelhece sem ninguém notar, e cada teste
+  aqui aponta para um comportamento que um teste automatizado também garante —
+  quando os dois discordam, um dos dois está errado.
+
+  A mesma página está publicada como artefato, para marcar os resultados no
+  navegador. Esta cópia é a fonte.
+-->
+<title>Conferência de Produção</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  /* Complete light palette. Neutrals carry a blue bias taken from the app's
+     own navy bar, so nothing here reads as a default grey. */
+  :root {
+    --ink: #101c2b;
+    --ink-soft: #46586c;
+    --ink-faint: #7b8b9c;
+    --paper: #f4f6f8;
+    --surface: #ffffff;
+    --surface-sunk: #eef1f5;
+    --rule: #dde3ea;
+    --rule-strong: #c3ccd8;
+    --accent: #1d4ed8;
+    --accent-soft: #e7edfd;
+    --pass: #0f6f48;
+    --pass-soft: #e3f3ea;
+    --fail: #b3261e;
+    --fail-soft: #fbe9e7;
+    --warn: #9a5808;
+    --warn-soft: #fdf0dd;
+    --shadow: 0 1px 2px rgba(16, 28, 43, .06), 0 8px 24px -16px rgba(16, 28, 43, .28);
+
+    --display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+    --body: "Source Serif 4", Georgia, "Times New Roman", serif;
+    --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  }
+
+  /* System-dark (nothing stamped on the root) — tokens only. */
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ink: #e7edf4;
+      --ink-soft: #a3b3c4;
+      --ink-faint: #74869a;
+      --paper: #0c141d;
+      --surface: #121d29;
+      --surface-sunk: #0f1924;
+      --rule: #22303f;
+      --rule-strong: #33455a;
+      --accent: #7ba4ff;
+      --accent-soft: #16233a;
+      --pass: #55c894;
+      --pass-soft: #10241c;
+      --fail: #ff8a80;
+      --fail-soft: #2a1615;
+      --warn: #e0a352;
+      --warn-soft: #251b0e;
+      --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 8px 24px -16px rgba(0, 0, 0, .7);
+    }
+  }
+
+  /* Explicit dark choice wins in the other direction too. */
+  :root[data-theme="dark"] {
+    --ink: #e7edf4;
+    --ink-soft: #a3b3c4;
+    --ink-faint: #74869a;
+    --paper: #0c141d;
+    --surface: #121d29;
+    --surface-sunk: #0f1924;
+    --rule: #22303f;
+    --rule-strong: #33455a;
+    --accent: #7ba4ff;
+    --accent-soft: #16233a;
+    --pass: #55c894;
+    --pass-soft: #10241c;
+    --fail: #ff8a80;
+    --fail-soft: #2a1615;
+    --warn: #e0a352;
+    --warn-soft: #251b0e;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 8px 24px -16px rgba(0, 0, 0, .7);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--body);
+    font-size: 17px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 0 24px 96px;
+  }
+
+  /* ---------- masthead ---------- */
+
+  .masthead {
+    padding: 56px 0 28px;
+    border-bottom: 2px solid var(--ink);
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0;
+  }
+
+  h1 {
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: clamp(2.1rem, 5vw, 3.3rem);
+    line-height: 1.04;
+    letter-spacing: -.02em;
+    margin: 0;
+    text-wrap: balance;
+  }
+
+  .standfirst {
+    margin: 0;
+    max-width: 62ch;
+    font-size: 1.12rem;
+    color: var(--ink-soft);
+  }
+
+  .meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 28px;
+    font-family: var(--mono);
+    font-size: 12.5px;
+    color: var(--ink-faint);
+  }
+  .meta b { color: var(--ink-soft); font-weight: 500; }
+
+  /* ---------- layout ---------- */
+
+  .layout {
+    display: grid;
+    grid-template-columns: 250px minmax(0, 1fr);
+    gap: 56px;
+    align-items: start;
+    padding-top: 40px;
+  }
+
+  @media (max-width: 900px) {
+    .layout { grid-template-columns: minmax(0, 1fr); gap: 32px; }
+    .rail { position: static; }
+  }
+
+  .rail {
+    position: sticky;
+    top: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .score {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+    padding: 18px;
+    box-shadow: var(--shadow);
+  }
+
+  .score-figure {
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: 2.4rem;
+    line-height: 1;
+    letter-spacing: -.03em;
+    font-variant-numeric: tabular-nums;
+  }
+  .score-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin-top: 6px;
+  }
+
+  .bar {
+    height: 6px;
+    border-radius: 999px;
+    background: var(--surface-sunk);
+    margin-top: 14px;
+    overflow: hidden;
+  }
+  .bar > span {
+    display: block;
+    height: 100%;
+    width: 0;
+    background: var(--pass);
+    transition: width .25s ease;
+  }
+
+  .tally {
+    display: flex;
+    gap: 14px;
+    margin-top: 12px;
+    font-family: var(--mono);
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+  }
+  .tally i { font-style: normal; color: var(--ink-faint); }
+  .tally .n-pass { color: var(--pass); font-weight: 600; }
+  .tally .n-fail { color: var(--fail); font-weight: 600; }
+  .tally .n-block { color: var(--warn); font-weight: 600; }
+
+  nav.phases { display: flex; flex-direction: column; gap: 2px; }
+  nav.phases a {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 7px 10px;
+    border-radius: 7px;
+    text-decoration: none;
+    color: var(--ink-soft);
+    font-family: var(--display);
+    font-size: 13.5px;
+    font-weight: 500;
+  }
+  nav.phases a:hover { background: var(--accent-soft); color: var(--accent); }
+  nav.phases a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  nav.phases a em {
+    font-family: var(--mono);
+    font-style: normal;
+    font-size: 11.5px;
+    color: var(--ink-faint);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .rail-actions { display: flex; flex-direction: column; gap: 8px; }
+
+  button.ghost {
+    font-family: var(--display);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--ink-soft);
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 7px;
+    padding: 8px 10px;
+    cursor: pointer;
+    text-align: left;
+  }
+  button.ghost:hover { border-color: var(--rule-strong); color: var(--ink); }
+  button.ghost:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  button.ghost[aria-pressed="true"] {
+    background: var(--accent-soft);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  /* ---------- prose blocks ---------- */
+
+  .note {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-left: 3px solid var(--warn);
+    border-radius: 8px;
+    padding: 16px 18px;
+    margin: 0 0 34px;
+  }
+  .note h3 {
+    font-family: var(--display);
+    font-size: .96rem;
+    font-weight: 600;
+    margin: 0 0 6px;
+    color: var(--warn);
+  }
+  .note p { margin: 0 0 8px; font-size: .96rem; color: var(--ink-soft); }
+  .note p:last-child { margin-bottom: 0; }
+
+  /* ---------- phases ---------- */
+
+  section.phase { margin-bottom: 52px; scroll-margin-top: 20px; }
+
+  .phase-head {
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--rule-strong);
+    margin-bottom: 24px;
+  }
+  .phase-num {
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: .1em;
+    color: var(--accent);
+  }
+  .phase-head h2 {
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: 1.34rem;
+    letter-spacing: -.01em;
+    margin: 0;
+    flex: 1;
+  }
+  .phase-head p {
+    margin: 0;
+    font-size: .92rem;
+    color: var(--ink-faint);
+    max-width: 34ch;
+  }
+
+  /* ---------- test cards ---------- */
+
+  .test {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+    padding: 20px 22px;
+    margin-bottom: 14px;
+    box-shadow: var(--shadow);
+  }
+  .test[data-result="pass"] { border-left: 3px solid var(--pass); }
+  .test[data-result="fail"] { border-left: 3px solid var(--fail); }
+  .test[data-result="blocked"] { border-left: 3px solid var(--warn); }
+
+  .test-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+
+  .tid {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    font-weight: 600;
+    letter-spacing: .06em;
+    color: var(--ink-faint);
+    background: var(--surface-sunk);
+    border-radius: 5px;
+    padding: 3px 7px;
+    white-space: nowrap;
+  }
+
+  .test h3 {
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: 1.06rem;
+    margin: 0;
+    flex: 1;
+    min-width: 220px;
+    letter-spacing: -.005em;
+  }
+
+  .why {
+    margin: 10px 0 0;
+    font-size: .96rem;
+    color: var(--ink-soft);
+    font-style: italic;
+  }
+
+  ol.steps {
+    margin: 14px 0 0;
+    padding-left: 22px;
+    font-size: .97rem;
+  }
+  ol.steps li { margin-bottom: 5px; }
+  ol.steps li:last-child { margin-bottom: 0; }
+
+  .accept {
+    margin-top: 14px;
+    padding: 12px 14px;
+    border-left: 3px solid var(--accent);
+    background: var(--accent-soft);
+    border-radius: 0 7px 7px 0;
+  }
+  .accept b {
+    display: block;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 5px;
+    font-weight: 600;
+  }
+  .accept ul { margin: 0; padding-left: 18px; font-size: .95rem; }
+  .accept li { margin-bottom: 3px; }
+  .accept li:last-child { margin-bottom: 0; }
+  .accept > p { margin: 0; font-size: .95rem; }
+
+  code, .k {
+    font-family: var(--mono);
+    font-size: .855em;
+    background: var(--surface-sunk);
+    border-radius: 4px;
+    padding: 1.5px 5px;
+    color: var(--ink);
+    word-break: break-word;
+  }
+
+  pre {
+    font-family: var(--mono);
+    font-size: 12.5px;
+    line-height: 1.55;
+    background: var(--surface-sunk);
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    padding: 12px 14px;
+    overflow-x: auto;
+    margin: 12px 0 0;
+  }
+  pre code { background: none; padding: 0; }
+
+  /* ---------- result control ---------- */
+
+  .result {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 16px;
+    padding-top: 14px;
+    border-top: 1px dashed var(--rule);
+    flex-wrap: wrap;
+  }
+  .result span.lbl {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin-right: 4px;
+  }
+  .result button {
+    font-family: var(--display);
+    font-size: 12.5px;
+    font-weight: 600;
+    border-radius: 999px;
+    border: 1px solid var(--rule-strong);
+    background: var(--surface);
+    color: var(--ink-soft);
+    padding: 5px 13px;
+    cursor: pointer;
+  }
+  .result button:hover { border-color: var(--ink-faint); color: var(--ink); }
+  .result button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .result button[aria-pressed="true"][data-set="pass"] {
+    background: var(--pass-soft); border-color: var(--pass); color: var(--pass);
+  }
+  .result button[aria-pressed="true"][data-set="fail"] {
+    background: var(--fail-soft); border-color: var(--fail); color: var(--fail);
+  }
+  .result button[aria-pressed="true"][data-set="blocked"] {
+    background: var(--warn-soft); border-color: var(--warn); color: var(--warn);
+  }
+
+  .result input {
+    flex: 1;
+    min-width: 180px;
+    font-family: var(--body);
+    font-size: .93rem;
+    color: var(--ink);
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid var(--rule);
+    padding: 4px 2px;
+  }
+  .result input::placeholder { color: var(--ink-faint); }
+  .result input:focus { outline: none; border-bottom-color: var(--accent); }
+
+  body.only-open .test[data-result="pass"] { display: none; }
+
+  /* ---------- figures ---------- */
+
+  figure {
+    margin: 16px 0 0;
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    overflow: hidden;
+    background: var(--surface-sunk);
+  }
+  figure img { display: block; width: 100%; height: auto; }
+  figcaption {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--ink-faint);
+    padding: 8px 12px;
+    border-top: 1px solid var(--rule);
+    background: var(--surface);
+  }
+
+  /* ---------- summary ---------- */
+
+  .summary {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+    padding: 22px;
+    box-shadow: var(--shadow);
+  }
+  .summary h2 {
+    font-family: var(--display);
+    font-size: 1.2rem;
+    font-weight: 600;
+    margin: 0 0 6px;
+  }
+  .summary p { margin: 0 0 14px; color: var(--ink-soft); font-size: .96rem; }
+  .summary textarea {
+    width: 100%;
+    min-height: 190px;
+    font-family: var(--mono);
+    font-size: 12.5px;
+    line-height: 1.6;
+    color: var(--ink);
+    background: var(--surface-sunk);
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    padding: 12px;
+    resize: vertical;
+  }
+  .summary textarea:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+  footer.sheet-foot {
+    margin-top: 44px;
+    padding-top: 20px;
+    border-top: 1px solid var(--rule);
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--ink-faint);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; animation: none !important; }
+  }
+</style>
+
+</head>
+<body>
+<div class="wrap">
+
+<header class="masthead">
+  <p class="eyebrow">Estoque OS · aceite em produção</p>
+  <h1>Conferência de Produção</h1>
+  <p class="standfirst">
+    Cinquenta testes para rodar no ambiente publicado, na ordem em que
+    estão. Cada um tem passo a passo e critério de aceite — um teste só passa se
+    o critério for observado na tela, não se “pareceu funcionar”. As fases se
+    apoiam umas nas outras: a Fase 2 cria as contas que a Fase 3 usa, e a Fase 4
+    lança o estoque que a Fase 7 consome.
+  </p>
+  <div class="meta">
+    <span><b>Ambiente</b> Gigalixir free tier · 1 réplica · 0,5 GB · banco de 10.000 linhas</span>
+    <span><b>Dado inicial</b> <code>Release.seed()</code> + <code>Release.demo()</code></span>
+    <span><b>Conta inicial</b> <code>admin@exemplo.org</code></span>
+  </div>
+</header>
+
+<div class="layout">
+
+  <aside class="rail">
+    <div class="score">
+      <div class="score-figure" id="score">0/50</div>
+      <div class="score-label">testes com resultado</div>
+      <div class="bar"><span id="bar"></span></div>
+      <div class="tally">
+        <span><i>passou</i> <b class="n-pass" id="n-pass">0</b></span>
+        <span><i>falhou</i> <b class="n-fail" id="n-fail">0</b></span>
+        <span><i>travado</i> <b class="n-block" id="n-block">0</b></span>
+      </div>
+    </div>
+
+    <nav class="phases" id="phase-nav" aria-label="Fases"></nav>
+
+    <div class="rail-actions">
+      <button class="ghost" id="filter" aria-pressed="false" type="button">Esconder o que já passou</button>
+      <button class="ghost" id="reset" type="button">Limpar todos os resultados</button>
+    </div>
+  </aside>
+
+  <main>
+
+    <div class="note">
+      <h3>Antes de começar: três coisas que só aparecem em produção</h3>
+      <p>
+        <b>O papel timbrado do termo de doação vem de variável de ambiente.</b>
+        Sem <code>ORGANIZATION_DOCUMENT</code>, <code>ORGANIZATION_ADDRESS</code> e
+        <code>ORGANIZATION_CONTACT</code> configuradas, o termo imprime o CNPJ
+        <code>00.000.000/0000-00</code> — que é o placeholder do repositório, porque
+        ele é público. Configure antes do teste T-39 ou ele falha por um motivo
+        que não é um defeito.
+      </p>
+      <p>
+        <b>Esta instalação não envia e-mail, de propósito.</b> Magic link,
+        “esqueci minha senha” e confirmação de troca de e-mail respondem com uma
+        explicação, não com um formulário. Isso é comportamento esperado e tem
+        teste próprio (T-06). A senha de uma conta se troca por dentro, logado, ou
+        o admin cria outra.
+      </p>
+      <p>
+        <b>O app dorme.</b> No free tier, sem deploy por 30 dias a aplicação é
+        escalada para zero. Se a apresentação for depois disso, faça um deploy no
+        dia anterior.
+      </p>
+    </div>
+
+    <section class="phase" id="fase-0" data-phase="Deploy">
+      <div class="phase-head">
+        <span class="phase-num">FASE 0</span>
+        <h2>O deploy subiu de verdade</h2>
+        <p>Nada abaixo faz sentido se um destes falhar.</p>
+      </div>
+
+      <article class="test" data-test="T-01">
+        <div class="test-head"><span class="tid">T-01</span><h3>A aplicação responde e serve os assets</h3></div>
+        <p class="why">Um release sem assets digeridos serve a página crua, e o sintoma é uma tela branca com um logo gigante.</p>
+        <ol class="steps">
+          <li>Abra a URL pública em <code>/users/log-in</code>.</li>
+          <li>No navegador, abra as ferramentas de desenvolvedor na aba Network e recarregue.</li>
+        </ol>
+        <div class="accept"><b>Aceite</b><ul>
+          <li>A tela de login aparece com a marca, tipografia e cores — não texto puro.</li>
+          <li><code>app.css</code> e <code>app.js</code> retornam <b>200</b>, com nome digerido (<code>app-&lt;hash&gt;.css</code>).</li>
+          <li>Nenhum erro no console.</li>
+        </ul></div>
+      </article>
+
+      <article class="test" data-test="T-02">
+        <div class="test-head"><span class="tid">T-02</span><h3>As sete migrations rodaram</h3></div>
+        <p class="why">O <code>Procfile</code> migra antes de subir o servidor, justamente para o app não atender servindo o schema antigo.</p>
+        <ol class="steps">
+          <li><code>gigalixir logs</code> e procure as linhas de migração do último deploy.</li>
+          <li>Ou <code>gigalixir pg:psql</code> e <code>select count(*) from schema_migrations;</code></li>
+        </ol>
+        <div class="accept"><b>Aceite</b><ul>
+          <li><code>schema_migrations</code> tem <b>7</b> linhas.</li>
+          <li>Nenhum <code>** (Postgrex.Error)</code> no log do boot.</li>
+        </ul></div>
+      </article>
+
+      <article class="test" data-test="T-03">
+        <div class="test-head"><span class="tid">T-03</span><h3>O papel timbrado está configurado</h3></div>
+        <p class="why">É a única configuração cuja falta só aparece num PDF entregue a um hospital.</p>
+        <ol class="steps">
+          <li><code>gigalixir config</code> e confira as três variáveis.</li>
+          <li>Se faltarem: <code>gigalixir config:set ORGANIZATION_DOCUMENT="…"</code> e o mesmo para <code>_ADDRESS</code> e <code>_CONTACT</code>.</li>
+        </ol>
+        <div class="accept"><b>Aceite</b><p><code>ORGANIZATION_DOCUMENT</code> não é <code>00.000.000/0000-00</code>.</p></div>
+      </article>
+
+      <article class="test" data-test="T-04">
+        <div class="test-head"><span class="tid">T-04</span><h3>Catálogo e cenário carregados, dentro do teto de linhas</h3></div>
+        <p class="why">O banco gratuito para de aceitar escrita em 10.000 linhas, e passar disso trava a demonstração no meio.</p>
+        <ol class="steps">
+          <li><code>gigalixir run bin/estoque_os eval 'EstoqueOS.Release.seed()'</code></li>
+          <li><code>gigalixir run bin/estoque_os eval 'EstoqueOS.Release.demo()'</code></li>
+          <li>Confira a contagem: <code>gigalixir pg:psql</code> e depois
+            <code>select sum(n_live_tup) from pg_stat_user_tables;</code></li>
+        </ol>
+        <div class="accept"><b>Aceite</b><ul>
+          <li>O <code>demo()</code> imprime o resumo: 10 caixas, 95 produtos de suprimento, 2 notas, 2 missões fechadas, 1 em andamento.</li>
+          <li>Total de linhas <b>abaixo de 2.500</b> — folga de quatro vezes até o teto.</li>
+          <li>Rodar <code>demo()</code> de novo responde que já está carregado e <b>não</b> duplica nada.</li>
+        </ul></div>
+      </article>
+
+      <article class="test" data-test="T-05">
+        <div class="test-head"><span class="tid">T-05</span><h3>HTTPS obrigatório, cookie seguro</h3></div>
+        <ol class="steps">
+          <li>Acesse a URL com <code>http://</code> explícito.</li>
+          <li>Logado, inspecione o cookie de sessão.</li>
+        </ol>
+        <div class="accept"><b>Aceite</b><ul>
+          <li>Redireciona para <code>https://</code>.</li>
+          <li>Resposta traz <code>strict-transport-security</code>.</li>
+          <li>Cookie de sessão marcado <code>Secure</code> e <code>HttpOnly</code>.</li>
+        </ul></div>
+      </article>
+
+      <article class="test" data-test="T-06">
+        <div class="test-head"><span class="tid">T-06</span><h3>Os fluxos de e-mail estão desligados e explicam por quê</h3></div>
+        <p class="why">Comportamento esperado, não defeito: a instalação não tem mailer e nada de entrar depende de mensagem chegar.</p>
+        <ol class="steps">
+          <li>Na tela de login, procure o formulário de magic link e o link “esqueceu sua senha”.</li>
+          <li>Acesse <code>/users/reset-password</code> direto na barra de endereço.</li>
+        </ol>
+        <div class="accept"><b>Aceite</b><ul>
+          <li>Só existe <b>um</b> formulário: e-mail e senha.</li>
+          <li>Nenhum link para <code>/users/reset-password</code>.</li>
+          <li>Aparece a frase “Fale com um administrador para redefini-la — esta instalação não envia e-mail.”</li>
+          <li>Acessar <code>/users/reset-password</code> volta ao login com aviso, sem formulário morto.</li>
+        </ul></div>
+      </article>
+    </section>
+
+    <section class="phase" id="fase-1" data-phase="Entrar">
+      <div class="phase-head">
+        <span class="phase-num">FASE 1</span>
+        <h2>Entrar e sair</h2>
+        <p>A única conta que existe é a do admin.</p>
+      </div>
+
+      <article class="test" data-test="T-07">
+        <div class="test-head"><span class="tid">T-07</span><h3>O admin entra com a senha do seed</h3></div>
+        <ol class="steps">
+          <li>Entre com <code>admin@exemplo.org</code> e a senha que o <code>demo()</code> imprimiu.</li>
+        </ol>
+        <div class="accept"><b>Aceite</b><ul>
+          <li>Cai direto na Visão geral, <b>sem</b> pedir troca de senha.</li>
+          <li>Os quatro números do topo estão preenchidos, não zerados.</li>
+        </ul></div>
+        <figure>
+          <img src="images/dashboard.png" alt="Visão geral com catálogo, unidades em estoque, valor conhecido e notas pendentes">
+          <figcaption>Referência: a Visão geral logo após o seed. Os números variam conforme a data.</figcaption>
+        </figure>
+      </article>
+
+      <article class="test" data-test="T-08">
+        <div class="test-head"><span class="tid">T-08</span><h3>Troque a senha do admin — e troque de verdade</h3></div>
+        <p class="why">A senha do seed está escrita neste documento. Ela não pode continuar valendo depois da primeira entrada.</p>
+        <ol class="steps">
+          <li>Vá em <code>/users/settings</code>.</li>
+          <li>Preencha nova senha e confirmação (mínimo 12 caracteres) e salve.</li>
+          <li>Saia e entre de novo com a nova senha.</li>
+        </ol>
+        <div class="accept"><b>Aceite</b><ul>
+          <li>A tela mostra o formulário de senha. <b>Não</b> mostra formulário de e-mail (não há mailer).</li>
+          <li>Entra com a senha nova; a antiga é recusada.</li>
+        </ul></div>
+      </article>
+
+      <article class="test" data-test="T-09">
+        <div class="test-head"><span class="tid">T-09</span><h3>Tentativa e erro em série é barrada</h3></div>
+        <ol class="steps">
+          <li>Erre a senha do <code>admin@exemplo.org</code> várias vezes seguidas.</li>
+        </ol>
+        <div class="accept"><b>Aceite</b><p>Em algum ponto a resposta vira “Muitas tentativas. Tente novamente em … ”, em vez de continuar aceitando tentativas.</p></div>
+      </article>
+
+      <article class="test" data-test="T-10">
+        <div class="test-head"><span class="tid">T-10</span><h3>Continuar conectado, e sair</h3></div>
+        <ol class="steps">
+          <li>Entre com “Entrar e continuar conectado”. Feche o navegador e reabra a URL.</li>
+          <li>Saia pelo menu da conta.</li>
+        </ol>
+        <div class="accept"><b>Aceite</b><ul>
+          <li>Reabrir o navegador mantém a sessão.</li>
+          <li>Depois de sair, uma página interna redireciona ao login.</li>
+        </ul></div>
+      </article>
+    </section>
+
+    <section class="phase" id="fase-2" data-phase="Contas">
+      <div class="phase-head">
+        <span class="phase-num">FASE 2</span>
+        <h2>Criar as contas das outras pessoas</h2>
+        <p>O caminho real: alguém responde pela conta e entrega uma senha temporária.</p>
+      </div>
+
+      <article class="test" data-test="T-11">
+        <div class="test-head"><span class="tid">T-11</span><h3>O admin cria três contas, uma por papel</h3></div>
+        <ol class="steps">
+          <li>Vá em <code>/admin/users</code>.</li>
+          <li>Crie uma conta <b>manager</b>, uma <b>logistics</b> e uma <b>auditor</b>, com e-mails reais de quem vai testar.</li>
+          <li>Anote a senha temporária de cada uma na hora em que aparecer.</li>
+        </ol>
+        <div class="accept"><b>Aceite</b><ul>
+          <li>A senha temporária é exibida <b>uma vez</b>, ao criar.</li>
+          <li>As três contas aparecem na lista com o papel correto.</li>
+          <li>Tentar criar com um e-mail já usado é recusado com mensagem clara, não com erro 500.</li>
+        </ul></div>
+      </article>
+
+      <article class="test" data-test="T-12">
+        <div class="test-head"><span class="tid">T-12</span><h3>A conta nova é obrigada a escolher a própria senha</h3></div>
+        <p class="why">Senha temporária é conhecida por duas pessoas, e uma assinatura no razão não pode valer isso.</p>
+        <ol class="steps">
+          <li>Numa janela anônima, entre com a conta <b>logistics</b> e a senha temporária.</li>
+          <li>Antes de trocar, tente ir para <code>/stock</code> e para <code>/</code> pela barra de endereço.</li>
+          <li>Escolha uma senha nova e continue.</li>
+        </ol>
+        <div class="accept"><b>Aceite</b><ul>
+          <li>Cai em <code>/users/reset-password/required</code>.</li>
+          <li>Qualquer outra rota devolve para essa mesma tela — nenhuma escapa.</li>
+          <li>Depois de trocar, navega normalmente e não pede mais.</li>
+        </ul></div>
+      </article>
+
+      <article class="test" data-test="T-13">
+        <div class="test-head"><span class="tid">T-13</span><h3>Alguém de outro local entra pela internet</h3></div>
+        <ol class="steps">
+          <li>Envie a URL e as credenciais a uma pessoa em outra cidade ou em rede móvel.</li>
+          <li>Peça que entre e abra <code>/stock</code> e <code>/missions</code>.</li>
+        </ol>
+        <div class="accept"><b>Aceite</b><ul>
+          <li>Entra sem VPN nem lista de IPs.</li>
+          <li>As telas ao vivo atualizam (o LiveView conectou; não há aviso “Sem conexão com a internet”).</li>
+          <li>Pergunte se pareceu lento — o free tier tem uma réplica só.</li>
+        </ul></div>
+      </article>
+    </section>
+
+    <section class="phase" id="fase-3" data-phase="Papéis">
+      <div class="phase-head">
+        <span class="phase-num">FASE 3</span>
+        <h2>Papéis e dinheiro</h2>
+        <p>A regra mais fácil de quebrar sem ninguém notar.</p>
+      </div>
+
+      <article class="test" data-test="T-14">
+        <div class="test-head"><span class="tid">T-14</span><h3>Logistics não vê preço em lugar nenhum</h3></div>
+        <ol class="steps">
+          <li>Logado como <b>logistics</b>, percorra: <code>/</code>, <code>/stock</code>, <code>/products/&lt;id&gt;</code>, <code>/invoices</code>, <code>/issues</code>.</li>
+          <li>Em cada tela, procure <code>R$</code>, custo unitário e valor total.</li>
+        </ol>
+        <div class="accept"><b>Aceite</b><ul>
+          <li>Nenhum valor monetário em nenhuma das telas, nem escondido atrás do olho de “revelar”.</li>
+          <li>O cartão “Valor conhecido” da Visão geral não aparece.</li>
+          <li><code>/reports/audit</code> e o termo de doação são recusados.</li>
+        </ul></div>
+      </article>
+
+      <article class="test" data-test="T-15">
+        <div class="test-head"><span class="tid">T-15</span><h3>Auditor lê tudo, inclusive dinheiro, e não escreve nada</h3></div>
+        <ol class="steps">
+          <li>Logado como <b>auditor</b>, abra <code>/stock</code>, <code>/invoices</code>, <code>/reports/audit</code>.</li>
+          <li>Tente qualquer escrita: editar mínimo de um produto, montar kit, dar baixa.</li>
+        </ol>
+        <div class="accept"><b>Aceite</b><ul>
+          <li>Vê valores e o razão completo.</li>
+          <li>Todo controle de escrita está desabilitado, com o motivo no <i>title</i>.</li>
+          <li>Nenhuma escrita passa nem quando o botão é forçado — a recusa vem do servidor.</li>
+        </ul></div>
+      </article>
+
+      <article class="test" data-test="T-16">
+        <div class="test-head"><span class="tid">T-16</span><h3>Valores começam escondidos</h3></div>
+        <p class="why">O padrão que revela já mostrou o número a quem estava ao lado.</p>
+        <ol class="steps">
+          <li>Como <b>manager</b>, entre e olhe “Valor conhecido” antes de clicar em nada.</li>
+          <li>Clique no ícone de revelar. Abra uma nova janela do navegador e entre de novo.</li>
+        </ol>
+        <div class="accept"><b>Aceite</b><ul>
+          <li>Ao entrar, os valores estão cobertos.</li>
+          <li>Revelar vale enquanto se trabalha, e um navegador novo começa coberto outra vez.</li>
+        </ul></div>
+      </article>
+
+      <article class="test" data-test="T-17">
+        <div class="test-head"><span class="tid">T-17</span><h3>“Ver como” é só leitura</h3></div>
+        <ol class="steps">
+          <li>Como <b>admin</b>, use “ver como” logistics.</li>
+          <li>Confira que preços desapareceram. Tente uma escrita.</li>
+        </ol>
+        <div class="accept"><b>Aceite</b><ul>
+          <li>A tela passa a esconder dinheiro, como para o operador.</li>
+          <li>Escrita é recusada nesse estado — nada é gravado no nome de outra pessoa.</li>
+          <li>Sair do “ver como” devolve a visão de admin.</li>
+        </ul></div>
+      </article>
+    </section>
+
+    <section class="phase" id="fase-4" data-phase="Catálogo">
+      <div class="phase-head">
+        <span class="phase-num">FASE 4</span>
+        <h2>Catálogo e histórico</h2>
+        <p>322 linhas da tabela padrão, com a sujeira original preservada.</p>
+      </div>
+
+      <article class="test" data-test="T-18">
+        <div class="test-head"><span class="tid">T-18</span><h3>O catálogo veio inteiro, com a bagunça de origem</h3></div>
+        <p class="why">A planilha real tem descrições repetidas, NCM faltando e um setor digitado de dois jeitos. Normalizar isso escondendo seria mentir sobre o dado.</p>
+        <ol class="steps">
+          <li>Em <code>/stock</code>, busque por <code>ATADURA</code> e por <code>CRASHB</code>.</li>
+          <li>Abra um produto e confira NCM, unidade de estoque, setor e classificação.</li>
+        </ol>
+        <div class="accept"><b>Aceite</b><ul>
+          <li>A busca acha por parte do nome.</li>
+          <li>Existem produtos com NCM vazio, e isso não quebra a tela.</li>
+          <li>O setor aparece como está na planilha, incluindo a grafia errada.</li>
+        </ul></div>
+      </article>
+
+      <article class="test" data-test="T-19">
+        <div class="test-head"><span class="tid">T-19</span><h3>Mudar o mínimo registra quem mudou</h3></div>
+        <p class="why">“Quem baixou o mínimo da gaze, e quando” é a pergunta feita depois que uma missão passa aperto.</p>
+        <ol class="steps">
+          <li>Como <b>manager</b>, abra um produto e altere o mínimo.</li>
+          <li>Recarregue e procure o registro da mudança na própria tela do produto.</li>
+        </ol>
+        <div class="accept"><b>Aceite</b><ul>
+          <li>Aparece o valor antigo, o novo, quem alterou e quando.</li>
+          <li>O mínimo <b>não</b> gera movimento no razão — é planejamento, não mercadoria.</li>
+        </ul></div>
+      </article>
+
+      <article class="test" data-test="T-20">
+        <div class="test-head"><span class="tid">T-20</span><h3>Histórico de um produto conta a vida dele</h3></div>
+        <ol class="steps">
+          <li>Abra um produto que foi para a missão de Tefé ou Carauari.</li>
+          <li>Leia o histórico de ponta a ponta.</li>
+        </ol>
+        <div class="accept"><b>Aceite</b><ul>
+          <li>Entrada inicial, derrubada, consumo, doação e retorno aparecem em ordem de data.</li>
+          <li>Cada linha diz o tipo do movimento e quem o fez.</li>
+          <li>O saldo mostrado bate com a soma das linhas.</li>
+        </ul></div>
+      </article>
+    </section>
+
+    <section class="phase" id="fase-5" data-phase="Notas">
+      <div class="phase-head">
+        <span class="phase-num">FASE 5</span>
+        <h2>NF-e: importar, resolver, lançar</h2>
+        <p>O cenário deixa a NF 1985167 esperando exatamente para isto.</p>
+      </div>
+
+      <article class="test" data-test="T-21">
+        <div class="test-head"><span class="tid">T-21</span><h3>Uma nota lançada e uma pendente, como veio do seed</h3></div>
+        <ol class="steps">
+          <li>Abra <code>/invoices</code>.</li>
+        </ol>
+        <div class="accept"><b>Aceite</b><ul>
+          <li><b>NF 977098</b> está <i>lançada</i>, com data de lançamento.</li>
+          <li><b>NF 1985167</b> está pendente e o cartão “Notas pendentes” da Visão geral mostra <b>1</b>.</li>
+        </ul></div>
+      </article>
+
+      <article class="test" data-test="T-22">
+        <div class="test-head"><span class="tid">T-22</span><h3>A carta de correção está anexada à nota que ela corrige</h3></div>
+        <ol class="steps">
+          <li>Abra a NF 977098.</li>
+        </ol>
+        <div class="accept"><b>Aceite</b><p>Há um evento do tipo CC-e anexado, com o texto da correção (troca de transportadora e tipo de frete).</p></div>
+      </article>
+
+      <article class="test" data-test="T-23">
+        <div class="test-head"><span class="tid">T-23</span><h3>Reimportar o mesmo XML não duplica estoque</h3></div>
+        <p class="why">A chave de acesso é a chave de idempotência. Reenviar um XML é acidente comum.</p>
+        <ol class="steps">
+          <li>Baixe do repositório um dos XMLs de <code>priv/samples/</code>.</li>
+          <li>Em <code>/invoices/import</code>, envie o XML da NF 977098, que já está lançada.</li>
+        </ol>
+        <div class="accept"><b>Aceite</b><ul>
+          <li>Responde que já foi importada e leva à nota existente.</li>
+          <li>Nenhuma linha nova no razão; o saldo do estoque não muda.</li>
+        </ul></div>
+      </article>
+
+      <article class="test" data-test="T-24">
+        <div class="test-head"><span class="tid">T-24</span><h3>Resolver as linhas da nota pendente</h3></div>
+        <p class="why">Esta é a nota cujo lote só existe no texto livre do <code>infAdProd</code> — o caso difícil do parser.</p>
+        <ol class="steps">
+          <li>Abra a NF 1985167 e veja as 4 linhas.</li>
+          <li>Para cada linha: aponte o produto do catálogo (ou crie) e informe quantas unidades de estoque a embalagem comercial contém.</li>
+        </ol>
+        <div class="accept"><b>Aceite</b><ul>
+          <li>Cada linha já chega com <b>lote e validade</b> extraídos do texto livre — ex. <code>Lote:114391U02, Validade:31/03/27</code>.</li>
+          <li>Ao informar o fator, o custo unitário é calculado sozinho, não digitado.</li>
+          <li>Linhas resolvidas param de aparecer como pendentes de revisão.</li>
+          <li>A conversão informada é lembrada: a próxima nota do mesmo fornecedor já vem com ela.</li>
+        </ul></div>
+      </article>
+
+      <article class="test" data-test="T-25">
+        <div class="test-head"><span class="tid">T-25</span><h3>Lançar a nota entra o estoque com custo real</h3></div>
+        <ol class="steps">
+          <li>Com as 4 linhas resolvidas, lance a nota no estoque Principal.</li>
+          <li>Confira <code>/stock</code> e o histórico de um dos produtos da nota.</li>
+        </ol>
+        <div class="accept"><b>Aceite</b><ul>
+          <li>Um lote por linha, com o número de lote da nota.</li>
+          <li>Saldo somado em unidades de estoque, não em unidades comerciais.</li>
+          <li>Custo unitário preenchido, nunca <code>0,01</code>.</li>
+          <li>A nota vira <i>lançada</i> e o cartão “Notas pendentes” cai para <b>0</b>.</li>
+          <li>Lançar de novo é recusado.</li>
+        </ul></div>
+      </article>
+    </section>
+
+    <section class="phase" id="fase-6" data-phase="Conferência">
+      <div class="phase-head">
+        <span class="phase-num">FASE 6</span>
+        <h2>Recebimento e conferência</h2>
+        <p>Contar o que chegou contra o que a nota prometeu.</p>
+      </div>
+
+      <article class="test" data-test="T-26">
+        <div class="test-head"><span class="tid">T-26</span><h3>Conferência às cegas esconde o esperado</h3></div>
+        <p class="why">Uma conferência que mostra o número esperado é uma conferência que confirma o número esperado.</p>
+        <ol class="steps">
+          <li>Em <code>/conferences</code>, abra uma conferência para uma nota, no modo às cegas.</li>
+          <li>Digite as quantidades contadas.</li>
+        </ol>
+        <div class="accept"><b>Aceite</b><ul>
+          <li>A quantidade esperada <b>não</b> aparece em nenhum lugar da tela enquanto se conta.</li>
+          <li>As linhas ficam na ordem do documento (número de item da NF) e <b>não</b> se reordenam quando uma é preenchida.</li>
+          <li>A linha não muda de altura ao ser confirmada.</li>
+        </ul></div>
+      </article>
+
+      <article class="test" data-test="T-27">
+        <div class="test-head"><span class="tid">T-27</span><h3>Divergência abre uma segunda rodada</h3></div>
+        <ol class="steps">
+          <li>Conte uma linha com quantidade diferente da esperada e finalize.</li>
+          <li>Abra uma nova rodada para a mesma nota e conte de novo.</li>
+        </ol>
+        <div class="accept"><b>Aceite</b><ul>
+          <li>A divergência é mostrada com os dois números.</li>
+          <li>A segunda rodada é numerada como tal, e a primeira continua registrada — nada é sobrescrito.</li>
+        </ul></div>
+      </article>
+
+      <article class="test" data-test="T-28">
+        <div class="test-head"><span class="tid">T-28</span><h3>Concluir a conferência move o estoque</h3></div>
+        <ol class="steps">
+          <li>Conclua a conferência e abra o recebimento em <code>/receipts/&lt;id&gt;</code>.</li>
+        </ol>
+        <div class="accept"><b>Aceite</b><ul>
+          <li>O que entrou no estoque é o <b>contado</b>, não o esperado.</li>
+          <li>O recebimento fica com quem contou e quando.</li>
+        </ul></div>
+      </article>
+    </section>
+
+    <section class="phase" id="fase-7" data-phase="Caixas">
+      <div class="phase-head">
+        <span class="phase-num">FASE 7</span>
+        <h2>Caixas, contagem e o que é presumido</h2>
+        <p>A afirmação central da tela de estoque.</p>
+      </div>
+
+      <article class="test" data-test="T-29">
+        <div class="test-head"><span class="tid">T-29</span><h3>Saldo contado e saldo presumido são distinguíveis</h3></div>
+        <p class="why">Se toda linha tem a mesma marca, a marca não informa nada. O cenário foi montado com as duas situações de propósito.</p>
+        <ol class="steps">
+          <li>Abra <code>/stock</code> e procure as marcas de “presumido” e de contagem.</li>
+          <li>Compare as caixas <code>PR05</code>, <code>PR06</code>, <code>PR07</code> (contadas na última quinzena) com <code>PR08</code> e <code>PR09</code> (contadas há 48 e 74 dias).</li>
+        </ol>
+        <div class="accept"><b>Aceite</b><ul>
+          <li>PR05–PR07 aparecem como verificadas, sem marca de aviso.</li>
+          <li>PR08 e PR09 aparecem como “presumido desde …” — passaram da linha de 30 dias.</li>
+          <li>PR01–PR04 e PR10 estão na missão e nunca foram contadas.</li>
+        </ul></div>
+        <figure>
+          <img src="images/stock.png" alt="Lista de estoque com posições por produto, lote, caixa e marca de contagem">
+          <figcaption>Referência: a lista de estoque com as posições e as marcas de contagem.</figcaption>
+        </figure>
+      </article>
+
+      <article class="test" data-test="T-30">
+        <div class="test-head"><span class="tid">T-30</span><h3>Contar uma caixa a torna verificada</h3></div>
+        <ol class="steps">
+          <li>Como <b>logistics</b>, abra <code>/boxes/&lt;id&gt;</code> de <code>PR08</code>.</li>
+          <li>Faça a contagem e confirme.</li>
+        </ol>
+        <div class="accept"><b>Aceite</b><ul>
+          <li>A marca de “presumido” sai daquelas posições.</li>
+          <li>Se a contagem divergir, o ajuste exige código de motivo.</li>
+        </ul></div>
+      </article>
+
+      <article class="test" data-test="T-31">
+        <div class="test-head"><span class="tid">T-31</span><h3>Mover uma caixa não obriga a recontar</h3></div>
+        <p class="why">Uma caixa viaja inteira. Exigir recontagem na chegada é o que faz operador nenhum usar o sistema.</p>
+        <ol class="steps">
+          <li>Mova <code>PR06</code> para outro local em <code>/locations</code> ou pela tela da caixa.</li>
+          <li>Olhe o saldo e a data de última verificação.</li>
+        </ol>
+        <div class="accept"><b>Aceite</b><ul>
+          <li>O conteúdo foi junto, com os mesmos lotes e quantidades.</li>
+          <li>A data de última verificação <b>não</b> foi zerada nem atualizada — mover não é contar.</li>
+        </ul></div>
+      </article>
+
+      <article class="test" data-test="T-32">
+        <div class="test-head"><span class="tid">T-32</span><h3>A mini-auditoria diz qual caixa abrir primeiro</h3></div>
+        <ol class="steps">
+          <li>Abra <code>/audit</code> como <b>manager</b>.</li>
+          <li>Siga para <code>/audit/&lt;id&gt;</code> de uma das caixas sugeridas e faça a contagem.</li>
+        </ol>
+        <div class="accept"><b>Aceite</b><ul>
+          <li>A sugestão prioriza caixas há mais tempo sem contagem, e diz por quê.</li>
+          <li>Contar dali marca a caixa como verificada.</li>
+        </ul></div>
+      </article>
+    </section>
+
+    <section class="phase" id="fase-8" data-phase="Kits">
+      <div class="phase-head">
+        <span class="phase-num">FASE 8</span>
+        <h2>Kits</h2>
+        <p>Um kit é um produto. E é lacrado.</p>
+      </div>
+
+      <article class="test" data-test="T-33">
+        <div class="test-head"><span class="tid">T-33</span><h3>Um kit resolvido e quatro como a planilha escreveu</h3></div>
+        <p class="why">As planilhas de kit nomeiam itens em texto livre que o catálogo não tem. Esse é o estado real do dado e a tela existe para resolvê-lo.</p>
+        <ol class="steps">
+          <li>Abra <code>/kits</code>.</li>
+        </ol>
+        <div class="accept"><b>Aceite</b><ul>
+          <li><b>Kit enfermagem</b> tem os 35 componentes resolvidos e mostra um número de kits possíveis.</li>
+          <li>Os outros quatro mostram “N componente(s) ainda sem produto” e não podem ser montados.</li>
+        </ul></div>
+      </article>
+
+      <article class="test" data-test="T-34">
+        <div class="test-head"><span class="tid">T-34</span><h3>Item vencido na prateleira impede montar o kit</h3></div>
+        <p class="why">O FEFO pega o lote mais velho primeiro — ou seja, pegaria justamente o vencido, e o lacraria dentro de algo que ninguém abre para ler a data.</p>
+        <ol class="steps">
+          <li>Abra <b>Kit enfermagem</b> e peça a conferência de 5 kits.</li>
+          <li>Procure a linha de <code>ATADURA ELASTICA 05CM X 2.20MT</code>.</li>
+          <li>Tente montar.</li>
+        </ol>
+        <div class="accept"><b>Aceite</b><ul>
+          <li>Faixa vermelha: “Não é possível montar: 1 componente(s) têm lote vencido aqui.”</li>
+          <li>A coluna <b>Vencido aqui</b> mostra a quantidade e a data <b>só na linha do componente vencido</b>.</li>
+          <li>As outras linhas mantêm a mesma altura — a coluna existe em todas, invisível onde não há o que dizer.</li>
+          <li>O botão Montar está desabilitado, com o motivo no <i>title</i>.</li>
+          <li>Não existe caixa de seleção para ignorar o vencido.</li>
+        </ul></div>
+        <figure>
+          <img src="images/kit-expired-block.png" alt="Conferência do Kit enfermagem recusando a montagem por componente vencido">
+          <figcaption>Referência exata: é assim que a recusa deve aparecer.</figcaption>
+        </figure>
+      </article>
+
+      <article class="test" data-test="T-35">
+        <div class="test-head"><span class="tid">T-35</span><h3>Dar baixa no vencido libera a montagem</h3></div>
+        <p class="why">A saída é um movimento com código de motivo, que fica registrado — não um clique que se ignora.</p>
+        <ol class="steps">
+          <li>Dê baixa nas 24 unidades do lote vencido de <code>ATADURA ELASTICA 05CM X 2.20MT</code> por ajuste, motivo <i>vencimento</i>.</li>
+          <li>Volte ao kit e peça a conferência de novo.</li>
+        </ol>
+        <div class="accept"><b>Aceite</b><ul>
+          <li>A faixa vermelha desaparece e o botão Montar volta a funcionar.</li>
+          <li>A baixa aparece no histórico do produto, com motivo e responsável.</li>
+        </ul></div>
+      </article>
+
+      <article class="test" data-test="T-36">
+        <div class="test-head"><span class="tid">T-36</span><h3>Montar converte componentes em um lote do kit</h3></div>
+        <ol class="steps">
+          <li>Monte 5 kits numa caixa.</li>
+          <li>Olhe <code>/stock</code>: o kit e dois dos componentes.</li>
+        </ol>
+        <div class="accept"><b>Aceite</b><ul>
+          <li>Existe um lote novo do produto “Kit enfermagem”, na caixa escolhida.</li>
+          <li>Os componentes <b>saíram</b> do estoque — montar é fabricar, não empacotar.</li>
+          <li>A validade do lote do kit é a <b>mais próxima</b> entre os componentes usados.</li>
+          <li>Pedir mais kits do que dá para montar é recusado, a menos que se marque “montar o que chegou”.</li>
+        </ul></div>
+      </article>
+
+      <article class="test" data-test="T-37">
+        <div class="test-head"><span class="tid">T-37</span><h3>Um kit montado se dá baixa como qualquer produto</h3></div>
+        <ol class="steps">
+          <li>Em <code>/issue</code>, dê baixa de 1 kit para centro cirúrgico.</li>
+        </ol>
+        <div class="accept"><b>Aceite</b><p>A tela que baixa uma gaze baixa um kit, sem passo especial. O saldo do kit cai em 1.</p></div>
+      </article>
+
+      <article class="test" data-test="T-38">
+        <div class="test-head"><span class="tid">T-38</span><h3>Só gestor mexe na receita do kit</h3></div>
+        <p class="why">Montar é do dia a dia da logística. Mudar do que o kit é feito é decisão de planejamento.</p>
+        <ol class="steps">
+          <li>Como <b>logistics</b>, abra o Kit enfermagem e tente adicionar, alterar e remover um componente.</li>
+          <li>Como <b>manager</b>, faça as mesmas três coisas.</li>
+        </ol>
+        <div class="accept"><b>Aceite</b><ul>
+          <li>Para logistics os três controles estão desabilitados, e a recusa também vem do servidor se forçada.</li>
+          <li>Para manager as três funcionam.</li>
+          <li>O número de kits possíveis se recalcula depois da mudança.</li>
+        </ul></div>
+      </article>
+    </section>
+
+    <section class="phase" id="fase-9" data-phase="Missões">
+      <div class="phase-head">
+        <span class="phase-num">FASE 9</span>
+        <h2>Missões: sair, consumir, doar, voltar</h2>
+        <p>O ciclo em torno do qual a operação é organizada.</p>
+      </div>
+
+      <article class="test" data-test="T-39">
+        <div class="test-head"><span class="tid">T-39</span><h3>A missão em andamento mostra o que está no local</h3></div>
+        <ol class="steps">
+          <li>Abra <code>/missions</code> e depois a missão <b>Manacapuru</b>.</li>
+        </ol>
+        <div class="accept"><b>Aceite</b><ul>
+          <li>Aparece como em andamento, com datas e número de mesas.</li>
+          <li>Lista o que foi enviado, o que já foi consumido e o que continua no local.</li>
+          <li>As duas missões fechadas (Tefé, Carauari) não têm saldo no local — tudo voltou ou foi doado.</li>
+        </ul></div>
+      </article>
+
+      <article class="test" data-test="T-40">
+        <div class="test-head"><span class="tid">T-40</span><h3>Duas missões no mesmo lugar ao mesmo tempo é recusado</h3></div>
+        <p class="why">A regra é por lugar, não global — e é garantida pelo banco, porque a corrida entre duas pessoas criando ao mesmo tempo é invisível para validação de aplicação.</p>
+        <ol class="steps">
+          <li>Crie uma missão nova em um local novo. Deve funcionar.</li>
+          <li>Crie outra <b>no mesmo local</b>, com datas que se sobrepõem à primeira.</li>
+        </ol>
+        <div class="accept"><b>Aceite</b><ul>
+          <li>A primeira é criada.</li>
+          <li>A sobreposta é recusada com mensagem legível — não erro 500.</li>
+          <li>Datas que se encostam sem sobrepor, ou o mesmo período em outro local, são aceitas.</li>
+        </ul></div>
+      </article>
+
+      <article class="test" data-test="T-41">
+        <div class="test-head"><span class="tid">T-41</span><h3>Derrubada leva caixas inteiras</h3></div>
+        <ol class="steps">
+          <li>Em <code>/load-out</code>, como <b>logistics</b>, envie duas caixas do estoque Principal para a missão criada em T-40.</li>
+        </ol>
+        <div class="accept"><b>Aceite</b><ul>
+          <li>Todo o conteúdo das caixas mudou de local, lote por lote.</li>
+          <li><code>/stock</code> no Principal já não mostra aquelas posições; o local da missão mostra.</li>
+          <li>A data de última verificação das caixas não mudou.</li>
+        </ul></div>
+      </article>
+
+      <article class="test" data-test="T-42">
+        <div class="test-head"><span class="tid">T-42</span><h3>Consumo no local, com destino</h3></div>
+        <ol class="steps">
+          <li>Em <code>/issue</code>, dê baixa de itens no local da missão com destino <i>centro cirúrgico</i>.</li>
+          <li>Repita com destino <i>PACU</i>.</li>
+        </ol>
+        <div class="accept"><b>Aceite</b><ul>
+          <li>O destino é um valor escolhido, não texto livre.</li>
+          <li>O painel da missão soma o consumo.</li>
+          <li>Tentar baixar mais do que existe é recusado.</li>
+        </ul></div>
+      </article>
+
+      <article class="test" data-test="T-43">
+        <div class="test-head"><span class="tid">T-43</span><h3>Doação ao hospital gera o termo</h3></div>
+        <p class="why">É o documento que sai da mão de alguém e vai para a de outra instituição. Depende do T-03.</p>
+        <ol class="steps">
+          <li>Dê baixa com destino <i>doação</i>, informando o nome da instituição.</li>
+          <li>Em <code>/issues</code>, abra a baixa e gere o termo.</li>
+        </ol>
+        <div class="accept"><b>Aceite</b><ul>
+          <li>O termo abre com o nome, CNPJ e contato da organização — os reais, não o placeholder.</li>
+          <li>Lista os itens, quantidades e valores.</li>
+          <li>Nomeia a instituição que recebeu.</li>
+          <li>Como <b>logistics</b>, o termo é <b>recusado</b> — ele declara valor.</li>
+        </ul></div>
+      </article>
+
+      <article class="test" data-test="T-44">
+        <div class="test-head"><span class="tid">T-44</span><h3>Retorno traz o que sobrou</h3></div>
+        <ol class="steps">
+          <li>Em <code>/returns</code>, receba de volta as caixas da missão de T-41.</li>
+        </ol>
+        <div class="accept"><b>Aceite</b><ul>
+          <li>O que sobrou volta ao Principal, com os mesmos lotes.</li>
+          <li>O local da missão fica sem saldo.</li>
+          <li>O painel da missão fecha a conta: enviado = consumido + doado + retornado.</li>
+        </ul></div>
+      </article>
+    </section>
+
+    <section class="phase" id="fase-10" data-phase="Razão">
+      <div class="phase-head">
+        <span class="phase-num">FASE 10</span>
+        <h2>Razão, relatórios e limites</h2>
+        <p>O que sustenta tudo acima, e o que o free tier aguenta.</p>
+      </div>
+
+      <article class="test" data-test="T-45">
+        <div class="test-head"><span class="tid">T-45</span><h3>Ajuste sem motivo é recusado</h3></div>
+        <p class="why">Ajuste sem motivo é exatamente o que torna um estoque não auditável.</p>
+        <ol class="steps">
+          <li>Faça um ajuste de contagem deixando o motivo em branco.</li>
+        </ol>
+        <div class="accept"><b>Aceite</b><p>Recusado, com mensagem. Não existe caminho para gravar ajuste sem código de motivo.</p></div>
+      </article>
+
+      <article class="test" data-test="T-46">
+        <div class="test-head"><span class="tid">T-46</span><h3>Nada é apagado</h3></div>
+        <ol class="steps">
+          <li>Procure, em qualquer tela, um botão que exclua movimento, nota, lote ou conta.</li>
+        </ol>
+        <div class="accept"><b>Aceite</b><p>Não existe. Correção se faz com movimento novo; conta se desativa.</p></div>
+      </article>
+
+      <article class="test" data-test="T-47">
+        <div class="test-head"><span class="tid">T-47</span><h3>Exportação para Excel abre, e é aparada por papel</h3></div>
+        <ol class="steps">
+          <li>Como <b>manager</b>, baixe <code>/stock/export.xlsx</code> e abra no Excel ou LibreOffice.</li>
+          <li>Como <b>logistics</b>, baixe o mesmo arquivo.</li>
+        </ol>
+        <div class="accept"><b>Aceite</b><ul>
+          <li>O arquivo abre sem aviso de corrupção.</li>
+          <li>Para manager traz custo e valor.</li>
+          <li>Para logistics o arquivo <b>vem sem as colunas de dinheiro</b> — aparado, não recusado.</li>
+        </ul></div>
+      </article>
+
+      <article class="test" data-test="T-48">
+        <div class="test-head"><span class="tid">T-48</span><h3>O relatório do auditor fecha com o razão</h3></div>
+        <ol class="steps">
+          <li>Abra <code>/reports/audit</code> como <b>auditor</b>.</li>
+          <li>Escolha um produto e confira o saldo contra o histórico dele.</li>
+        </ol>
+        <div class="accept"><b>Aceite</b><ul>
+          <li>O saldo do relatório é igual à soma dos movimentos do histórico.</li>
+          <li>Cada movimento tem tipo, data e responsável.</li>
+        </ul></div>
+      </article>
+
+      <article class="test" data-test="T-49">
+        <div class="test-head"><span class="tid">T-49</span><h3>O banco continua longe do teto depois de tudo</h3></div>
+        <ol class="steps">
+          <li><code>gigalixir pg:psql</code> e <code>select sum(n_live_tup) from pg_stat_user_tables;</code></li>
+        </ol>
+        <div class="accept"><b>Aceite</b><p>Abaixo de <b>10.000</b>, com folga. Se estiver perto, pare de gerar movimento e avise — o banco gratuito recusa escrita a partir daí.</p></div>
+      </article>
+
+      <article class="test" data-test="T-50">
+        <div class="test-head"><span class="tid">T-50</span><h3>A aplicação não está reiniciando em loop</h3></div>
+        <p class="why">0,5 GB é pouco. Um processo que morre por memória volta sozinho e some do olhar de quem só usa a tela.</p>
+        <ol class="steps">
+          <li><code>gigalixir ps</code> e <code>gigalixir logs</code> depois de toda a bateria.</li>
+        </ol>
+        <div class="accept"><b>Aceite</b><ul>
+          <li>Uma réplica, no ar, sem reinício recente.</li>
+          <li>Sem <code>OOM</code> nem <code>Killed</code> no log.</li>
+          <li>Sem erro de conexão de banco — o pool é de duas conexões, e é o número certo para este plano.</li>
+        </ul></div>
+      </article>
+    </section>
+
+    <section class="summary" id="resumo">
+      <h2>Resumo para colar</h2>
+      <p>
+        Preenchido a partir dos resultados marcados acima. Os resultados ficam
+        neste navegador, então marque tudo na mesma máquina — e copie este texto
+        antes de fechar.
+      </p>
+      <textarea id="summary-text" readonly aria-label="Resumo dos resultados"></textarea>
+    </section>
+
+    <footer class="sheet-foot">
+      Estoque OS · 50 testes · conferência de aceite em produção · os resultados
+      são gravados apenas neste navegador
+    </footer>
+
+  </main>
+</div>
+</div>
+
+<script>
+  (function () {
+    "use strict";
+
+    var KEY = "estoque-os-prod-acceptance-v1";
+    var state = {};
+    try { state = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch (e) { state = {}; }
+
+    var tests = Array.prototype.slice.call(document.querySelectorAll(".test"));
+    var LABELS = { pass: "Passou", fail: "Falhou", blocked: "Travado" };
+
+    function save() {
+      try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* private mode */ }
+    }
+
+    // Every card gets the same three-state control plus a note field.
+    tests.forEach(function (card) {
+      var id = card.getAttribute("data-test");
+      var row = document.createElement("div");
+      row.className = "result";
+
+      var lbl = document.createElement("span");
+      lbl.className = "lbl";
+      lbl.textContent = "Resultado";
+      row.appendChild(lbl);
+
+      ["pass", "fail", "blocked"].forEach(function (kind) {
+        var b = document.createElement("button");
+        b.type = "button";
+        b.dataset.set = kind;
+        b.textContent = LABELS[kind];
+        b.setAttribute("aria-pressed", "false");
+        b.addEventListener("click", function () {
+          var current = (state[id] || {}).result;
+          var next = current === kind ? null : kind;
+          state[id] = Object.assign({}, state[id], { result: next });
+          save();
+          render();
+        });
+        row.appendChild(b);
+      });
+
+      var note = document.createElement("input");
+      note.type = "text";
+      note.placeholder = "observação (opcional)";
+      note.setAttribute("aria-label", "Observação para " + id);
+      note.addEventListener("input", function () {
+        state[id] = Object.assign({}, state[id], { note: note.value });
+        save();
+        renderSummary();
+      });
+      note.dataset.noteFor = id;
+      row.appendChild(note);
+
+      card.appendChild(row);
+    });
+
+    // The rail's phase list, with a per-phase count that is worth glancing at.
+    var nav = document.getElementById("phase-nav");
+    var phases = Array.prototype.slice.call(document.querySelectorAll("section.phase"));
+    phases.forEach(function (section) {
+      var a = document.createElement("a");
+      a.href = "#" + section.id;
+      var name = document.createElement("span");
+      name.textContent = section.getAttribute("data-phase");
+      var count = document.createElement("em");
+      count.dataset.countFor = section.id;
+      a.appendChild(name);
+      a.appendChild(count);
+      nav.appendChild(a);
+    });
+
+    function renderSummary() {
+      var lines = [];
+      var byPhase = {};
+
+      phases.forEach(function (section) {
+        var rows = [];
+        Array.prototype.slice.call(section.querySelectorAll(".test")).forEach(function (card) {
+          var id = card.getAttribute("data-test");
+          var entry = state[id] || {};
+          var title = card.querySelector("h3").textContent.trim();
+          var mark = entry.result ? LABELS[entry.result].toUpperCase() : "—";
+          var note = entry.note ? "  · " + entry.note : "";
+          rows.push("  " + id + "  " + pad(mark) + title + note);
+        });
+        byPhase[section.id] = rows;
+        lines.push(section.getAttribute("data-phase").toUpperCase());
+        lines.push(rows.join("\n"));
+        lines.push("");
+      });
+
+      var counts = tally();
+      lines.unshift(
+        "ESTOQUE OS — CONFERENCIA DE PRODUCAO",
+        "passou " + counts.pass + " · falhou " + counts.fail + " · travado " + counts.blocked +
+          " · sem resultado " + (tests.length - counts.done),
+        ""
+      );
+
+      document.getElementById("summary-text").value = lines.join("\n");
+    }
+
+    function pad(mark) {
+      var s = mark;
+      while (s.length < 9) { s += " "; }
+      return s;
+    }
+
+    function tally() {
+      var c = { pass: 0, fail: 0, blocked: 0, done: 0 };
+      tests.forEach(function (card) {
+        var r = (state[card.getAttribute("data-test")] || {}).result;
+        if (r) { c[r] += 1; c.done += 1; }
+      });
+      return c;
+    }
+
+    function render() {
+      tests.forEach(function (card) {
+        var id = card.getAttribute("data-test");
+        var entry = state[id] || {};
+        if (entry.result) {
+          card.setAttribute("data-result", entry.result);
+        } else {
+          card.removeAttribute("data-result");
+        }
+        Array.prototype.slice.call(card.querySelectorAll(".result button")).forEach(function (b) {
+          b.setAttribute("aria-pressed", String(b.dataset.set === entry.result));
+        });
+        var note = card.querySelector("input[data-note-for]");
+        if (note && note.value !== (entry.note || "")) { note.value = entry.note || ""; }
+      });
+
+      var counts = tally();
+      document.getElementById("score").textContent = counts.done + "/" + tests.length;
+      document.getElementById("bar").style.width =
+        Math.round((counts.done / tests.length) * 100) + "%";
+      document.getElementById("n-pass").textContent = counts.pass;
+      document.getElementById("n-fail").textContent = counts.fail;
+      document.getElementById("n-block").textContent = counts.blocked;
+
+      phases.forEach(function (section) {
+        var cards = Array.prototype.slice.call(section.querySelectorAll(".test"));
+        var done = cards.filter(function (c) {
+          return (state[c.getAttribute("data-test")] || {}).result;
+        }).length;
+        var el = nav.querySelector('[data-count-for="' + section.id + '"]');
+        if (el) { el.textContent = done + "/" + cards.length; }
+      });
+
+      renderSummary();
+    }
+
+    document.getElementById("filter").addEventListener("click", function () {
+      var on = document.body.classList.toggle("only-open");
+      this.setAttribute("aria-pressed", String(on));
+      this.textContent = on ? "Mostrar todos os testes" : "Esconder o que já passou";
+    });
+
+    document.getElementById("reset").addEventListener("click", function () {
+      if (!window.confirm("Limpar o resultado de todos os testes?")) { return; }
+      state = {};
+      save();
+      render();
+    });
+
+    render();
+  })();
+</script>
+
+</body>
+</html>
