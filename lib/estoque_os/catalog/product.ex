@@ -12,8 +12,13 @@ defmodule EstoqueOS.Catalog.Product do
   alias EstoqueOS.Inventory.Lot
   alias EstoqueOS.Kits.Kit
 
+  @segments ~w(medical marketing)
+
   schema "products" do
     field :name, :string
+    # Which stock this belongs to: the surgical one, or the marketing material
+    # that is sold rather than consumed. See `segments/0`.
+    field :segment, :string, default: "medical"
     field :ncm, :string
     field :stock_unit, :string, default: "UN"
     field :controlled, :boolean, default: false
@@ -49,6 +54,7 @@ defmodule EstoqueOS.Catalog.Product do
     product
     |> cast(attrs, [
       :name,
+      :segment,
       :product_group_id,
       :kit_id,
       :ncm,
@@ -66,7 +72,8 @@ defmodule EstoqueOS.Catalog.Product do
     |> update_change(:name, &String.trim/1)
     |> update_change(:ncm, &normalize_ncm/1)
     |> update_change(:stock_unit, &normalize_unit/1)
-    |> validate_required([:name, :stock_unit])
+    |> validate_required([:name, :stock_unit, :segment])
+    |> validate_inclusion(:segment, @segments)
     |> validate_format(:ncm, ~r/^\d{8}$/)
     |> validate_number(:min_stock_override, greater_than_or_equal_to: 0)
     |> validate_number(:expiry_alert_days_override, greater_than: 0)
@@ -74,6 +81,7 @@ defmodule EstoqueOS.Catalog.Product do
     |> assoc_constraint(:kit)
     |> unique_constraint(:name, name: :products_lower_name_index)
     |> check_constraint(:ncm, name: :products_ncm_must_have_8_digits)
+    |> check_constraint(:segment, name: :products_segment_must_be_known)
   end
 
   defp normalize_ncm(nil), do: nil
@@ -87,6 +95,21 @@ defmodule EstoqueOS.Catalog.Product do
 
   defp normalize_unit(nil), do: nil
   defp normalize_unit(value), do: value |> String.trim() |> String.upcase()
+
+  @doc """
+  The two stocks this system holds.
+
+    * `medical` — what a surgical mission consumes and donates. The default,
+      because it is what the operation is for and what 322 of the 322 seeded
+      products are.
+    * `marketing` — material the ONG *sells*: shirts, banners, the things that
+      leave with a price on the way out rather than a mission attached.
+
+  A closed list on purpose. "Segment" is exactly the kind of field that grows a
+  fourteenth value typed by hand, and the marketing role's entire view is a
+  filter on it — a typo would quietly show somebody a stock that is not theirs.
+  """
+  def segments, do: @segments
 
   @stock_units ~w(UN CX FR PT PC AMP KIT PAR ROL)
 

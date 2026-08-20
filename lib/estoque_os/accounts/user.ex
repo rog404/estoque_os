@@ -2,16 +2,20 @@ defmodule EstoqueOS.Accounts.User do
   use Ecto.Schema
   import Ecto.Changeset
 
-  @roles ~w(admin manager logistics auditor)
+  @roles ~w(admin manager marketing logistics auditor)
 
   @doc """
   Known user roles, from most to least privileged.
 
-  Four, because this operation has four kinds of person and they need different
-  answers to two different questions — what may I change, and what may I see.
+  Five, because this operation has five kinds of person and they need different
+  answers to three different questions — what may I change, what may I see, and
+  *which stock is mine*.
 
     * `admin` — everything, plus who else gets an account.
     * `manager` — the supplies coordinator. The whole operation, money included.
+    * `marketing` — looks after the marketing stock and nothing else. Writes
+      and sees money, both only about products in their own segment: they sell
+      what they hold, so a price is the point rather than a leak.
     * `logistics` — the third-party operator who handles the boxes: counts,
       load-outs, returns. Never a price: they are a partner outside the ONG and
       the spreadsheet they return has always carried quantity and box and never
@@ -19,14 +23,27 @@ defmodule EstoqueOS.Accounts.User do
     * `auditor` — reads everything, money and ledger included, and writes
       nothing.
 
-  Ordered by privilege, and `roles_that_write/0` and `roles_that_see_money/0`
-  cut it two different ways on purpose: logistics writes and does not see,
-  auditor sees and does not write. A single ladder cannot express that.
+  The order is a rough privilege ranking and nothing reads it as one, because
+  no ranking works: `roles_that_write/0`, `roles_that_see_money/0` and
+  `segment/1` cut the list three different ways. Logistics writes and does not
+  see; auditor sees and does not write; marketing does both and only within
+  one segment. A single ladder cannot express that.
   """
   def roles, do: @roles
 
+  @doc """
+  The stock a role is allowed to see, or `nil` for all of it.
+
+  The whole of the marketing role's confinement is this function plus the
+  callers that pass it into a query. It is deliberately *not* expressed as
+  "hide the rows in the template": a filter in a query cannot be undone by an
+  event nobody rendered a button for.
+  """
+  def segment("marketing"), do: "marketing"
+  def segment(_role), do: nil
+
   @doc "Roles allowed to change stock."
-  def roles_that_write, do: ~w(admin manager logistics)
+  def roles_that_write, do: ~w(admin manager marketing logistics)
 
   @doc """
   Roles allowed to change what the catalog *says*, as opposed to what the
@@ -37,11 +54,23 @@ defmodule EstoqueOS.Accounts.User do
   expected to carry — that is a planning decision, argued with the ONG team,
   and a number the dashboard raises alarms from. The auditor is the mirror
   image: they read everything, including prices, and change nothing.
+
+  Marketing is out too, and for a plainer reason: what this gate protects — kit
+  recipes and the minimum a mission carries — is surgical planning, and none of
+  it is about their stock.
   """
   def roles_that_plan, do: ~w(admin manager)
 
-  @doc "Roles allowed to see what anything cost."
-  def roles_that_see_money, do: ~w(admin manager auditor)
+  @doc """
+  Roles allowed to see what anything cost.
+
+  Marketing is here and logistics is not, which looks inconsistent until you
+  read what each of them is: the logistics partner is outside the ONG and the
+  prices are the ONG's, while marketing *sells* the goods they hold — the price
+  on the way out is the thing they are accountable for. And they only ever see
+  their own segment.
+  """
+  def roles_that_see_money, do: ~w(admin manager marketing auditor)
 
   schema "users" do
     field :email, :string

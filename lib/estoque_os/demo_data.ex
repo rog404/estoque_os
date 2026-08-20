@@ -71,6 +71,18 @@ defmodule EstoqueOS.DemoData do
   # day one.
   @accounts [{"admin@exemplo.org", "admin"}]
 
+  # The other stock: material the ONG sells rather than consumes. Same ledger,
+  # same boxes, same warehouse — a different segment, a different person looking
+  # after it, and a price on the way out.
+  @marketing_items [
+    {"Camiseta Operação Sorriso P", "UN", 40},
+    {"Camiseta Operação Sorriso M", "UN", 60},
+    {"Camiseta Operação Sorriso G", "UN", 45},
+    {"Boné bordado", "UN", 30},
+    {"Caneca Operação Sorriso", "UN", 24},
+    {"Sacola de algodão", "UN", 80}
+  ]
+
   @office_items [
     {"Impressora multifuncional", "UN", 2},
     {"Scanner portátil", "UN", 2},
@@ -147,10 +159,19 @@ defmodule EstoqueOS.DemoData do
     supply_boxes = Enum.take(boxes, length(boxes) - 1)
 
     office = office_stock()
+    marketing = marketing_stock()
     kit = resolve_one_kit()
     supply = supply_stock(today, kit)
 
-    open_stock(logistics, warehouse, supply_boxes, office_box, supply, office, today)
+    open_stock(
+      logistics,
+      warehouse,
+      supply_boxes,
+      office_box,
+      supply,
+      office ++ marketing,
+      today
+    )
 
     invoices = invoices(admin, warehouse)
 
@@ -179,6 +200,7 @@ defmodule EstoqueOS.DemoData do
        office_box: office_box.code,
        supply_products: length(supply),
        office_products: length(office),
+       marketing_products: length(marketing),
        invoices: invoices,
        kit: kit,
        assembled: assembled,
@@ -264,6 +286,30 @@ defmodule EstoqueOS.DemoData do
   # What separates them is `sector`, `expiry_expected` and `lot_expected` —
   # paper does not expire and a scanner has no lot number, so neither blank is
   # an alarm.
+  # Marketing material. The catalog fields are the same as any other product's;
+  # `segment` is the whole of what makes this a second stock.
+  defp marketing_stock do
+    for {name, unit, quantity} <- @marketing_items do
+      {:ok, product} =
+        Catalog.create_product(%{
+          name: name,
+          stock_unit: unit,
+          segment: "marketing",
+          sector: "MARKETING",
+          expiry_expected: false,
+          lot_expected: false,
+          min_stock_override: Decimal.new(div(quantity, 4))
+        })
+
+      {:ok, lot} =
+        %Lot{}
+        |> Lot.changeset(%{product_id: product.id, lot_number: nil})
+        |> Repo.insert()
+
+      %{product: product, lot: lot, quantity: quantity}
+    end
+  end
+
   defp office_stock do
     for {name, unit, quantity} <- @office_items do
       {:ok, product} =
@@ -874,6 +920,7 @@ defmodule EstoqueOS.DemoData do
       boxes:            #{summary.boxes} (#{summary.office_box} is the office box)
       supply products:  #{summary.supply_products}
       office products:  #{summary.office_products}
+      marketing stock:  #{summary.marketing_products} products, sold rather than consumed
       invoices:         NF #{summary.invoices.posted.number} lançada, \
     NF #{summary.invoices.pending.number} pendente de entrada
       kit assembled:    #{kit_line(summary)}

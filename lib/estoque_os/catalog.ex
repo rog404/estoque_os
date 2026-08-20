@@ -391,6 +391,7 @@ defmodule EstoqueOS.Catalog do
   def list_products(opts \\ []) do
     Product
     |> where([p], p.active == true)
+    |> maybe_segment(opts[:segment])
     |> maybe_search(opts[:search])
     |> order_by([p], asc: p.name)
     |> limit(^(opts[:limit] || 50))
@@ -404,6 +405,13 @@ defmodule EstoqueOS.Catalog do
     pattern = "%#{String.trim(search)}%"
     where(query, [p], ilike(p.name, ^pattern))
   end
+
+  # Which stock the caller is allowed to look at. Passed down from the scope by
+  # every screen that lists or searches products, so the marketing role's search
+  # cannot surface a surgical product for them to write off.
+  defp maybe_segment(query, nil), do: query
+  defp maybe_segment(query, ""), do: query
+  defp maybe_segment(query, segment), do: where(query, [p], p.segment == ^segment)
 
   @doc """
   Finds products the way a person actually looks for them.
@@ -445,6 +453,7 @@ defmodule EstoqueOS.Catalog do
       |> maybe_supplier(opts[:supplier_id])
       |> join(:inner, [i], p in Product, on: p.id == i.product_id)
       |> where([_i, p], p.active)
+      |> segment_scope(opts[:segment])
       |> select([i, p], %{product: p, matched: i.kind})
 
     case Repo.all(query) do
@@ -469,6 +478,7 @@ defmodule EstoqueOS.Catalog do
       |> where([s], ilike(s.name, ^pattern))
       |> join(:inner, [s], p in Product, on: p.product_group_id == s.product_group_id)
       |> where([_s, p], p.active)
+      |> segment_scope(opts[:segment])
       |> select([_s, p], %{product: p, matched: :synonym})
       |> limit(^limit)
       |> Repo.all()
@@ -476,6 +486,7 @@ defmodule EstoqueOS.Catalog do
     named =
       Product
       |> where([p], p.active and ilike(p.name, ^pattern))
+      |> segment_scope(opts[:segment])
       |> order_by([p], asc: p.name)
       |> limit(^limit)
       |> Repo.all()
@@ -485,6 +496,12 @@ defmodule EstoqueOS.Catalog do
     |> Enum.uniq_by(& &1.product.id)
     |> Enum.take(limit)
   end
+
+  # The product is the last binding in all three search queries, whatever else
+  # they join on first.
+  defp segment_scope(query, nil), do: query
+  defp segment_scope(query, ""), do: query
+  defp segment_scope(query, segment), do: where(query, [..., p], p.segment == ^segment)
 
   def create_product_group(attrs) do
     %ProductGroup{} |> ProductGroup.changeset(attrs) |> Repo.insert()

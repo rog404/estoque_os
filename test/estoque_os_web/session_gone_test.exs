@@ -66,10 +66,14 @@ defmodule EstoqueOSWeb.SessionGoneTest do
 
       # The menu is still on screen — the page it is drawn on has not been
       # repainted — and following it now has to end at the login page rather
-      # than at the boxes. End to end, the way it was reported: click the menu,
-      # and see what the app answers.
-      clicked = view |> element(~s(nav a[href="/boxes"])) |> render_click()
-      assert {:error, {:live_redirect, %{to: "/boxes"}}} = clicked
+      # than at the write-offs. End to end, the way it was reported: click the
+      # menu, and see what the app answers.
+      #
+      # A link inside the same `live_session`, so the click is a live
+      # navigation and the socket is what refuses it. One that crossed sessions
+      # would be a plain page load and would prove nothing about the socket.
+      clicked = view |> element(~s(nav a[href="/issues"])) |> render_click()
+      assert {:error, {:live_redirect, %{to: "/issues"}}} = clicked
 
       assert {:error, {:redirect, %{to: "/users/log-in"}}} = follow_redirect(clicked, conn)
     end

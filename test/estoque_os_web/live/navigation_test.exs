@@ -85,8 +85,10 @@ defmodule EstoqueOSWeb.NavigationTest do
       {:ok, _view, html} = live(conn, ~p"/issue")
       refute nav_link(html, "/") =~ "data-phx-link"
 
-      # From a screen in the same session, it stays live.
-      {:ok, _view, html} = live(conn, ~p"/boxes")
+      # From a screen in the same session, it stays live. `/stock` is
+      # `:signed_in`, like `/` — the boxes moved to `:surgical_read` when the
+      # marketing role arrived, precisely because that role may not open them.
+      {:ok, _view, html} = live(conn, ~p"/stock")
       assert nav_link(html, "/") =~ ~s(data-phx-link="redirect")
     end
   end

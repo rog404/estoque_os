@@ -43,6 +43,7 @@ defmodule EstoqueOS.Reports do
     |> join(:inner, [s], loc in Location, on: loc.id == s.location_id)
     |> where([s], s.quantity != 0)
     |> maybe_filter_location(opts[:location_id])
+    |> maybe_segment(opts[:segment])
     |> maybe_search(opts[:search])
     |> maybe_only_controlled(opts[:only_controlled])
     |> maybe_only_expiring(opts[:only_expiring], horizon)
@@ -54,6 +55,7 @@ defmodule EstoqueOS.Reports do
       product: p.name,
       group: g.name,
       controlled: p.controlled,
+      lot_expected: p.lot_expected,
       product_stock_unit: p.stock_unit,
       min_stock_override: p.min_stock_override,
       expiry_alert_days_override: p.expiry_alert_days_override,
@@ -197,6 +199,13 @@ defmodule EstoqueOS.Reports do
     |> select([e], e.lot_id)
   end
 
+  # The marketing role's whole view is this line. It arrives from the scope, not
+  # from the page, so a filter nobody rendered a control for still holds: an
+  # event over the socket cannot ask for a segment the role was never given.
+  defp maybe_segment(query, nil), do: query
+  defp maybe_segment(query, ""), do: query
+  defp maybe_segment(query, segment), do: where(query, [_s, _l, p], p.segment == ^segment)
+
   defp maybe_only_controlled(query, true), do: where(query, [_s, _l, p], p.controlled)
   defp maybe_only_controlled(query, _), do: query
 
@@ -253,6 +262,7 @@ defmodule EstoqueOS.Reports do
   """
   def export_stock(opts \\ []) do
     opts
+    |> Keyword.take([:location_id, :segment, :search, :only_expiring, :only_controlled])
     |> stock_rows()
     |> StockWorkbook.to_xlsx(money: Keyword.get(opts, :money, true))
   end
@@ -428,11 +438,13 @@ defmodule EstoqueOS.Reports do
   @doc """
   Headline numbers for the dashboard.
   """
-  def summary do
-    rows = stock_rows()
+  def summary(opts \\ []) do
+    rows = stock_rows(opts)
+    segment = opts[:segment]
 
     %{
-      products: Repo.aggregate(from(p in Product, where: p.active), :count),
+      products:
+        Repo.aggregate(from(p in Product, where: p.active) |> segment_scope(segment), :count),
       positions: length(rows),
       units: rows |> Enum.map(& &1.quantity) |> Enum.reduce(Decimal.new(0), &Decimal.add/2),
       known_value:
@@ -441,9 +453,24 @@ defmodule EstoqueOS.Reports do
         |> Enum.reject(&is_nil/1)
         |> Enum.reduce(Decimal.new(0), &Decimal.add/2),
       invoices_pending: Repo.aggregate(from(i in Invoice, where: i.status != "posted"), :count),
-      lots_needing_review: Repo.aggregate(from(l in Lot, where: l.needs_review), :count)
+      lots_needing_review:
+        Repo.aggregate(
+          from(l in Lot,
+            join: p in Product,
+            on: p.id == l.product_id,
+            where: l.needs_review
+          )
+          |> segment_scope(segment),
+          :count
+        )
     }
   end
+
+  # For the queries that reach `products` under another name than the stock
+  # query's `p`. Written as a positional binding rather than a named one
+  # because the callers differ in shape and all of them put the product last.
+  defp segment_scope(query, nil), do: query
+  defp segment_scope(query, segment), do: where(query, [..., p], p.segment == ^segment)
 
   @doc """
   Stock that expires within the alert window, soonest first.
@@ -456,7 +483,9 @@ defmodule EstoqueOS.Reports do
     today = Date.utc_today()
     horizon = Date.add(today, default_days)
 
-    stock_rows()
+    opts
+    |> Keyword.take([:segment])
+    |> stock_rows()
     |> Enum.filter(fn row ->
       row.expires_on &&
         Date.compare(row.expires_on, product_horizon(row, today, horizon)) != :gt
@@ -489,6 +518,7 @@ defmodule EstoqueOS.Reports do
     |> join(:inner, [s, l], p in Product, on: p.id == l.product_id)
     |> join(:inner, [s], loc in Location, on: loc.id == s.location_id)
     |> where([s, l, p], s.quantity != 0 and is_nil(l.expires_on) and p.expiry_expected)
+    |> segment_scope(opts[:segment])
     |> order_by([s, l, p], desc: p.controlled, asc: p.name)
     |> limit(^(opts[:limit] || 10))
     |> select([s, l, p, loc], %{
@@ -529,6 +559,7 @@ defmodule EstoqueOS.Reports do
     Product
     |> where([p], p.active and not is_nil(p.min_stock_override))
     |> where([p], p.id in ^moved)
+    |> segment_scope(opts[:segment])
     |> Repo.all()
     |> Enum.map(fn product ->
       quantity = Map.get(balances, product.id, Decimal.new(0))
@@ -626,6 +657,7 @@ defmodule EstoqueOS.Reports do
     entries = from(e in TransactionEntry, order_by: [asc: e.id], preload: [lot: :product])
 
     Transaction
+    |> maybe_touching_segment(opts[:segment])
     |> order_by([t], desc: t.occurred_at, desc: t.id)
     |> limit(^(opts[:limit] || 8))
     # Locations and supplier come along because the overview says what happened,
@@ -685,6 +717,7 @@ defmodule EstoqueOS.Reports do
 
     Transaction
     |> where([t], t.occurred_at >= ^from and t.occurred_at <= ^to)
+    |> maybe_touching_segment(opts[:segment])
     |> maybe_of_type(opts[:type])
     |> maybe_to_destination(opts[:destination])
     |> order_by([t], desc: t.occurred_at, desc: t.id)
@@ -705,6 +738,24 @@ defmodule EstoqueOS.Reports do
         value: entries_value(transaction.entries)
       }
     end)
+  end
+
+  # A movement has no segment of its own — its *entries* do, through the lot's
+  # product. A transaction counts as marketing when it moved any marketing
+  # goods, which is the only reading that keeps a mixed movement visible to the
+  # person it concerns.
+  defp maybe_touching_segment(query, nil), do: query
+  defp maybe_touching_segment(query, ""), do: query
+
+  defp maybe_touching_segment(query, segment) do
+    touching =
+      TransactionEntry
+      |> join(:inner, [e], l in Lot, on: l.id == e.lot_id)
+      |> join(:inner, [e, l], p in Product, on: p.id == l.product_id)
+      |> where([e, l, p], p.segment == ^segment)
+      |> select([e], e.transaction_id)
+
+    where(query, [t], t.id in subquery(touching))
   end
 
   defp maybe_of_type(query, nil), do: query
@@ -758,8 +809,8 @@ defmodule EstoqueOS.Reports do
   Portaria 344 items ride in this stock, and an auditor will want them listed
   separately rather than buried in a 300-line inventory.
   """
-  def controlled_stock do
-    stock_rows() |> Enum.filter(& &1.controlled)
+  def controlled_stock(opts \\ []) do
+    opts |> Keyword.take([:segment]) |> stock_rows() |> Enum.filter(& &1.controlled)
   end
 
   # A period given as dates covers whole days, inclusive.

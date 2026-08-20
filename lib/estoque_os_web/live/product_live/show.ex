@@ -32,6 +32,28 @@ defmodule EstoqueOSWeb.ProductLive.Show do
   def mount(%{"id" => id}, _session, socket) do
     history = ProductHistory.for_product(id)
 
+    if hidden_from?(socket.assigns.current_scope, history.product) do
+      # A role confined to one stock has no business reading a product from the
+      # other one, and this page is reachable by id from anywhere — a link, a
+      # bookmark, a typed number. The list screens filter; this is the one that
+      # has to refuse.
+      {:ok,
+       socket
+       |> put_flash(:error, gettext("You don't have permission to access this page."))
+       |> push_navigate(to: ~p"/stock")}
+    else
+      mount_product(socket, history)
+    end
+  end
+
+  defp hidden_from?(scope, product) do
+    case Scope.segment(scope) do
+      nil -> false
+      segment -> product.segment != segment
+    end
+  end
+
+  defp mount_product(socket, history) do
     {:ok,
      socket
      |> assign(:page_title, history.product.name)

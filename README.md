@@ -31,7 +31,8 @@ Portuguese; the code, schema and these docs are in English.
 | **Receiving** | Conference against what the invoice promised, blind or not, in rounds — because the warehouse recounts when a divergence looks like a miscount. |
 | **Kits** | A kit is a product. Assembling one converts component lots into a lot of the kit's own product, so the screen that writes off a bandage writes off a kit, and a recall can still trace which component lots went into which kit lot. Assembly is refused outright while any component has expired stock on the shelf — a kit is sealed, and nobody opens one to read a date. |
 | **Missions** | One trip at a time in one place, enforced by a Postgres exclusion constraint rather than a check in Elixir — the race it prevents is invisible to application-level validation. Load-out, on-site consumption, donation and return, with stock that goes straight from one mission to the next accounted for as *moved on* rather than lost. |
-| **Money** | Four roles. The operator who handles boxes never sees a price, anywhere. Amounts start hidden even for those who may see them: revealing is the deliberate act. |
+| **Two stocks** | Surgical supply and marketing material live in one ledger, told apart by the product's `segment`. Marketing is sold rather than consumed, so it leaves with a price on the way out, and the role that looks after it sees that stock and nothing else — enforced in the queries, not in the templates. |
+| **Money** | Five roles. The operator who handles boxes never sees a price, anywhere. Amounts start hidden even for those who may see them: revealing is the deliberate act. |
 | **Reports** | Product history, stock export to Excel, and the donation certificate a hospital signs. |
 
 Assembling a kit, refused because one component has expired stock here. The
@@ -70,6 +71,7 @@ where it happens.
 |---|---|
 | admin | everything, plus who gets an account |
 | manager | the whole operation, money included |
+| marketing | the marketing stock and nothing else — takes it in, sells it, sees its prices |
 | logistics | boxes, counts, load-outs, returns. No prices, anywhere |
 | auditor | everything, money and ledger included. Writes nothing |
 

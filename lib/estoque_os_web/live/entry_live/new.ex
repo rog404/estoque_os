@@ -15,6 +15,7 @@ defmodule EstoqueOSWeb.EntryLive.New do
 
   alias EstoqueOS.{Catalog, Inventory}
 
+  alias EstoqueOS.Accounts.Scope
   alias EstoqueOS.Catalog.Product
   alias EstoqueOS.Inventory.Locations
 
@@ -45,6 +46,46 @@ defmodule EstoqueOSWeb.EntryLive.New do
      |> assign(:draft, %{})
      |> assign(:new_box, nil)
      |> assign(:entered, nil)}
+  end
+
+  @doc """
+  Which stock this entry is for.
+
+  Two ways in, and the role wins both times. The marketing menu links here with
+  `?segment=marketing`, which is a convenience for an admin or the coordinator
+  — it preselects the stock and narrows the search. For the marketing role
+  itself the address is irrelevant: `Scope.segment/1` already answers, and a
+  hand-typed `?segment=medical` gets the same answer it would have got with no
+  query at all.
+  """
+  @impl true
+  def handle_params(params, _uri, socket) do
+    {:noreply,
+     socket
+     |> assign(:segment, segment(socket, params["segment"]))
+     |> assign(:locked_segment, Scope.segment(socket.assigns.current_scope))}
+  end
+
+  defp segment(socket, asked) do
+    case Scope.segment(socket.assigns.current_scope) do
+      nil -> if asked in Product.segments(), do: asked
+      forced -> forced
+    end
+  end
+
+  # Which segment a product created from here is filed under. A screen narrowed
+  # to one stock creates into that stock; an unnarrowed one creates into the
+  # surgical catalog, which is what 322 of the 322 seeded products are.
+  defp segment_for_new_product(socket), do: socket.assigns.segment || "medical"
+
+  defp pick_product(socket, product) do
+    {:noreply,
+     socket
+     |> assign(:product, product)
+     |> assign(:products, [])
+     |> assign(:similar, [])
+     |> assign(:entered, nil)
+     |> assign_suggestions(product)}
   end
 
   defp boxes_for(nil), do: []
@@ -82,6 +123,18 @@ defmodule EstoqueOSWeb.EntryLive.New do
             class="input input-bordered w-full"
             phx-debounce="300"
           />
+        </label>
+        <!-- Only for somebody who has both. The marketing role never sees this:
+             their stock is the only one they have, and a picker with one option
+             is a question with one answer. -->
+        <label :if={is_nil(@locked_segment)} class="fieldset">
+          <span class="label">{gettext("Stock")}</span>
+          <select name="segment" class="select select-bordered">
+            <option value="">{gettext("Surgical")}</option>
+            <option value="marketing" selected={@segment == "marketing"}>
+              {gettext("Marketing")}
+            </option>
+          </select>
         </label>
         <label class="fieldset">
           <span class="label">{gettext("Into")}</span>
@@ -410,6 +463,7 @@ defmodule EstoqueOSWeb.EntryLive.New do
     location_id = parse_id(params["location_id"]) || socket.assigns.location_id
     location = Enum.find(socket.assigns.locations, &(&1.id == location_id))
     query = params["query"] || ""
+    socket = assign(socket, :segment, segment(socket, params["segment"]))
 
     {:noreply,
      socket
@@ -418,19 +472,26 @@ defmodule EstoqueOSWeb.EntryLive.New do
      |> assign(:boxes, boxes_for(location))
      |> assign(:similar, [])
      |> assign(:new_product_name, nil)
-     |> assign(:products, if(query == "", do: [], else: Catalog.search_products(query, limit: 8)))}
+     |> assign(
+       :products,
+       if(query == "",
+         do: [],
+         else: Catalog.search_products(query, limit: 8, segment: socket.assigns.segment)
+       )
+     )}
   end
 
   def handle_event("pick", %{"product" => product_id}, socket) do
     product = Catalog.get_product!(String.to_integer(product_id))
 
-    {:noreply,
-     socket
-     |> assign(:product, product)
-     |> assign(:products, [])
-     |> assign(:similar, [])
-     |> assign(:entered, nil)
-     |> assign_suggestions(product)}
+    if socket.assigns.segment && product.segment != socket.assigns.segment do
+      # The list this id came from was already filtered, so arriving here means
+      # the id was typed rather than clicked. Refused rather than ignored: the
+      # screen should say no out loud.
+      {:noreply, put_flash(socket, :error, gettext("That product is not in this stock."))}
+    else
+      pick_product(socket, product)
+    end
   end
 
   # The second submit is the confirmation: the warning listed what it found, and
@@ -441,7 +502,8 @@ defmodule EstoqueOSWeb.EntryLive.New do
       stock_unit: blank_to_default(params["stock_unit"], "UN"),
       controlled: params["controlled"] == "true",
       expiry_expected: params["expiry_expected"] == "true",
-      lot_expected: params["lot_expected"] == "true"
+      lot_expected: params["lot_expected"] == "true",
+      segment: segment_for_new_product(socket)
     }
 
     confirmed? = socket.assigns.similar != []

@@ -100,12 +100,38 @@ defmodule EstoqueOSWeb.Router do
         {EstoqueOSWeb.UserAuth, :current_path},
         {EstoqueOSWeb.UserAuth, :require_password_not_pending}
       ] do
-      live "/entry", EntryLive.New, :new
       live "/conferences", ConferenceLive.Index, :index
       live "/audit", AuditLive.Index, :index
       live "/audit/:id", AuditLive.Count, :count
       live "/returns", ReturnLive.Index, :index
       live "/load-out", LoadOutLive.Index, :index
+    end
+
+    # Taking goods in by hand, which both stocks do the same way. Its own
+    # session rather than a line in `:operational`, because the marketing role
+    # belongs in exactly this one flow and in none of the others there —
+    # counting boxes, loading out and receiving a mission back are not theirs.
+    live_session :manual_entry,
+      on_mount: [
+        {EstoqueOSWeb.UserAuth, :require_authenticated},
+        {EstoqueOSWeb.UserAuth, {:require_role, ~w(admin manager logistics marketing)}},
+        {EstoqueOSWeb.UserAuth, :current_path},
+        {EstoqueOSWeb.UserAuth, :require_password_not_pending}
+      ] do
+      live "/entry", EntryLive.New, :new
+    end
+
+    # Taking goods out by hand. Split off the invoice import for the same
+    # reason: marketing sells from this screen every week and has no business
+    # in a supplier's invoice.
+    live_session :issuing,
+      on_mount: [
+        {EstoqueOSWeb.UserAuth, :require_authenticated},
+        {EstoqueOSWeb.UserAuth, {:require_role, ~w(admin manager marketing)}},
+        {EstoqueOSWeb.UserAuth, :current_path},
+        {EstoqueOSWeb.UserAuth, :require_password_not_pending}
+      ] do
+      live "/issue", IssueLive.Index, :index
     end
 
     # Writing the whole warehouse at once, without a box in anyone's hands. The
@@ -132,7 +158,6 @@ defmodule EstoqueOSWeb.Router do
         {EstoqueOSWeb.UserAuth, :require_password_not_pending}
       ] do
       live "/invoices/import", InvoiceLive.Import, :new
-      live "/issue", IssueLive.Index, :index
     end
 
     # on_mount never runs for controllers, so these carry their own plugs. The
@@ -195,20 +220,39 @@ defmodule EstoqueOSWeb.Router do
       ] do
       live "/", HomeLive.Index, :index
       live "/stock", StockLive.Index, :index
+      live "/issues", IssueLive.List, :index
+      live "/products/:id", ProductLive.Show, :show
+
+      live "/users/settings", UserLive.Settings, :edit
+      live "/users/settings/confirm-email/:token", UserLive.Settings, :confirm_email
+    end
+
+    # The screens whose whole subject is the surgical operation: the boxes it
+    # travels in, the kits it packs, the trips it makes, the counts an auditor
+    # reads. Every one of them lists products, and the marketing role is defined
+    # by not seeing those — so the honest gate is the route, not a filter
+    # inside eight screens that would each have to remember.
+    #
+    # The four screens above stay open to everyone because each one is scoped
+    # by segment: the overview, the stock list, the write-offs and a product's
+    # own page.
+    live_session :surgical_read,
+      on_mount: [
+        {EstoqueOSWeb.UserAuth, :require_authenticated},
+        {EstoqueOSWeb.UserAuth, {:require_role, ~w(admin manager logistics auditor)}},
+        {EstoqueOSWeb.UserAuth, :current_path},
+        {EstoqueOSWeb.UserAuth, :guard_writes},
+        {EstoqueOSWeb.UserAuth, :require_password_not_pending}
+      ] do
       live "/boxes", BoxLive.Index, :index
       live "/boxes/:id", BoxLive.Show, :show
       live "/locations", LocationLive.Index, :index
       live "/kits", KitLive.Index, :index
       live "/kits/:id", KitLive.Show, :show
       live "/receipts/:id", ReceiptLive.Show, :show
-      live "/issues", IssueLive.List, :index
       live "/reports/audit", AuditReportLive.Index, :index
       live "/missions", MissionLive.Index, :index
       live "/missions/:id", MissionLive.Show, :show
-      live "/products/:id", ProductLive.Show, :show
-
-      live "/users/settings", UserLive.Settings, :edit
-      live "/users/settings/confirm-email/:token", UserLive.Settings, :confirm_email
     end
 
     # Deliberately NOT piped through `:require_password_not_pending` — this is
