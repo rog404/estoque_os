@@ -312,5 +312,67 @@ defmodule EstoqueOSWeb.KitLiveTest do
 
       refute Enum.any?(Kits.get_kit!(kit.id).items, &(&1.id == item.id))
     end
+
+    # An operator viewing Kit A must not be able to reach into Kit B by typing
+    # a different id into the same event — the id in the event params comes
+    # straight from the client, and Kit B's own page was never opened.
+    test "an item id from another kit is refused, not mutated", %{conn: conn, kit: kit} do
+      other_product = product_fixture(%{name: "Máscara cirúrgica"})
+
+      {:ok, other_kit} =
+        Kits.create_kit(%{
+          name: "Kit B",
+          items: [
+            %{
+              description: other_product.name,
+              quantity: Decimal.new(3),
+              product_id: other_product.id
+            }
+          ]
+        })
+
+      foreign_item = hd(Kits.get_kit!(other_kit.id).items)
+      {:ok, view, _html} = live(conn, ~p"/kits/#{kit.id}")
+
+      html =
+        view
+        |> render_hook("update_item", %{"id" => "#{foreign_item.id}", "quantity" => "1"})
+
+      assert html =~ "não faz parte deste kit"
+
+      untouched = Enum.find(Kits.get_kit!(other_kit.id).items, &(&1.id == foreign_item.id))
+      assert Decimal.equal?(untouched.quantity, Decimal.new(3))
+
+      html = view |> render_hook("remove_item", %{"item_id" => "#{foreign_item.id}"})
+      assert html =~ "não faz parte deste kit"
+
+      assert Enum.any?(Kits.get_kit!(other_kit.id).items, &(&1.id == foreign_item.id))
+    end
+  end
+
+  describe "editing the recipe as logistics" do
+    setup :register_and_log_in_logistics
+
+    # Logistics packs and counts stock; changing what a kit is *made of* is a
+    # planning decision reserved for admin/manager, same split as the minimum
+    # on ProductLive.Show.
+    test "cannot add, change, or remove a recipe component", %{conn: conn, kit: kit} do
+      drape = product_fixture(%{name: "Campo cirúrgico 50x50"})
+      item = hd(Kits.get_kit!(kit.id).items)
+
+      {:ok, view, _html} = live(conn, ~p"/kits/#{kit.id}")
+
+      view
+      |> render_hook("add_item", %{"product_name" => drape.name, "quantity" => "2"})
+
+      refute Enum.any?(Kits.get_kit!(kit.id).items, &(&1.product_id == drape.id))
+
+      view |> render_hook("update_item", %{"id" => "#{item.id}", "quantity" => "9"})
+      updated = Enum.find(Kits.get_kit!(kit.id).items, &(&1.id == item.id))
+      refute Decimal.equal?(updated.quantity, Decimal.new(9))
+
+      view |> render_hook("remove_item", %{"item_id" => "#{item.id}"})
+      assert Enum.any?(Kits.get_kit!(kit.id).items, &(&1.id == item.id))
+    end
   end
 end

@@ -15,6 +15,7 @@ defmodule EstoqueOSWeb.KitLive.Show do
 
   import EstoqueOS.Coercion, only: [to_decimal: 1]
 
+  alias EstoqueOS.Accounts.{Scope, User}
   alias EstoqueOS.Catalog
   alias EstoqueOS.Kits
 
@@ -59,6 +60,22 @@ defmodule EstoqueOSWeb.KitLive.Show do
     |> assign(:error, nil)
     |> load_context()
     |> put_flash(:info, message)
+  end
+
+  # The recipe is a planning decision, not a write one: `roles_that_write()`
+  # covers assembly (packing stock into a kit), which logistics does every
+  # day, but changing what a kit *is made of* is the narrower `roles_that_plan()`
+  # gate — same split ProductLive.Show draws around the minimum.
+  defp may_plan?(scope) do
+    Scope.effective_role(scope) in User.roles_that_plan()
+  end
+
+  defp plan_block(scope) do
+    if may_plan?(scope) do
+      EstoqueOSWeb.UserAuth.write_block(scope)
+    else
+      gettext("Only a manager changes the kit recipe.")
+    end
   end
 
   defp first_error(changeset) do
@@ -203,7 +220,11 @@ defmodule EstoqueOSWeb.KitLive.Show do
         )}
       </p>
 
-      <.write_gate may={@role_may_write?} allowed={@writable?} reason={@write_block}>
+      <.write_gate
+        may={@role_may_write? and may_plan?(@current_scope)}
+        allowed={@writable?}
+        reason={plan_block(@current_scope)}
+      >
         <form
           id="add-item"
           phx-submit="add_item"
@@ -293,13 +314,16 @@ defmodule EstoqueOSWeb.KitLive.Show do
                   name="quantity"
                   value={quantity(item.quantity)}
                   inputmode="decimal"
+                  disabled={not may_plan?(@current_scope) or not @writable?}
+                  title={plan_block(@current_scope)}
                   class="input input-sm w-20 text-right"
                   aria-label={gettext("Quantity per kit for %{item}", item: item.description)}
                 />
                 <button
                   class="btn btn-success btn-soft btn-square btn-sm"
+                  disabled={not may_plan?(@current_scope) or not @writable?}
+                  title={plan_block(@current_scope) || gettext("Save")}
                   aria-label={gettext("Save %{item}", item: item.description)}
-                  title={gettext("Save")}
                 >
                   <.icon name="hero-check" class="size-4" />
                 </button>
@@ -316,6 +340,8 @@ defmodule EstoqueOSWeb.KitLive.Show do
                 title={gettext("Remove %{item} from the recipe?", item: item.description)}
                 confirm_label={gettext("Remove")}
                 tone={:danger}
+                disabled={not may_plan?(@current_scope) or not @writable?}
+                reason={plan_block(@current_scope)}
               >
                 <:consequence>
                   <p>
@@ -412,6 +438,89 @@ defmodule EstoqueOSWeb.KitLive.Show do
 
   @impl true
   def handle_event("add_item", params, socket) do
+    if may_plan?(socket.assigns.current_scope) do
+      do_add_item(params, socket)
+    else
+      {:noreply, put_flash(socket, :error, gettext("Only a manager changes the kit recipe."))}
+    end
+  end
+
+  def handle_event("update_item", %{"id" => id, "quantity" => quantity}, socket) do
+    cond do
+      not may_plan?(socket.assigns.current_scope) ->
+        {:noreply, put_flash(socket, :error, gettext("Only a manager changes the kit recipe."))}
+
+      is_nil(kit_item(socket, id)) ->
+        {:noreply, assign(socket, :error, gettext("That component is not in this kit."))}
+
+      true ->
+        item = kit_item(socket, id)
+
+        case Kits.update_kit_item(item, %{quantity: to_decimal(quantity)}) do
+          {:ok, _item} -> {:noreply, reload(socket, gettext("Component updated."))}
+          {:error, changeset} -> {:noreply, assign(socket, :error, first_error(changeset))}
+        end
+    end
+  end
+
+  def handle_event("remove_item", %{"item_id" => id}, socket) do
+    cond do
+      not may_plan?(socket.assigns.current_scope) ->
+        {:noreply, put_flash(socket, :error, gettext("Only a manager changes the kit recipe."))}
+
+      is_nil(kit_item(socket, id)) ->
+        {:noreply, assign(socket, :error, gettext("That component is not in this kit."))}
+
+      true ->
+        {:ok, item} = kit_item(socket, id) |> Kits.remove_kit_item()
+
+        {:noreply,
+         reload(socket, gettext("%{item} removed from the recipe.", item: item.description))}
+    end
+  end
+
+  def handle_event("location", %{"location_id" => location_id}, socket) do
+    {:noreply,
+     socket
+     |> assign(:location_id, String.to_integer(location_id))
+     |> load_context()}
+  end
+
+  def handle_event("review", %{"quantity" => quantity} = params, socket) do
+    with %Decimal{} = q <- to_decimal(quantity),
+         :gt <- Decimal.compare(q, 0) do
+      {:noreply, assign(socket, :review, build_review(socket, q, params))}
+    else
+      _invalid -> {:noreply, put_flash(socket, :error, gettext("Type how many kits."))}
+    end
+  end
+
+  def handle_event("review_again", _params, socket) do
+    {:noreply, assign(socket, :review, nil)}
+  end
+
+  def handle_event("assemble", params, socket) do
+    case socket.assigns.review do
+      %{quantity: quantity} -> assemble(socket, quantity, params, create: false)
+      nil -> {:noreply, socket}
+    end
+  end
+
+  # The yes. The code and the assembly riding on it were held rather than
+  # written, so this replays the same submission with permission to create.
+  def handle_event("confirm_new_box", _params, socket) do
+    %{quantity: quantity, params: params} = socket.assigns.new_box
+
+    socket
+    |> assign(:new_box, nil)
+    |> assemble(quantity, params, create: true)
+  end
+
+  def handle_event("cancel_new_box", _params, socket) do
+    {:noreply, assign(socket, :new_box, nil)}
+  end
+
+  defp do_add_item(params, socket) do
     name = String.trim(params["product_name"] || "")
 
     case Enum.find(socket.assigns.products, &(&1.name == name)) do
@@ -454,61 +563,11 @@ defmodule EstoqueOSWeb.KitLive.Show do
     end
   end
 
-  def handle_event("update_item", %{"id" => id, "quantity" => quantity}, socket) do
-    item = Kits.get_kit_item!(String.to_integer(id))
-
-    case Kits.update_kit_item(item, %{quantity: to_decimal(quantity)}) do
-      {:ok, _item} -> {:noreply, reload(socket, gettext("Component updated."))}
-      {:error, changeset} -> {:noreply, assign(socket, :error, first_error(changeset))}
-    end
-  end
-
-  def handle_event("remove_item", %{"item_id" => id}, socket) do
-    {:ok, item} = id |> String.to_integer() |> Kits.get_kit_item!() |> Kits.remove_kit_item()
-
-    {:noreply,
-     reload(socket, gettext("%{item} removed from the recipe.", item: item.description))}
-  end
-
-  def handle_event("location", %{"location_id" => location_id}, socket) do
-    {:noreply,
-     socket
-     |> assign(:location_id, String.to_integer(location_id))
-     |> load_context()}
-  end
-
-  def handle_event("review", %{"quantity" => quantity} = params, socket) do
-    with %Decimal{} = q <- to_decimal(quantity),
-         :gt <- Decimal.compare(q, 0) do
-      {:noreply, assign(socket, :review, build_review(socket, q, params))}
-    else
-      _invalid -> {:noreply, put_flash(socket, :error, gettext("Type how many kits."))}
-    end
-  end
-
-  def handle_event("review_again", _params, socket) do
-    {:noreply, assign(socket, :review, nil)}
-  end
-
-  def handle_event("assemble", params, socket) do
-    case socket.assigns.review do
-      %{quantity: quantity} -> assemble(socket, quantity, params, create: false)
-      nil -> {:noreply, socket}
-    end
-  end
-
-  # The yes. The code and the assembly riding on it were held rather than
-  # written, so this replays the same submission with permission to create.
-  def handle_event("confirm_new_box", _params, socket) do
-    %{quantity: quantity, params: params} = socket.assigns.new_box
-
-    socket
-    |> assign(:new_box, nil)
-    |> assemble(quantity, params, create: true)
-  end
-
-  def handle_event("cancel_new_box", _params, socket) do
-    {:noreply, assign(socket, :new_box, nil)}
+  # Only the item belonging to the kit loaded in this socket, never another
+  # kit's — the id/item_id in the event params comes straight from the client.
+  defp kit_item(socket, id) do
+    item_id = String.to_integer(id)
+    Enum.find(socket.assigns.kit.items, &(&1.id == item_id))
   end
 
   defp build(socket, quantity, box, params) do
