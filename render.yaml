@@ -74,17 +74,25 @@ services:
           name: estoque-os-db
           property: connectionString
 
-      # The connection is encrypted; the certificate is not checked. That is a
-      # deliberate, narrow trade for the private network between this service
-      # and its database, and the app shouts about it on every boot so it
-      # cannot quietly become the permanent state.
+      # Encrypted, and the certificate chain is verified against the public
+      # trust store. The hostname is not — see `config/runtime.exs`, which
+      # spells out why: Render's Postgres certificate is a real Let's Encrypt
+      # certificate for `*.virginia-postgres.render.com`, and the connection
+      # string wired in above is the *internal* one, whose bare `dpg-…-a`
+      # hostname the certificate says nothing about.
       #
-      # To do it properly: download the database's CA certificate from the
-      # Render dashboard, add it under Environment → Secret Files as
-      # `render-postgres-ca.crt`, then delete this variable and set
-      # DATABASE_CA_CERT_FILE=/etc/secrets/render-postgres-ca.crt instead.
+      # The comment here used to say "download the database's CA certificate
+      # from the Render dashboard". There is no such download, and there is
+      # nothing to download: the CA is Let's Encrypt, already in the image's
+      # ca-certificates. `ca` is the strongest setting that works over the
+      # private network, and it is a real step up from the `none` this used to
+      # be — a forged certificate now has to be signed by a public authority.
+      #
+      # Going all the way to verify-full would mean pointing DATABASE_URL at the
+      # external connection string, which sends every query out over the public
+      # internet. Render recommends the internal URL and so do we.
       - key: DATABASE_SSL_VERIFY
-        value: none
+        value: ca
 
       # The free plan gives no shell, so there is no moment at which a person
       # could run the seeds on the server. This lets the first boot do it —

@@ -54,6 +54,20 @@ RUN apt-get update -y \
   && apt-get install -y --no-install-recommends libstdc++6 openssl libncurses6 ca-certificates \
   && apt-get clean && rm -rf /var/lib/apt/lists/*
 
+# Deliberately NOT installing libsctp1. Every boot logs two lines that read
+# like a fault and are not one:
+#
+#     =ESOCK WARNING MSG==== ...
+#     [UNIX-ESSIO] Failed open sctp dynamic library: libsctp.so.1
+#
+# That is OTP's socket layer probing for SCTP support at startup. Nothing here
+# speaks SCTP, the probe failing costs nothing, and there is no runtime flag to
+# skip it. `apt-get install libsctp1` silences it — at the price of shipping a
+# protocol stack the application never uses, to make a log prettier. If the
+# noise ever becomes the thing standing between somebody and a real error,
+# install it; until then this comment is the fix, so the next person reading a
+# boot log does not spend an afternoon on it.
+
 # C.UTF-8 is built into glibc, so this needs no `locales` package and no
 # locale-gen. The BEAM only needs *a* UTF-8 locale; the interface language is
 # Gettext's business, not the operating system's.
