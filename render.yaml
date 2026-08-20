@@ -74,25 +74,38 @@ services:
           name: estoque-os-db
           property: connectionString
 
-      # Encrypted, and the certificate chain is verified against the public
-      # trust store. The hostname is not — see `config/runtime.exs`, which
-      # spells out why: Render's Postgres certificate is a real Let's Encrypt
-      # certificate for `*.virginia-postgres.render.com`, and the connection
-      # string wired in above is the *internal* one, whose bare `dpg-…-a`
-      # hostname the certificate says nothing about.
+      # Encrypted, and nothing about the certificate is checked. Not the
+      # setting anybody wants, and it is here because `ca` was tried and the
+      # deploy died on it — twice, on 2026-08-20:
       #
-      # The comment here used to say "download the database's CA certificate
-      # from the Render dashboard". There is no such download, and there is
-      # nothing to download: the CA is Let's Encrypt, already in the image's
-      # ca-certificates. `ca` is the strongest setting that works over the
-      # private network, and it is a real step up from the `none` this used to
-      # be — a forged certificate now has to be signed by a public authority.
+      #   Postgrex.Protocol failed to connect: ssl connect: TLS client:
+      #   ... CLIENT ALERT: Fatal - Bad Certificate — selfsigned_peer
+      #   [error] Could not create schema migrations table
       #
-      # Going all the way to verify-full would mean pointing DATABASE_URL at the
-      # external connection string, which sends every query out over the public
-      # internet. Render recommends the internal URL and so do we.
+      # `selfsigned_peer` is the whole answer. Render's Postgres answers the
+      # *external* endpoint through a proxy holding a real Let's Encrypt
+      # certificate — measured the same day:
+      #
+      #   openssl s_client -starttls postgres -connect \
+      #     dpg-….virginia-postgres.render.com:5432
+      #   → issuer Let's Encrypt YR2, SAN *.virginia-postgres.render.com,
+      #     -verify_hostname → Verify return code: 0 (ok)
+      #
+      # but over the private network, which is what `connectionString` above
+      # hands us, the database presents its own self-signed certificate. No
+      # public CA signed it, so `verify_peer` cannot pass however the hostname
+      # check is relaxed — verify-ca is not a weaker verify-full here, it is
+      # equally impossible. Render publishes no CA bundle for it.
+      #
+      # So the two honest configurations are: this one — private network,
+      # encrypted, unverified — or DATABASE_URL set by hand to the *external*
+      # connection string with this variable removed, which verifies the chain
+      # and the hostname and sends every query out over the public internet.
+      # The private network is the one Render recommends, and the one this
+      # picks. `config/runtime.exs` shouts about it on every boot, which is
+      # correct: it should stay uncomfortable.
       - key: DATABASE_SSL_VERIFY
-        value: ca
+        value: none
 
       # The free plan gives no shell, so there is no moment at which a person
       # could run the seeds on the server. This lets the first boot do it —

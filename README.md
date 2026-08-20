@@ -144,7 +144,7 @@ docker run --rm --network host \
 | `ORGANIZATION_DOCUMENT` | placeholder | printed on donation certificates |
 | `ORGANIZATION_ADDRESS` / `_CONTACT` / `_NAME` | placeholder | same |
 | `DATABASE_CA_CERT_FILE` | — | when the database sits behind a private CA |
-| `DATABASE_SSL_VERIFY` | `peer` | `none` to skip verification. Shouts on boot |
+| `DATABASE_SSL_VERIFY` | `peer` | `ca` skips only the hostname check, `none` skips both and shouts on boot |
 | `DATABASE_SSL` | `true` | `false` only to smoke-test the image against a local Postgres |
 
 **Email is off by default, and production leaves it off.** Accounts are handed
