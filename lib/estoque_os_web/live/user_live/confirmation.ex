@@ -71,7 +71,9 @@ defmodule EstoqueOSWeb.UserLive.Confirmation do
         </.form>
 
         <p :if={!@user.confirmed_at} class="alert alert-outline mt-8">
-          {gettext("Tip: If you prefer passwords, you can enable them in the user settings.")}
+          {gettext(
+            "Tip: If you prefer passwords, you can set one from the \"forgot your password\" page at any time."
+          )}
         </p>
       </div>
     </Layouts.app>

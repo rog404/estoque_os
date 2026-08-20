@@ -318,6 +318,22 @@ defmodule EstoqueOSWeb.UserAuth do
     end
   end
 
+  @doc false
+  # A temporary password (admin-created account) or a password just reset
+  # blocks everything else until it's replaced. Deliberately its own clause,
+  # appended to every protected live_session's on_mount list, rather than a
+  # per-view exception folded into `:require_authenticated` — the router stays
+  # the one place that says which routes skip this, and
+  # `UserLive.ResetPassword, :required` simply lives in a live_session that
+  # never lists this clause.
+  def on_mount(:require_password_not_pending, _params, _session, socket) do
+    if socket.assigns.current_scope.user.must_reset_password do
+      {:halt, Phoenix.LiveView.redirect(socket, to: ~p"/users/reset-password/required")}
+    else
+      {:cont, socket}
+    end
+  end
+
   def on_mount(:require_sudo_mode, _params, session, socket) do
     socket = mount_current_scope(socket, session)
 
@@ -461,6 +477,23 @@ defmodule EstoqueOSWeb.UserAuth do
   """
   def require_money(conn, _opts) do
     if sees_money?(conn.assigns[:current_scope]), do: conn, else: refuse(conn)
+  end
+
+  @doc """
+  Plug equivalent of the `:require_password_not_pending` on_mount clause, for
+  controller routes (`on_mount` never runs for those). Not piped through the
+  reset-password routes themselves — a temporary password must still be able
+  to reach the flow that replaces it.
+  """
+  def require_password_not_pending(conn, _opts) do
+    if conn.assigns.current_scope.user.must_reset_password do
+      conn
+      |> put_flash(:error, gettext("You must set a new password before continuing."))
+      |> redirect(to: ~p"/users/reset-password/required")
+      |> halt()
+    else
+      conn
+    end
   end
 
   defp refuse(conn) do

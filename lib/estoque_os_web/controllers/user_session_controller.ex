@@ -83,17 +83,57 @@ defmodule EstoqueOSWeb.UserSessionController do
     )
   end
 
-  def update_password(conn, %{"user" => user_params} = params) do
+  # Completes the forced first-login/first-reset password change — the only
+  # session state that reaches this action is `must_reset_password: true`
+  # (the "required" page is the only thing that posts here). A stale or
+  # double-submitted form after the flag already cleared is a real path here
+  # (unlike the old sudo-mode gate this replaces), so it's refused with a
+  # flash and a redirect, never a crash.
+  def update_password(conn, %{"user" => user_params}) do
     user = conn.assigns.current_scope.user
-    true = Accounts.sudo_mode?(user)
-    {:ok, {_user, expired_tokens}} = Accounts.update_user_password(user, user_params)
 
-    # disconnect all existing LiveViews with old sessions
-    UserAuth.disconnect_sessions(expired_tokens)
+    if user.must_reset_password do
+      case Accounts.update_user_password(user, user_params) do
+        {:ok, {updated_user, expired_tokens}} ->
+          UserAuth.disconnect_sessions(expired_tokens)
 
-    conn
-    |> put_session(:user_return_to, ~p"/users/settings")
-    |> create(params, gettext("Password updated successfully!"))
+          conn
+          |> put_flash(:info, gettext("Password updated successfully!"))
+          |> UserAuth.log_in_user(updated_user, user_params)
+
+        {:error, %Ecto.Changeset{}} ->
+          conn
+          |> put_flash(:error, gettext("That password could not be saved."))
+          |> redirect(to: ~p"/users/reset-password/required")
+      end
+    else
+      conn
+      |> put_flash(:error, gettext("You don't have permission to do that."))
+      |> redirect(to: ~p"/")
+    end
+  end
+
+  # Consumes a "esqueci minha senha" token: sets the new password and logs
+  # the user in fresh, same shape as the magic-link path above.
+  def create_from_reset_token(conn, %{"token" => token, "user" => user_params}) do
+    case Accounts.reset_user_password_by_token(token, user_params) do
+      {:ok, {user, expired_tokens}} ->
+        UserAuth.disconnect_sessions(expired_tokens)
+
+        conn
+        |> put_flash(:info, gettext("Password updated successfully!"))
+        |> UserAuth.log_in_user(user, user_params)
+
+      {:error, :invalid_token} ->
+        conn
+        |> put_flash(:error, gettext("The link is invalid or it has expired."))
+        |> redirect(to: ~p"/users/log-in")
+
+      {:error, %Ecto.Changeset{}} ->
+        conn
+        |> put_flash(:error, gettext("That password could not be saved."))
+        |> redirect(to: ~p"/users/reset-password/#{token}")
+    end
   end
 
   def delete(conn, _params) do

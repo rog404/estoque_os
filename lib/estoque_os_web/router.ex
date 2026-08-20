@@ -88,7 +88,8 @@ defmodule EstoqueOSWeb.Router do
       on_mount: [
         {EstoqueOSWeb.UserAuth, :require_authenticated},
         {EstoqueOSWeb.UserAuth, {:require_role, ~w(admin manager logistics)}},
-        {EstoqueOSWeb.UserAuth, :current_path}
+        {EstoqueOSWeb.UserAuth, :current_path},
+        {EstoqueOSWeb.UserAuth, :require_password_not_pending}
       ] do
       live "/stock/spreadsheet", StockLive.Spreadsheet, :new
       live "/entry", EntryLive.New, :new
@@ -106,20 +107,27 @@ defmodule EstoqueOSWeb.Router do
       on_mount: [
         {EstoqueOSWeb.UserAuth, :require_authenticated},
         {EstoqueOSWeb.UserAuth, {:require_role, ~w(admin manager)}},
-        {EstoqueOSWeb.UserAuth, :current_path}
+        {EstoqueOSWeb.UserAuth, :current_path},
+        {EstoqueOSWeb.UserAuth, :require_password_not_pending}
       ] do
       live "/invoices/import", InvoiceLive.Import, :new
       live "/issue", IssueLive.Index, :index
     end
 
-    # on_mount never runs for controllers, so these carry their own plug. The
+    # on_mount never runs for controllers, so these carry their own plugs. The
     # export is trimmed rather than refused (see `StockController.export/2`);
     # the certificate declares a value and is refused outright.
+    pipe_through [:require_password_not_pending]
     get "/stock/export.xlsx", StockController, :export
   end
 
   scope "/", EstoqueOSWeb do
-    pipe_through [:browser, :require_authenticated_user, :require_money]
+    pipe_through [
+      :browser,
+      :require_authenticated_user,
+      :require_money,
+      :require_password_not_pending
+    ]
 
     get "/issues/:id/termo/:kind", CertificateController, :certificate
   end
@@ -145,7 +153,8 @@ defmodule EstoqueOSWeb.Router do
         {EstoqueOSWeb.UserAuth, :require_authenticated},
         {EstoqueOSWeb.UserAuth, {:require_role, ~w(admin manager auditor)}},
         {EstoqueOSWeb.UserAuth, :current_path},
-        {EstoqueOSWeb.UserAuth, :guard_writes}
+        {EstoqueOSWeb.UserAuth, :guard_writes},
+        {EstoqueOSWeb.UserAuth, :require_password_not_pending}
       ] do
       live "/invoices", InvoiceLive.Index, :index
       live "/invoices/:id", InvoiceLive.Show, :show
@@ -160,7 +169,8 @@ defmodule EstoqueOSWeb.Router do
       on_mount: [
         {EstoqueOSWeb.UserAuth, :require_authenticated},
         {EstoqueOSWeb.UserAuth, :current_path},
-        {EstoqueOSWeb.UserAuth, :guard_writes}
+        {EstoqueOSWeb.UserAuth, :guard_writes},
+        {EstoqueOSWeb.UserAuth, :require_password_not_pending}
       ] do
       live "/", HomeLive.Index, :index
       live "/stock", StockLive.Index, :index
@@ -180,7 +190,43 @@ defmodule EstoqueOSWeb.Router do
       live "/users/settings/confirm-email/:token", UserLive.Settings, :confirm_email
     end
 
+    # Deliberately NOT piped through `:require_password_not_pending` — this is
+    # exactly the route the forced "required" page posts to, so it must stay
+    # reachable while the flag is still set.
     post "/users/update-password", UserSessionController, :update_password
+  end
+
+  # Only a real admin (the effective, possibly-view-as-adjusted role) manages
+  # who else gets an account.
+  scope "/", EstoqueOSWeb do
+    pipe_through [:browser, :require_authenticated_user, :require_password_not_pending]
+
+    live_session :admin,
+      on_mount: [
+        {EstoqueOSWeb.UserAuth, :require_authenticated},
+        {EstoqueOSWeb.UserAuth, {:require_role, ~w(admin)}},
+        {EstoqueOSWeb.UserAuth, :current_path},
+        {EstoqueOSWeb.UserAuth, :require_password_not_pending}
+      ] do
+      live "/admin/users", UserLive.Index, :index
+    end
+  end
+
+  # The forced first-login/first-reset password change. Its own live_session,
+  # authenticated but deliberately NOT listing `:require_password_not_pending`
+  # — this is the one screen that must stay open precisely while the flag is
+  # set, which is why the gate is a router-level omission rather than a
+  # per-view exception buried in the shared hook.
+  scope "/", EstoqueOSWeb do
+    pipe_through [:browser, :require_authenticated_user]
+
+    live_session :reset_password_required,
+      on_mount: [
+        {EstoqueOSWeb.UserAuth, :require_authenticated},
+        {EstoqueOSWeb.UserAuth, :current_path}
+      ] do
+      live "/users/reset-password/required", UserLive.ResetPassword, :required
+    end
   end
 
   scope "/", EstoqueOSWeb do
@@ -190,9 +236,12 @@ defmodule EstoqueOSWeb.Router do
       on_mount: [{EstoqueOSWeb.UserAuth, :mount_current_scope}] do
       live "/users/log-in", UserLive.Login, :new
       live "/users/log-in/:token", UserLive.Confirmation, :new
+      live "/users/reset-password", UserLive.ResetPassword, :new
+      live "/users/reset-password/:token", UserLive.ResetPassword, :edit
     end
 
     post "/users/log-in", UserSessionController, :create
+    post "/users/reset-password/:token", UserSessionController, :create_from_reset_token
     delete "/users/log-out", UserSessionController, :delete
   end
 end

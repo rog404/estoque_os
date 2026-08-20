@@ -131,10 +131,10 @@ defmodule EstoqueOSWeb.ViewerWriteGuardTest do
       refute locations =~ ~s(phx-click="edit")
     end
 
-    test "still changes its own password", %{conn: conn} do
+    test "still changes its own email", %{conn: conn} do
       {:ok, view, _html} = live(conn, ~p"/users/settings")
 
-      refute render_hook(view, "validate_password", %{"user" => %{"password" => "x"}}) =~
+      refute render_hook(view, "validate_email", %{"user" => %{"email" => "x@example.com"}}) =~
                "permissão"
     end
   end

@@ -15,7 +15,6 @@ defmodule Mix.Tasks.Estoque.User do
 
   alias EstoqueOS.Accounts
   alias EstoqueOS.Accounts.User
-  alias EstoqueOS.Repo
 
   @requirements ["app.start"]
 
@@ -42,34 +41,44 @@ defmodule Mix.Tasks.Estoque.User do
       Mix.raise("unknown role #{role}; expected one of #{Enum.join(User.roles(), ", ")}")
     end
 
-    user = Accounts.get_user_by_email(email) || create(email, opts)
+    user =
+      case Accounts.get_user_by_email(email) do
+        nil ->
+          create(email, role, opts)
 
-    {:ok, user} = Accounts.update_user_role(user, role)
+        user ->
+          {:ok, user} = Accounts.update_user_role(user, role)
+          user
+      end
 
+    report(user)
+  end
+
+  # New account: password, confirmation, and role commit together, and the
+  # account is force-flagged `must_reset_password: true` — the same rule the
+  # web admin screen creates users under. The CLI is just another
+  # admin-provisioning entry point; it doesn't get to skip the policy.
+  defp create(email, role, opts) do
+    create_opts = if opts[:password], do: [password: opts[:password]], else: []
+
+    case Accounts.create_user_with_temporary_password(email, role, create_opts) do
+      {:ok, {user, password}} ->
+        unless opts[:password] do
+          Mix.shell().info("generated password: #{password}")
+        end
+
+        user
+
+      {:error, changeset} ->
+        Mix.raise("could not create #{email}: #{inspect(changeset.errors)}")
+    end
+  end
+
+  defp report(user) do
     Mix.shell().info("""
     #{user.email}
       role:      #{user.role}
       confirmed: #{user.confirmed_at || "no"}
     """)
   end
-
-  defp create(email, opts) do
-    password = opts[:password] || random_password()
-
-    {:ok, user} = Accounts.register_user(%{email: email})
-
-    user =
-      user
-      |> User.password_changeset(%{password: password, password_confirmation: password})
-      |> Ecto.Changeset.put_change(:confirmed_at, DateTime.utc_now(:second))
-      |> Repo.update!()
-
-    unless opts[:password] do
-      Mix.shell().info("generated password: #{password}")
-    end
-
-    user
-  end
-
-  defp random_password, do: 18 |> :crypto.strong_rand_bytes() |> Base.url_encode64()
 end

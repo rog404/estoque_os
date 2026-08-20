@@ -13,7 +13,16 @@ defmodule EstoqueOSWeb.UserLive.SettingsTest do
         |> live(~p"/users/settings")
 
       assert html =~ "Alterar e-mail"
-      assert html =~ "Salvar senha"
+      assert html =~ "esqueceu sua senha"
+    end
+
+    test "no longer offers a free-form password change", %{conn: conn} do
+      {:ok, _lv, html} =
+        conn
+        |> log_in_user(user_fixture())
+        |> live(~p"/users/settings")
+
+      refute html =~ ~s(id="password_form")
     end
 
     test "redirects if user is not logged in", %{conn: conn} do
@@ -86,77 +95,6 @@ defmodule EstoqueOSWeb.UserLive.SettingsTest do
 
       assert result =~ "Alterar e-mail"
       assert result =~ "não foi alterado"
-    end
-  end
-
-  describe "update password form" do
-    setup %{conn: conn} do
-      user = user_fixture()
-      %{conn: log_in_user(conn, user), user: user}
-    end
-
-    test "updates the user password", %{conn: conn, user: user} do
-      new_password = valid_user_password()
-
-      {:ok, lv, _html} = live(conn, ~p"/users/settings")
-
-      form =
-        form(lv, "#password_form", %{
-          "user" => %{
-            "email" => user.email,
-            "password" => new_password,
-            "password_confirmation" => new_password
-          }
-        })
-
-      render_submit(form)
-
-      new_password_conn = follow_trigger_action(form, conn)
-
-      assert redirected_to(new_password_conn) == ~p"/users/settings"
-
-      assert get_session(new_password_conn, :user_token) != get_session(conn, :user_token)
-
-      assert Phoenix.Flash.get(new_password_conn.assigns.flash, :info) =~
-               "Senha atualizada com sucesso"
-
-      assert Accounts.get_user_by_email_and_password(user.email, new_password)
-    end
-
-    test "renders errors with invalid data (phx-change)", %{conn: conn} do
-      {:ok, lv, _html} = live(conn, ~p"/users/settings")
-
-      result =
-        lv
-        |> element("#password_form")
-        |> render_change(%{
-          "user" => %{
-            "password" => "too short",
-            "password_confirmation" => "does not match"
-          }
-        })
-
-      assert result =~ "Salvar senha"
-      assert result =~ "deve ter no mínimo 12 caracteres"
-      assert result =~ "não coincide com a senha"
-    end
-
-    test "renders errors with invalid data (phx-submit)", %{conn: conn} do
-      {:ok, lv, _html} = live(conn, ~p"/users/settings")
-
-      result =
-        lv
-        |> form("#password_form", %{
-          "user" => %{
-            "password" => "too short",
-            "password_confirmation" => "does not match"
-          }
-        })
-        |> render_submit()
-
-      assert result =~ "Salvar senha"
-      assert result =~ "deve ter no mínimo 12 caracteres"
-      assert result =~ "não coincide com a senha"
     end
   end
 

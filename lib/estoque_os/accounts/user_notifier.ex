@@ -83,6 +83,34 @@ defmodule EstoqueOS.Accounts.UserNotifier do
     )
   end
 
+  @doc """
+  Deliver instructions to set a new password.
+  """
+  def deliver_reset_password_instructions(user, url) do
+    deliver(
+      user.email,
+      gettext("Reset password instructions"),
+      gettext(
+        """
+
+        ==============================
+
+        Hi %{email},
+
+        You can set a new password by visiting the URL below:
+
+        %{url}
+
+        If you didn't request this change, please ignore this.
+
+        ==============================
+        """,
+        email: user.email,
+        url: url
+      )
+    )
+  end
+
   defp deliver_confirmation_instructions(user, url) do
     deliver(
       user.email,

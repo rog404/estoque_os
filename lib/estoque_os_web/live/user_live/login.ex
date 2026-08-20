@@ -88,6 +88,12 @@ defmodule EstoqueOSWeb.UserLive.Login do
             {gettext("Log in only this time")}
           </.button>
         </.form>
+
+        <div class="text-center">
+          <.link navigate={~p"/users/reset-password"} class="link link-hover text-sm">
+            {gettext("Forgot your password?")}
+          </.link>
+        </div>
       </div>
     </Layouts.app>
     """

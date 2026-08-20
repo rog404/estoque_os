@@ -53,6 +53,13 @@ defmodule EstoqueOSWeb.ConnCase do
     register_and_log_in_as(context, "logistics")
   end
 
+  @doc """
+  Signs in an admin: everything, plus who else gets an account.
+  """
+  def register_and_log_in_admin(%{conn: _conn} = context) do
+    register_and_log_in_as(context, "admin")
+  end
+
   @doc "Signs in a user with the given role."
   def register_and_log_in_as(%{conn: _conn} = context, role) do
     context = register_and_log_in_user(context)

@@ -7,7 +7,7 @@ defmodule EstoqueOSWeb.UserLive.Settings do
   Your own account is yours to change whatever your role is. These write, and
   are meant to.
   """
-  def viewer_events, do: ~w(validate_email update_email validate_password update_password)
+  def viewer_events, do: ~w(validate_email update_email)
 
   on_mount {EstoqueOSWeb.UserAuth, :require_sudo_mode}
 
@@ -20,7 +20,7 @@ defmodule EstoqueOSWeb.UserLive.Settings do
       <div class="text-center">
         <.header>
           {gettext("Account Settings")}
-          <:subtitle>{gettext("Manage your account email address and password settings")}</:subtitle>
+          <:subtitle>{gettext("Manage your account email address")}</:subtitle>
         </.header>
       </div>
 
@@ -38,43 +38,13 @@ defmodule EstoqueOSWeb.UserLive.Settings do
         </.button>
       </.form>
 
-      <div class="divider" />
-
-      <.form
-        for={@password_form}
-        id="password_form"
-        action={~p"/users/update-password"}
-        method="post"
-        phx-change="validate_password"
-        phx-submit="update_password"
-        phx-trigger-action={@trigger_submit}
-      >
-        <input
-          name={@password_form[:email].name}
-          type="hidden"
-          id="hidden_user_email"
-          spellcheck="false"
-          value={@current_email}
-        />
-        <.input
-          field={@password_form[:password]}
-          type="password"
-          label={gettext("New password")}
-          autocomplete="new-password"
-          spellcheck="false"
-          required
-        />
-        <.input
-          field={@password_form[:password_confirmation]}
-          type="password"
-          label={gettext("Confirm new password")}
-          autocomplete="new-password"
-          spellcheck="false"
-        />
-        <.button variant="primary" phx-disable-with={gettext("Saving...")}>
-          {gettext("Save Password")}
-        </.button>
-      </.form>
+      <p class="text-sm opacity-70 mt-4">
+        {gettext("Want to change your password?")}
+        <.link navigate={~p"/users/reset-password"} class="link link-hover">
+          {gettext("Use \"forgot your password\"")}
+        </.link>
+        {gettext("— it works even when you remember the current one.")}
+      </p>
     </Layouts.app>
     """
   end
@@ -96,14 +66,11 @@ defmodule EstoqueOSWeb.UserLive.Settings do
   def mount(_params, _session, socket) do
     user = socket.assigns.current_scope.user
     email_changeset = Accounts.change_user_email(user, %{}, validate_unique: false)
-    password_changeset = Accounts.change_user_password(user, %{}, hash_password: false)
 
     socket =
       socket
       |> assign(:current_email, user.email)
       |> assign(:email_form, to_form(email_changeset))
-      |> assign(:password_form, to_form(password_changeset))
-      |> assign(:trigger_submit, false)
 
     {:ok, socket}
   end
@@ -141,32 +108,6 @@ defmodule EstoqueOSWeb.UserLive.Settings do
 
       changeset ->
         {:noreply, assign(socket, :email_form, to_form(changeset, action: :insert))}
-    end
-  end
-
-  def handle_event("validate_password", params, socket) do
-    %{"user" => user_params} = params
-
-    password_form =
-      socket.assigns.current_scope.user
-      |> Accounts.change_user_password(user_params, hash_password: false)
-      |> Map.put(:action, :validate)
-      |> to_form()
-
-    {:noreply, assign(socket, password_form: password_form)}
-  end
-
-  def handle_event("update_password", params, socket) do
-    %{"user" => user_params} = params
-    user = socket.assigns.current_scope.user
-    true = Accounts.sudo_mode?(user)
-
-    case Accounts.change_user_password(user, user_params) do
-      %{valid?: true} = changeset ->
-        {:noreply, assign(socket, trigger_submit: true, password_form: to_form(changeset))}
-
-      changeset ->
-        {:noreply, assign(socket, password_form: to_form(changeset, action: :insert))}
     end
   end
 end

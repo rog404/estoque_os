@@ -124,6 +124,9 @@ defmodule EstoqueOSWeb.Layouts do
               <ul class="menu w-full">
                 <li class="menu-title truncate">{@current_scope.user.email}</li>
                 <li><.link navigate={~p"/users/settings"}>{gettext("Settings")}</.link></li>
+                <li :if={admin?(@current_scope)}>
+                  <.link navigate={~p"/admin/users"}>{gettext("Manage users")}</.link>
+                </li>
               </ul>
 
               <div class="px-4 pb-1">

@@ -50,6 +50,7 @@ defmodule EstoqueOS.Accounts.User do
     field :hashed_password, :string, redact: true
     field :confirmed_at, :utc_datetime
     field :authenticated_at, :utc_datetime, virtual: true
+    field :must_reset_password, :boolean, default: false
 
     timestamps(type: :utc_datetime)
   end
@@ -143,6 +144,12 @@ defmodule EstoqueOS.Accounts.User do
       # would keep the database transaction open longer and hurt performance.
       |> put_change(:hashed_password, Bcrypt.hash_pwd_salt(password))
       |> delete_change(:password)
+      # A password set anywhere — the forced first-login change, or "esqueci
+      # minha senha" — is exactly the event that clears the requirement.
+      # Placed in this branch, not in `password_changeset/3` itself, so a live
+      # "validate as you type" call (`hash_password: false`) or a failed
+      # submission never touches the flag.
+      |> put_change(:must_reset_password, false)
     else
       changeset
     end

@@ -80,6 +80,47 @@ defmodule EstoqueOS.Accounts do
     |> Repo.insert()
   end
 
+  @doc """
+  Provisions an account the way this app actually gets new users: an admin
+  vouches for the email and the role, and hands the person a temporary
+  password to log in with. There is no self-service sign-up to fall back on.
+
+  The account is created pre-confirmed (the admin already vouched for the
+  address) and flagged `must_reset_password: true`, so the very first thing
+  the new session can do — anywhere in the app — is set a real password; see
+  `EstoqueOSWeb.UserAuth`'s `:require_password_not_pending` gate.
+
+  Insert, password/confirm, and role all commit or roll back together, so a
+  crash mid-chain (or two admins racing on the same email) never leaves a
+  half-provisioned account with an email but no password.
+
+  Pass `:password` in `opts` to set a specific one (tests, `mix estoque.user
+  --password`); otherwise one is generated and returned alongside the user so
+  the caller can show it exactly once.
+  """
+  def create_user_with_temporary_password(email, role, opts \\ []) do
+    password = Keyword.get_lazy(opts, :password, &random_password/0)
+
+    Ecto.Multi.new()
+    |> Ecto.Multi.insert(:user, User.email_changeset(%User{}, %{email: email}))
+    |> Ecto.Multi.update(:with_password, fn %{user: user} ->
+      user
+      |> User.password_changeset(%{password: password, password_confirmation: password})
+      |> Ecto.Changeset.put_change(:confirmed_at, DateTime.utc_now(:second))
+      |> Ecto.Changeset.put_change(:must_reset_password, true)
+    end)
+    |> Ecto.Multi.update(:with_role, fn %{with_password: user} ->
+      User.role_changeset(user, %{role: role})
+    end)
+    |> Repo.transaction()
+    |> case do
+      {:ok, %{with_role: user}} -> {:ok, {user, password}}
+      {:error, _step, changeset, _changes} -> {:error, changeset}
+    end
+  end
+
+  defp random_password, do: 18 |> :crypto.strong_rand_bytes() |> Base.url_encode64()
+
   ## Settings
 
   @doc """
@@ -177,6 +218,13 @@ defmodule EstoqueOS.Accounts do
     user
     |> User.role_changeset(%{role: role})
     |> Repo.update()
+  end
+
+  @doc """
+  Every account, for the admin screen that provisions them.
+  """
+  def list_users do
+    Repo.all(from u in User, order_by: [asc: u.email])
   end
 
   ## Session
@@ -283,6 +331,55 @@ defmodule EstoqueOS.Accounts do
     {encoded_token, user_token} = UserToken.build_email_token(user, "login")
     Repo.insert!(user_token)
     UserNotifier.deliver_login_instructions(user, magic_link_url_fun.(encoded_token))
+  end
+
+  @doc """
+  Delivers password reset instructions to the given user.
+
+  This is the only path left for an existing user to change their password —
+  see `reset_user_password_by_token/2`.
+  """
+  def deliver_reset_password_instructions(%User{} = user, reset_password_url_fun)
+      when is_function(reset_password_url_fun, 1) do
+    {encoded_token, user_token} = UserToken.build_email_token(user, "reset_password")
+    Repo.insert!(user_token)
+
+    UserNotifier.deliver_reset_password_instructions(
+      user,
+      reset_password_url_fun.(encoded_token)
+    )
+  end
+
+  @doc """
+  Gets the user with the given password reset token, or `nil`.
+  """
+  def get_user_by_reset_password_token(token) do
+    with {:ok, query} <- UserToken.verify_reset_password_token_query(token),
+         {user, _token} <- Repo.one(query) do
+      user
+    else
+      _ -> nil
+    end
+  end
+
+  @doc """
+  Consumes a password reset token and sets the new password in one step.
+
+  Re-verifies the token against the database at submission time — not a user
+  struct loaded when the page first rendered — so a token already spent by
+  one tab is refused by another, even if that tab was rendered before the
+  race. Returns `{:error, :invalid_token}` when the token is missing, already
+  used, or expired; otherwise the same shape as `update_user_password/2`.
+  """
+  def reset_user_password_by_token(token, attrs) do
+    Repo.transact(fn ->
+      with {:ok, query} <- UserToken.verify_reset_password_token_query(token),
+           {user, _token} <- Repo.one(query) do
+        update_user_password(user, attrs)
+      else
+        _ -> {:error, :invalid_token}
+      end
+    end)
   end
 
   @doc """
