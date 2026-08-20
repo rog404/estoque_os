@@ -201,6 +201,11 @@ authenticated, so a PR has a reader and a place to live.
   visible** — run the app (`/run-app`), screenshot the screens the PR changes,
   and embed them in the body. A UI change described in prose is a UI change
   nobody reviewed.
+  - `gh` cannot attach an image the way the web UI can, so the screenshots live
+    on the orphan branch **`pr-shots`** (`shots/*.png`) and the body links
+    `https://raw.githubusercontent.com/rog404/estoque_os/pr-shots/shots/NAME.png`.
+    Build it from a throwaway worktree (`git worktree add --detach`, `git
+    checkout --orphan pr-shots`) so `main` never carries a PNG.
 - **Never add a `Co-Authored-By` trailer.** The commits are his.
 - Changelog: `git_changelog(from_tag="v0.1.0")` → generates grouped changelog
 
