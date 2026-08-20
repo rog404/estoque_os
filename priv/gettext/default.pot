@@ -167,7 +167,7 @@ msgstr ""
 msgid "Log out"
 msgstr ""
 
-#: lib/estoque_os_web/controllers/user_session_controller.ex:141
+#: lib/estoque_os_web/controllers/user_session_controller.ex:148
 #, elixir-autogen, elixir-format
 msgid "Logged out successfully."
 msgstr ""
@@ -196,8 +196,8 @@ msgstr ""
 msgid "Password"
 msgstr ""
 
-#: lib/estoque_os_web/controllers/user_session_controller.ex:101
-#: lib/estoque_os_web/controllers/user_session_controller.ex:124
+#: lib/estoque_os_web/controllers/user_session_controller.ex:106
+#: lib/estoque_os_web/controllers/user_session_controller.ex:131
 #, elixir-autogen, elixir-format
 msgid "Password updated successfully!"
 msgstr ""
@@ -218,7 +218,7 @@ msgid "Settings"
 msgstr ""
 
 #: lib/estoque_os_web/controllers/user_session_controller.ex:28
-#: lib/estoque_os_web/controllers/user_session_controller.ex:129
+#: lib/estoque_os_web/controllers/user_session_controller.ex:136
 #: lib/estoque_os_web/live/user_live/reset_password.ex:160
 #, elixir-autogen, elixir-format
 msgid "The link is invalid or it has expired."
@@ -1580,7 +1580,7 @@ msgstr ""
 msgid "%{count} component(s) not linked to a product yet"
 msgstr ""
 
-#: lib/estoque_os_web/live/kit_live/show.ex:604
+#: lib/estoque_os_web/live/kit_live/show.ex:602
 #, elixir-autogen, elixir-format
 msgid "%{count} component(s) still need a product."
 msgstr ""
@@ -1631,7 +1631,7 @@ msgstr ""
 msgid "No kit registered yet."
 msgstr ""
 
-#: lib/estoque_os_web/live/kit_live/show.ex:592
+#: lib/estoque_os_web/live/kit_live/show.ex:590
 #, elixir-autogen, elixir-format
 msgid "Not enough %{item}: %{missing} missing."
 msgstr ""
@@ -1647,13 +1647,13 @@ msgstr ""
 msgid "Per kit"
 msgstr ""
 
-#: lib/estoque_os_web/live/kit_live/show.ex:613
+#: lib/estoque_os_web/live/kit_live/show.ex:611
 #, elixir-autogen, elixir-format
 msgid "The operation could not be completed."
 msgstr ""
 
-#: lib/estoque_os_web/live/kit_live/show.ex:494
-#: lib/estoque_os_web/live/kit_live/show.ex:609
+#: lib/estoque_os_web/live/kit_live/show.ex:492
+#: lib/estoque_os_web/live/kit_live/show.ex:607
 #, elixir-autogen, elixir-format
 msgid "Type how many kits."
 msgstr ""
@@ -2662,7 +2662,7 @@ msgstr ""
 msgid "This lot is already on record with a different expiry date. Check the goods before recording."
 msgstr ""
 
-#: lib/estoque_os_web/controllers/user_session_controller.ex:111
+#: lib/estoque_os_web/controllers/user_session_controller.ex:118
 #: lib/estoque_os_web/controllers/view_as_controller.ex:35
 #: lib/estoque_os_web/live/product_live/show.ex:324
 #: lib/estoque_os_web/user_auth.ex:284
@@ -2955,7 +2955,7 @@ msgstr ""
 msgid "Too many attempts. Try again in %{count} second(s)."
 msgstr ""
 
-#: lib/estoque_os_web/live/kit_live/show.ex:478
+#: lib/estoque_os_web/live/kit_live/show.ex:476
 #, elixir-autogen, elixir-format
 msgid "%{item} removed from the recipe."
 msgstr ""
@@ -2976,12 +2976,12 @@ msgstr ""
 msgid "Avental EG"
 msgstr ""
 
-#: lib/estoque_os_web/live/kit_live/show.ex:548
+#: lib/estoque_os_web/live/kit_live/show.ex:546
 #, elixir-autogen, elixir-format
 msgid "Component added."
 msgstr ""
 
-#: lib/estoque_os_web/live/kit_live/show.ex:460
+#: lib/estoque_os_web/live/kit_live/show.ex:458
 #, elixir-autogen, elixir-format
 msgid "Component updated."
 msgstr ""
@@ -3517,7 +3517,7 @@ msgstr ""
 
 #: lib/estoque_os_web/live/box_live/show.ex:290
 #: lib/estoque_os_web/live/entry_live/new.ex:525
-#: lib/estoque_os_web/live/kit_live/show.ex:630
+#: lib/estoque_os_web/live/kit_live/show.ex:628
 #: lib/estoque_os_web/live/receipt_live/show.ex:591
 #, elixir-autogen, elixir-format
 msgid "Box %{code} created here."
@@ -3529,7 +3529,7 @@ msgid "Box %{code} is at %{location}. Move it first, or use another."
 msgstr ""
 
 #: lib/estoque_os_web/live/box_live/show.ex:298
-#: lib/estoque_os_web/live/kit_live/show.ex:638
+#: lib/estoque_os_web/live/kit_live/show.ex:636
 #: lib/estoque_os_web/live/receipt_live/show.ex:599
 #, elixir-autogen, elixir-format
 msgid "Box %{code} is somewhere else. Move it first, or use another."
@@ -3547,7 +3547,7 @@ msgstr ""
 
 #: lib/estoque_os_web/live/box_live/show.ex:304
 #: lib/estoque_os_web/live/entry_live/new.ex:540
-#: lib/estoque_os_web/live/kit_live/show.ex:644
+#: lib/estoque_os_web/live/kit_live/show.ex:642
 #: lib/estoque_os_web/live/receipt_live/show.ex:605
 #, elixir-autogen, elixir-format
 msgid "That box code could not be used."
@@ -3793,12 +3793,12 @@ msgstr ""
 msgid "Take these goods out of stock?"
 msgstr ""
 
-#: lib/estoque_os_web/live/kit_live/show.ex:532
+#: lib/estoque_os_web/live/kit_live/show.ex:530
 #, elixir-autogen, elixir-format
 msgid "%{name} is not in the catalog. A kit can only ask for something the stock knows about."
 msgstr ""
 
-#: lib/estoque_os_web/live/kit_live/show.ex:555
+#: lib/estoque_os_web/live/kit_live/show.ex:553
 #, elixir-autogen, elixir-format
 msgid "%{name} is already in this kit. Change how many it needs instead."
 msgstr ""
@@ -4053,7 +4053,7 @@ msgstr ""
 msgid "Needed"
 msgstr ""
 
-#: lib/estoque_os_web/live/kit_live/show.ex:423
+#: lib/estoque_os_web/live/kit_live/show.ex:422
 #, elixir-autogen, elixir-format
 msgid "loose: %{qty}"
 msgstr ""
@@ -4118,7 +4118,7 @@ msgstr ""
 msgid "Nothing here to assemble it from."
 msgstr ""
 
-#: lib/estoque_os_web/live/kit_live/show.ex:623
+#: lib/estoque_os_web/live/kit_live/show.ex:621
 #, elixir-autogen, elixir-format
 msgid "Say which box the kits are assembled into."
 msgstr ""
@@ -4154,15 +4154,15 @@ msgid "loose — %{qty} — expires %{expiry}"
 msgstr ""
 
 #: lib/estoque_os_web/live/kit_live/show.ex:77
-#: lib/estoque_os_web/live/kit_live/show.ex:444
-#: lib/estoque_os_web/live/kit_live/show.ex:451
-#: lib/estoque_os_web/live/kit_live/show.ex:469
+#: lib/estoque_os_web/live/kit_live/show.ex:442
+#: lib/estoque_os_web/live/kit_live/show.ex:449
+#: lib/estoque_os_web/live/kit_live/show.ex:467
 #, elixir-autogen, elixir-format
 msgid "Only a manager changes the kit recipe."
 msgstr ""
 
-#: lib/estoque_os_web/live/kit_live/show.ex:454
-#: lib/estoque_os_web/live/kit_live/show.ex:472
+#: lib/estoque_os_web/live/kit_live/show.ex:452
+#: lib/estoque_os_web/live/kit_live/show.ex:470
 #, elixir-autogen, elixir-format
 msgid "That component is not in this kit."
 msgstr ""
@@ -4271,8 +4271,8 @@ msgstr ""
 msgid "Temporary password for %{email}"
 msgstr ""
 
-#: lib/estoque_os_web/controllers/user_session_controller.ex:106
-#: lib/estoque_os_web/controllers/user_session_controller.ex:134
+#: lib/estoque_os_web/controllers/user_session_controller.ex:113
+#: lib/estoque_os_web/controllers/user_session_controller.ex:141
 #, elixir-autogen, elixir-format
 msgid "That password could not be saved."
 msgstr ""
