@@ -224,12 +224,27 @@ defmodule EstoqueOS.Kits do
       |> Enum.uniq()
       |> Inventory.balances_by_product(location_id)
 
+    # Asked at the same time and for the same reason: a component with expired
+    # stock here blocks assembly outright (see `assemble/3`), so every screen
+    # that shows availability has to be able to say why.
+    expired =
+      resolved
+      |> Enum.map(& &1.product_id)
+      |> Enum.uniq()
+      |> Inventory.expired_balances_by_product(location_id)
+
     lines =
       Enum.map(resolved, fn item ->
         available = Map.get(balances, item.product_id) || Decimal.new(0)
         possible = Decimal.div(available, item.quantity) |> Decimal.round(0, :down)
 
-        %{item: item, available: available, needed_per_kit: item.quantity, possible: possible}
+        %{
+          item: item,
+          available: available,
+          needed_per_kit: item.quantity,
+          possible: possible,
+          expired: Map.get(expired, item.product_id)
+        }
       end)
 
     possible =
@@ -242,7 +257,8 @@ defmodule EstoqueOS.Kits do
       possible: possible,
       lines: lines,
       bottlenecks: Enum.filter(lines, &Decimal.equal?(&1.possible, possible)),
-      unresolved: unresolved_items(kit)
+      unresolved: unresolved_items(kit),
+      expired_components: Enum.filter(lines, & &1.expired)
     }
   end
 
@@ -278,6 +294,7 @@ defmodule EstoqueOS.Kits do
         needed: needed,
         available: line.available,
         short?: Decimal.compare(line.available, needed) == :lt,
+        expired: line.expired,
         boxes: Map.get(breakdown, line.item.id, [])
       }
     end)
@@ -318,16 +335,27 @@ defmodule EstoqueOS.Kits do
     availability = availability(kit, location_id)
     possible = availability.possible
 
-    if Decimal.compare(possible, quantity) == :lt and !opts[:allow_partial] do
-      {:error, {:insufficient_stock, missing_for(availability, quantity)}}
-    else
-      build = Decimal.min(quantity, possible)
+    cond do
+      # Checked before anything else, and with no override. A kit is sealed:
+      # once a component is inside one, nobody opens it to read a date, and
+      # FEFO would reach for the expired lot first precisely because it is the
+      # oldest. The remedy is not a checkbox, it is to write the expired stock
+      # off — which is a movement with a reason code, and leaves a record that
+      # a suppressed warning would not.
+      availability.expired_components != [] ->
+        {:error, {:expired_components, availability.expired_components}}
 
-      if Decimal.compare(build, 0) != :gt do
-        {:error, :nothing_available}
-      else
-        convert(kit, build, quantity, location_id, box_id, opts, bottleneck_item(availability))
-      end
+      Decimal.compare(possible, quantity) == :lt and !opts[:allow_partial] ->
+        {:error, {:insufficient_stock, missing_for(availability, quantity)}}
+
+      true ->
+        build = Decimal.min(quantity, possible)
+
+        if Decimal.compare(build, 0) != :gt do
+          {:error, :nothing_available}
+        else
+          convert(kit, build, quantity, location_id, box_id, opts, bottleneck_item(availability))
+        end
     end
   end
 

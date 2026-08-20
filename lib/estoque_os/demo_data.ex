@@ -63,12 +63,13 @@ defmodule EstoqueOS.DemoData do
   # is the minimum the changeset accepts.
   @demo_password "demonstracao2026"
 
-  @accounts [
-    {"admin@exemplo.org", "admin"},
-    {"gestor@exemplo.org", "manager"},
-    {"logistica@exemplo.org", "logistics"},
-    {"auditor@exemplo.org", "auditor"}
-  ]
+  # One account, and deliberately one. Creating the rest is the first thing an
+  # administrator does on a fresh install, and it is a flow worth walking rather
+  # than seeding around — the temporary password, the forced change on first
+  # login, the role that decides whether prices are visible at all. A seed that
+  # hands over four ready accounts quietly skips the screen that matters most on
+  # day one.
+  @accounts [{"admin@exemplo.org", "admin"}]
 
   @office_items [
     {"Impressora multifuncional", "UN", 2},
@@ -87,6 +88,11 @@ defmodule EstoqueOS.DemoData do
     {"Carauari", -95, 3, 14}
   ]
   @open_mission {"Manacapuru", -6, 7, 28}
+
+  # How many of the supply boxes go out with the open mission. Named because
+  # two places depend on the same number: the load-out takes these, and the
+  # opening stock keeps the resolved kit's components out of them.
+  @travelling_box_count 4
 
   @doc """
   Builds the scenario. Returns a summary, or `{:error, :already_loaded}`.
@@ -129,7 +135,11 @@ defmodule EstoqueOS.DemoData do
 
     users = accounts()
     admin = Map.fetch!(users, "admin")
-    logistics = Map.fetch!(users, "logistics")
+
+    # Every movement the scenario writes is the administrator's, because the
+    # administrator is the only account there is. Real movements carry the
+    # person who made them; a seed carries whoever ran the seed.
+    logistics = admin
 
     warehouse = warehouse()
     boxes = boxes(warehouse)
@@ -143,7 +153,13 @@ defmodule EstoqueOS.DemoData do
     open_stock(logistics, warehouse, supply_boxes, office_box, supply, office, today)
 
     invoices = invoices(admin, warehouse)
+
+    # Order matters. The kit is assembled while its components are clean, and
+    # one of them is expired straight after — so the demo holds both states at
+    # once: a kit in stock, and the refusal on screen the next time somebody
+    # tries to build another.
     assembled = assemble_kit(kit, logistics, warehouse, List.first(supply_boxes))
+    expired_component = expire_one_kit_component(kit, logistics, warehouse, supply_boxes, today)
 
     closed =
       Enum.map(@closed_missions, fn plan ->
@@ -169,15 +185,13 @@ defmodule EstoqueOS.DemoData do
        closed_missions: closed,
        open_mission: open,
        short_products: short,
-       counted_boxes: counted
+       counted_boxes: counted,
+       expired_component: expired_component
      }}
   end
 
   ## Who
 
-  # One account per role. A demo is walked through as each of them — the point
-  # of the money rules is that logistics cannot see prices, and that is only
-  # demonstrable by logging in as logistics.
   defp accounts do
     Map.new(@accounts, fn {email, role} ->
       user =
@@ -320,7 +334,12 @@ defmodule EstoqueOS.DemoData do
       |> select([p], p.id)
       |> Repo.all()
 
-    (needed ++ extras)
+    # Extras first, deliberately. `expiry_for/2` puts the expired and
+    # nearly-expired dates at the front of the list, and FEFO picks the oldest
+    # lot first — so with the kit's own components at the front, assembling the
+    # kit produced a kit lot that was already expired the moment it existed.
+    # True to the rules and useless to look at.
+    (extras ++ needed)
     |> Enum.with_index()
     |> Enum.map(fn {product_id, index} ->
       {:ok, lot} =
@@ -332,7 +351,12 @@ defmodule EstoqueOS.DemoData do
         })
         |> Repo.insert()
 
-      %{product: Repo.get!(Product, product_id), lot: lot, index: index}
+      %{
+        product: Repo.get!(Product, product_id),
+        lot: lot,
+        index: index,
+        kit_component?: product_id in needed
+      }
     end)
   end
 
@@ -351,12 +375,21 @@ defmodule EstoqueOS.DemoData do
   # and nobody has conferred yet — but it cannot travel, so a scenario that
   # opened with it would have nothing to send.
   defp open_stock(user, warehouse, supply_boxes, office_box, supply, office, today) do
+    # A lot lives in exactly one box, so which box decides whether it travels.
+    # The open mission takes the first four; the kit's components are kept out
+    # of those, because a component that left with the mission is a component
+    # the warehouse has none of — and the dashboard then reports every kit as
+    # "0 possíveis", which is true and reads like the feature is broken.
+    staying = Enum.drop(supply_boxes, @travelling_box_count)
+
     supply_entries =
-      Enum.map(supply, fn %{lot: lot, index: index} ->
+      Enum.map(supply, fn %{lot: lot, index: index, kit_component?: kit_component?} ->
+        pool = if kit_component?, do: staying, else: supply_boxes
+
         %{
           lot_id: lot.id,
           location_id: warehouse.id,
-          box_id: Enum.at(supply_boxes, rem(index, length(supply_boxes))).id,
+          box_id: Enum.at(pool, rem(index, length(pool))).id,
           quantity: 400 + rem(index * 37, 300),
           unit_cost: unit_cost_for(index)
         }
@@ -496,6 +529,42 @@ defmodule EstoqueOS.DemoData do
       {:ok, result} -> {:ok, result}
       other -> other
     end
+  end
+
+  # A lot of one component that expired last week, received before it did. The
+  # assembly screen refuses to build another kit until it is written off, which
+  # is the rule worth being able to see rather than read about — and the kit
+  # already in the box is untouched, because it was sealed before this arrived.
+  defp expire_one_kit_component(kit, user, warehouse, supply_boxes, today) do
+    component = kit.items |> Enum.reject(&is_nil(&1.product_id)) |> List.first()
+
+    {:ok, lot} =
+      %Lot{}
+      |> Lot.changeset(%{
+        product_id: component.product_id,
+        lot_number: "L1999",
+        expires_on: Date.add(today, -8)
+      })
+      |> Repo.insert()
+
+    {:ok, _} =
+      post(%{
+        type: "purchase_in",
+        user_id: user.id,
+        occurred_at: DateTime.new!(Date.add(today, -120), ~T[10:00:00]),
+        notes: "Lote que venceu na prateleira",
+        entries: [
+          %{
+            lot_id: lot.id,
+            location_id: warehouse.id,
+            box_id: List.last(supply_boxes).id,
+            quantity: 24,
+            unit_cost: Decimal.new("3.40")
+          }
+        ]
+      })
+
+    component.description
   end
 
   ## The missions
@@ -656,7 +725,7 @@ defmodule EstoqueOS.DemoData do
         notes: "#{surgeries} cirurgias"
       })
 
-    travelling = Enum.take(supply_boxes, 4) ++ [office_box]
+    travelling = Enum.take(supply_boxes, @travelling_box_count) ++ [office_box]
 
     {:ok, _} =
       Outbound.load_out(%{
@@ -808,6 +877,7 @@ defmodule EstoqueOS.DemoData do
       kit assembled:    #{kit_line(summary)}
       missions closed:  #{Enum.map_join(summary.closed_missions, ", ", & &1.name)}
       mission open:     #{summary.open_mission.name}
+      expired on shelf: #{summary.expired_component} — blocks assembling another
       short products:   #{summary.short_products}
       counted boxes:    #{summary.counted_boxes} of #{summary.boxes}
       ledger entries:   #{rows}
@@ -815,7 +885,7 @@ defmodule EstoqueOS.DemoData do
     === how to log in ===
     #{Enum.map_join(summary.accounts, "\n", &"  #{&1}")}
 
-      senha para todas: #{summary.password}
+      senha: #{summary.password}
     """)
   end
 

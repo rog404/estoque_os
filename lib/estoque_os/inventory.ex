@@ -242,6 +242,37 @@ defmodule EstoqueOS.Inventory do
   end
 
   @doc """
+  Expired stock per product at a location, for several products at once.
+
+  A separate question from `balances_by_product/2` and asked by a different
+  caller: assembling a kit is refused while any of its components has expired
+  stock here (see `EstoqueOS.Kits.assemble/3`), because a kit is sealed and
+  what is inside it stops being visible. Products with nothing expired are
+  absent from the map.
+
+  `on_date` defaults to today. Passed in so a caller can ask the question of a
+  date other than now, and so the tests do not have to travel in time.
+  """
+  def expired_balances_by_product(product_ids, location_id, on_date \\ nil)
+      when is_list(product_ids) do
+    on_date = on_date || Date.utc_today()
+
+    TransactionEntry
+    |> join(:inner, [e], l in Lot, on: l.id == e.lot_id)
+    |> where([e, l], l.product_id in ^product_ids and e.location_id == ^location_id)
+    |> where([e, l], not is_nil(l.expires_on) and l.expires_on < ^on_date)
+    |> group_by([e, l], l.product_id)
+    |> having([e], sum(e.quantity) > 0)
+    |> select([e, l], %{
+      product_id: l.product_id,
+      quantity: sum(e.quantity),
+      earliest_expiry: min(l.expires_on)
+    })
+    |> Repo.all()
+    |> Map.new(&{&1.product_id, Map.delete(&1, :product_id)})
+  end
+
+  @doc """
   Everything that is actually at a location, product by product, in stock order.
 
   The list a person standing in front of the shelf reads. It is deliberately

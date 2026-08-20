@@ -37,38 +37,26 @@ defmodule EstoqueOS.DemoDataTest do
     assert {:error, :already_loaded} = DemoData.run()
   end
 
-  describe "the accounts" do
-    test "one per role, named for the role and not for a person", %{summary: summary} do
-      emails = summary.accounts
+  describe "the account" do
+    # One, and only one. Creating the rest is the administrator's first job on a
+    # fresh install and a flow worth walking rather than seeding around.
+    test "just the administrator, named for the role and not for a person",
+         %{summary: summary} do
+      assert summary.accounts == ["admin@exemplo.org"]
+      assert Accounts.get_user_by_email("admin@exemplo.org").role == "admin"
 
-      assert emails == [
-               "admin@exemplo.org",
-               "auditor@exemplo.org",
-               "gestor@exemplo.org",
-               "logistica@exemplo.org"
-             ]
-
-      roles =
-        emails
-        |> Enum.map(&Accounts.get_user_by_email/1)
-        |> Enum.map(& &1.role)
-        |> Enum.sort()
-
-      assert roles == ~w(admin auditor logistics manager)
+      assert Accounts.list_users() |> length() == 1
     end
 
     # A demo account that demands a new password before it will show anything
-    # is not a demo account.
-    test "log in with the published password and land on the app, not on a reset",
+    # is not a demo account. Accounts the administrator then creates *do* demand
+    # one, which is the right default and is tested where it belongs.
+    test "logs in with the published password and lands on the app, not on a reset",
          %{summary: summary} do
-      for email <- summary.accounts do
-        user = Accounts.get_user_by_email(email)
+      [email] = summary.accounts
 
-        assert Accounts.get_user_by_email_and_password(email, summary.password),
-               "#{email} does not accept the published demo password"
-
-        refute user.must_reset_password
-      end
+      assert Accounts.get_user_by_email_and_password(email, summary.password)
+      refute Accounts.get_user_by_email(email).must_reset_password
     end
   end
 
@@ -125,6 +113,27 @@ defmodule EstoqueOS.DemoDataTest do
       kit = Kits.get_kit!(summary.kit.id)
 
       assert Kits.unresolved_items(kit) == []
+    end
+
+    # Both states at once, which is the whole reason the order in `build/0`
+    # matters: a kit in the box, and the refusal waiting for whoever tries to
+    # build the next one.
+    test "one component has expired since, so assembling another is refused",
+         %{summary: summary} do
+      kit = Kits.get_kit!(summary.kit.id)
+      warehouse = summary.warehouse
+
+      availability = Kits.availability(kit, warehouse.id)
+
+      assert [line] = availability.expired_components
+      assert line.item.description == summary.expired_component
+
+      assert {:error, {:expired_components, _}} =
+               Kits.assemble(kit, 1, %{
+                 location_id: warehouse.id,
+                 box_id: EstoqueOS.Repo.get_by!(Box, code: "PR01").id,
+                 user_id: Accounts.get_user_by_email("admin@exemplo.org").id
+               })
     end
 
     # The four other kits are left as the spreadsheets wrote them. That state is

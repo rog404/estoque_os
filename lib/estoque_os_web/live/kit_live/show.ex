@@ -165,6 +165,22 @@ defmodule EstoqueOSWeb.KitLive.Show do
                 </button>
               </div>
 
+              <div :if={@review.expired != []} class="alert alert-error" role="alert">
+                <.icon name="hero-exclamation-triangle" class="size-6 shrink-0" />
+                <div>
+                  <p class="font-semibold">
+                    {gettext("Cannot assemble: %{count} component(s) have expired stock here.",
+                      count: length(@review.expired)
+                    )}
+                  </p>
+                  <p>
+                    {gettext(
+                      "A kit is sealed — once an expired item is inside one, nobody opens it to read the date. Write the expired stock off first, then assemble."
+                    )}
+                  </p>
+                </div>
+              </div>
+
               <.data_table rows={@review.lines} row_id={&"review-#{&1.item.id}"}>
                 <:col :let={line} label={gettext("Component")} emphasis={:identity}>
                   {line.item.description}
@@ -174,6 +190,18 @@ defmodule EstoqueOSWeb.KitLive.Show do
                 </:col>
                 <:col :let={line} label={gettext("Available here")} align={:right}>
                   {quantity(line.available)}
+                </:col>
+                <!-- Always rendered, `invisible` when there is nothing to say:
+                     a cell that appears only on the offending rows changes the
+                     height of those rows, and this list is read with a thumb
+                     already on the next one. -->
+                <:col :let={line} label={gettext("Expired here")} align={:right}>
+                  <span class={["text-error", is_nil(line.expired) && "invisible"]}>
+                    {quantity((line.expired || %{quantity: 0}).quantity)}
+                    <span class="block text-xs opacity-80">
+                      {date((line.expired || %{earliest_expiry: nil}).earliest_expiry)}
+                    </span>
+                  </span>
                 </:col>
                 <:col :let={line} label={gettext("Boxes")}>
                   <p>{box_list(line.boxes)}</p>
@@ -192,7 +220,16 @@ defmodule EstoqueOSWeb.KitLive.Show do
                     label={gettext("Box to assemble into")}
                   />
                 </label>
-                <.button phx-disable-with={gettext("Assembling...")}>{gettext("Assemble")}</.button>
+                <.button
+                  disabled={@review.expired != []}
+                  title={
+                    @review.expired != [] &&
+                      gettext("Write the expired stock off before assembling.")
+                  }
+                  phx-disable-with={gettext("Assembling...")}
+                >
+                  {gettext("Assemble")}
+                </.button>
 
                 <!-- Supply turns up in instalments. Waiting for the slowest
                      supplier means the assembly gets done the night before a
@@ -431,7 +468,12 @@ defmodule EstoqueOSWeb.KitLive.Show do
     breakdown = Kits.box_breakdown(kit, location_id)
     lines = Kits.review_lines(availability, quantity, breakdown)
 
-    %{quantity: quantity, allow_partial: params["allow_partial"] == "true", lines: lines}
+    %{
+      quantity: quantity,
+      allow_partial: params["allow_partial"] == "true",
+      lines: lines,
+      expired: Enum.filter(lines, & &1.expired)
+    }
   end
 
   @impl true
@@ -590,6 +632,25 @@ defmodule EstoqueOSWeb.KitLive.Show do
        gettext("Not enough %{item}: %{missing} missing.",
          item: item.description,
          missing: quantity(missing)
+       )
+     )}
+  end
+
+  # Not a warning: assembly is refused. Naming the component and the date is
+  # what makes the next step obvious, because the next step is to write that
+  # stock off and try again.
+  defp handle_result({:error, {:expired_components, lines}}, socket) do
+    first = List.first(lines)
+
+    {:noreply,
+     put_flash(
+       socket,
+       :error,
+       gettext(
+         "%{count} component(s) have expired stock here, starting with %{item}, expired since %{date}. Write the expired stock off first — a kit is sealed, and nobody opens one to read a date.",
+         count: length(lines),
+         item: first.item.description,
+         date: date(first.expired.earliest_expiry)
        )
      )}
   end
