@@ -52,32 +52,81 @@ if config_env() == :prod do
 
   database_host = database_url |> URI.parse() |> Map.fetch!(:host)
 
-  # Encrypted always. Verified against the host's own certificate by default,
-  # which is the only version of TLS that means anything — an unverified
-  # connection is an encrypted conversation with whoever answered.
+  # Encrypted always. The question is what the certificate on the other end has
+  # to prove, and there are three honest answers — named after libpq's own, so
+  # the words mean to a DBA what they mean here:
   #
-  # The escape hatch exists because managed Postgres is often presented behind
-  # a private certificate authority that is not in the system store, and the
-  # symptom is a deploy that cannot reach its database at all. Two ways out,
-  # in order of preference: point DATABASE_CA_CERT_FILE at the provider's CA
-  # bundle, or — knowing what it costs, and it is logged on every boot —
-  # DATABASE_SSL_VERIFY=none.
+  #   * **verify-full** (the default): the chain is real *and* the certificate
+  #     covers the host we dialled. The only version of TLS that fully means
+  #     something.
+  #   * **verify-ca** (`DATABASE_SSL_VERIFY=ca`): the chain is real, the name is
+  #     not checked. For managed Postgres reached over a provider's private
+  #     network, where the internal hostname is not one the certificate carries
+  #     — see below.
+  #   * **none** (`DATABASE_SSL_VERIFY=none`): encrypted conversation with
+  #     whoever answered. Logged loudly, every boot.
+  #
+  # Render is the reason `ca` exists. Its Postgres certificate is issued by
+  # Let's Encrypt and validates against the system store — but it is issued for
+  # `*.virginia-postgres.render.com`, the *external* endpoint, while the
+  # connection string Render wires in is the internal one (`dpg-…-a`, a bare
+  # private hostname the certificate says nothing about). Checked in 2026-08:
+  #
+  #     openssl s_client -starttls postgres -connect \
+  #       dpg-…-a.virginia-postgres.render.com:5432
+  #     → issuer: Let's Encrypt YR2 → ISRG Root X1, Verify return code: 0 (ok)
+  #     → SAN: *.virginia-postgres.render.com, *.aws-us-east-1-1-postgres.render.com, …
+  #
+  # So verify-full over the internal host cannot pass, and Render publishes no
+  # CA bundle to download because none is needed — the CA is public. `ca` is
+  # therefore the strongest setting that actually works there: a forged
+  # certificate has to be signed by a real public CA, which is the whole
+  # difference from `none`.
+  trust_store = fn
+    nil -> [verify: :verify_peer, cacerts: :public_key.cacerts_get()]
+    path -> [verify: :verify_peer, cacertfile: path]
+  end
+
+  hostname_check = [
+    server_name_indication: to_charlist(database_host),
+    customize_hostname_check: [
+      match_fun: :public_key.pkix_verify_hostname_match_fun(:https)
+    ]
+  ]
+
   ssl_opts =
     case {System.get_env("DATABASE_SSL_VERIFY"), System.get_env("DATABASE_CA_CERT_FILE")} do
       {"none", _} ->
         IO.warn("""
         DATABASE_SSL_VERIFY=none: the database connection is encrypted but the \
-        server's certificate is not being checked. Set DATABASE_CA_CERT_FILE to \
-        the provider's CA bundle instead as soon as you have it.
+        server's certificate is not being checked at all. Prefer \
+        DATABASE_SSL_VERIFY=ca, which still requires the certificate to be \
+        signed by a real authority.
         """)
 
         [verify: :verify_none]
 
-      {_, nil} ->
-        [verify: :verify_peer, cacerts: :public_key.cacerts_get()]
+      {"ca", cert_file} ->
+        # Stated plainly and *not* through `IO.warn`, which prints a stacktrace
+        # under the message: in the deploy log that reads as an exception during
+        # boot, and a downgrade nobody chose looks the same as a crash.
+        IO.puts(
+          "DATABASE_SSL_VERIFY=ca: the certificate chain is verified; " <>
+            "the hostname is not (private network endpoint)."
+        )
 
-      {_, path} ->
-        [verify: :verify_peer, cacertfile: path]
+        trust_store.(cert_file) ++
+          [
+            server_name_indication: to_charlist(database_host),
+            # verify-ca and not verify-full: the chain has already been
+            # required to be real, and this accepts whatever name the
+            # certificate carries. Returning `true` rather than `:default` is
+            # the whole difference between the two levels.
+            customize_hostname_check: [match_fun: fn _reference, _presented -> true end]
+          ]
+
+      {_, cert_file} ->
+        trust_store.(cert_file) ++ hostname_check
     end
 
   # Off only for smoke-testing the built release against a local Postgres, which
@@ -89,15 +138,11 @@ if config_env() == :prod do
   end
 
   config :estoque_os, EstoqueOS.Repo,
-    ssl: database_ssl?,
-    ssl_opts:
-      ssl_opts ++
-        [
-          server_name_indication: to_charlist(database_host),
-          customize_hostname_check: [
-            match_fun: :public_key.pkix_verify_hostname_match_fun(:https)
-          ]
-        ],
+    # The options go *in* `:ssl`. `ssl: true` alongside a separate `:ssl_opts`
+    # is the older spelling, and Postgrex deprecated it — it logged
+    # ":ssl_opts is deprecated, pass opts to :ssl instead" twice on every boot,
+    # which is two lines of noise in the log a real error has to be found in.
+    ssl: database_ssl? && ssl_opts,
     url: database_url,
     # Two, because the free-tier database allows two connections in total and
     # the deploy needs one of them for the migration. Raise it with the plan,

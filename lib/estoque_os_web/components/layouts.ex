@@ -50,7 +50,15 @@ defmodule EstoqueOSWeb.Layouts do
     <div data-section={@section}>
       <header class="app-bar navbar gap-2 px-4 sm:px-6 lg:px-8">
         <div class="flex-1 min-w-0">
-          <.link navigate={~p"/"} class="flex w-fit items-center gap-2.5">
+          <!-- Same navigate-versus-href question as the menu entries, and this is
+               the link that raised it: it sits on every page, so from any screen
+               outside the `:signed_in` session it was a live navigation that
+               could not be one. -->
+          <.link
+            navigate={same_live_session?(@current_path, ~p"/") && ~p"/"}
+            href={not same_live_session?(@current_path, ~p"/") && ~p"/"}
+            class="flex w-fit items-center gap-2.5"
+          >
             <.mark />
             <span class="min-w-0 leading-none">
               <span class="block text-base font-semibold truncate">{gettext("Estoque")}</span>
@@ -103,10 +111,7 @@ defmodule EstoqueOSWeb.Layouts do
               <ul :for={group <- @groups} class="menu w-full" data-section={group.section}>
                 <li class="menu-title section-label">{group.label}</li>
                 <li :for={item <- group.items}>
-                  <.link navigate={item.path} class={nav_item_class(@current_path, item.path)}>
-                    <.icon name={item.icon} class="size-5 opacity-70" />
-                    {item.label}
-                  </.link>
+                  <.nav_link item={item} current_path={@current_path} />
                 </li>
               </ul>
             </div>
@@ -247,14 +252,63 @@ defmodule EstoqueOSWeb.Layouts do
       </summary>
       <ul class="dropdown-content z-50 mt-2 w-64 menu rounded-box bg-base-100 shadow-lg border border-base-300 text-base-content">
         <li :for={item <- @group.items}>
-          <.link navigate={item.path} class={nav_item_class(@current_path, item.path)}>
-            <.icon name={item.icon} class="size-5 opacity-70" />
-            {item.label}
-          </.link>
+          <.nav_link item={item} current_path={@current_path} />
         </li>
       </ul>
     </details>
     """
+  end
+
+  attr :item, :map, required: true
+  attr :current_path, :string, default: nil
+
+  # One menu entry, and the only interesting thing about it is `navigate` versus
+  # `href`.
+  #
+  # A `navigate` that crosses a `live_session` cannot be a live navigation:
+  # LiveView notices, logs
+  #
+  #     navigate event to "/" failed because you are redirecting across
+  #     live_sessions. A full page reload will be performed instead
+  #
+  # and reloads the page. The reload was always going to happen — the sessions
+  # mount different `on_mount` chains — but asking the socket first spends a
+  # round trip to be told so, on the warehouse wifi this is used from.
+  #
+  # Which session a path belongs to is read from the router, not declared here.
+  # The router already is the statement, and a second copy of it in this file
+  # would be free to disagree with it.
+  defp nav_link(assigns) do
+    assigns = assign(assigns, :live?, same_live_session?(assigns.current_path, assigns.item.path))
+
+    ~H"""
+    <.link
+      navigate={@live? && @item.path}
+      href={not @live? && @item.path}
+      class={nav_item_class(@current_path, @item.path)}
+    >
+      <.icon name={@item.icon} class="size-5 opacity-70" />
+      {@item.label}
+    </.link>
+    """
+  end
+
+  defp same_live_session?(nil, _to), do: false
+
+  defp same_live_session?(from, to) do
+    case {live_session_of(from), live_session_of(to)} do
+      {nil, _} -> false
+      {_, nil} -> false
+      {same, same} -> true
+      _ -> false
+    end
+  end
+
+  defp live_session_of(path) do
+    case Phoenix.Router.route_info(EstoqueOSWeb.Router, "GET", path, "") do
+      %{phoenix_live_view: {_view, _action, _opts, %{name: name}}} -> name
+      _ -> nil
+    end
   end
 
   # Grouped the way the operation itself is sequenced: what comes in, what we
