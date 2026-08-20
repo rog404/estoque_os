@@ -20,6 +20,15 @@ defmodule EstoqueOSWeb.IssueLiveTest do
     %{warehouse: warehouse, product: product, lone: lone}
   end
 
+  # The quantity input on its own. Asserting against the whole page would let
+  # the search field's value satisfy the assertion.
+  defp quantity_field(html) do
+    case Regex.run(~r{<input[^>]*name="quantity"[^>]*>}, html) do
+      [field] -> field
+      nil -> flunk("no quantity field on the page")
+    end
+  end
+
   defp stock_in(lot, location, quantity, opts \\ []) do
     {:ok, _} =
       Inventory.post_transaction(%{
@@ -140,6 +149,66 @@ defmodule EstoqueOSWeb.IssueLiveTest do
 
       assert html =~ "Vai sair de"
       assert html =~ near.code
+    end
+
+    # Reported as a bug, and it read as one: the operator typed the quantity,
+    # the FEFO preview appeared, and the field they were typing into went blank.
+    # `phx-change` repaints this form on every keystroke, and an input rendered
+    # without a value is repainted empty.
+    test "the quantity typed survives the repaint the preview causes", %{
+      conn: conn,
+      product: product
+    } do
+      {:ok, view, _html} = live(conn, ~p"/issue")
+
+      view |> element("#search-form") |> render_change(%{"query" => product.name})
+      view |> element("button", product.name) |> render_click()
+
+      html =
+        view
+        |> element("#issue-form")
+        |> render_change(%{"quantity" => "3", "box_id" => ""})
+
+      assert quantity_field(html) =~ ~s(value="3")
+    end
+
+    # The other half of the same report. What appears on its own does not get to
+    # move what the thumb is already aimed at, so the preview is rendered after
+    # the field and its buttons, never above them.
+    test "the preview is drawn below the quantity, not above it", %{
+      conn: conn,
+      product: product
+    } do
+      {:ok, view, _html} = live(conn, ~p"/issue")
+
+      view |> element("#search-form") |> render_change(%{"query" => product.name})
+      view |> element("button", product.name) |> render_click()
+
+      html =
+        view
+        |> element("#issue-form")
+        |> render_change(%{"quantity" => "3", "box_id" => ""})
+
+      [{field, _}] = Regex.run(~r/name="quantity"/, html, return: :index)
+      [{preview, _}] = Regex.run(~r/Vai sair de/, html, return: :index)
+
+      assert field < preview
+    end
+
+    # Empty again once the line is in the basket, so the next product does not
+    # arrive holding the last one's number.
+    test "the quantity is cleared after the line is added", %{conn: conn, product: product} do
+      {:ok, view, _html} = live(conn, ~p"/issue")
+
+      view |> element("#search-form") |> render_change(%{"query" => product.name})
+      view |> element("button", product.name) |> render_click()
+      view |> element("#issue-form") |> render_change(%{"quantity" => "3", "box_id" => ""})
+      view |> element("#issue-form") |> render_submit(%{"quantity" => "3", "box_id" => ""})
+
+      view |> element("#search-form") |> render_change(%{"query" => product.name})
+      html = view |> element("button", product.name) |> render_click()
+
+      assert quantity_field(html) =~ ~s(value="")
     end
 
     test "refuses a specific box that cannot cover the quantity, even though another box could",

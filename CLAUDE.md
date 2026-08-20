@@ -28,7 +28,7 @@ and people in them were replaced.
   `priv/samples/`. Reach them through `EstoqueOS.Samples`, never a relative
   path — a release has no working directory to be relative to.
 
-## Four mistakes this codebase has already made
+## Five mistakes this codebase has already made
 
 Each of these shipped at least once and cost real time. They are cheap to avoid
 and invisible in review.
@@ -61,6 +61,14 @@ it is confirmed sends the next tap to the wrong product. Anything conditional
 inside a row is *always* rendered and hidden with `invisible`, in a slot of a
 fixed width, and the slot is checked at the width the phone uses. Reserving the
 space is the fix; `:if` inside a row is the bug.
+
+**An input with no server-rendered `value` is emptied by `phx-change`.** The
+form repaints on every keystroke, and the server's answer for a field it does
+not track is blank — so the operator watches the number they are typing vanish.
+Hit twice: the receiving conference (fixed with the `drafts` map) and the
+write-off quantity, where it also made the FEFO preview look like the cause. Any
+input inside a `phx-change` form renders its value from assigns, empty string
+rather than nil so the attribute is always there to read.
 
 ## Workflow
 
