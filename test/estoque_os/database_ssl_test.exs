@@ -107,9 +107,13 @@ defmodule EstoqueOS.DatabaseSSLTest do
 
     {_out, err} = say(%{"DATABASE_SSL_VERIFY" => "none"})
 
-    # On stderr, with a stacktrace, every boot. This one has earned it.
+    # On stderr every boot, because it is a warning. But one line and no
+    # stacktrace: `IO.warn` prints one, and this is the standing configuration
+    # on Render rather than a lapse somebody is about to correct — a line that
+    # reads as an exception on every boot is how a real crash goes unnoticed.
     assert err =~ "not being checked at all"
-    assert err =~ "DATABASE_SSL_VERIFY=ca"
+    refute err =~ "erl_eval"
+    assert length(String.split(String.trim(err), "\n")) == 1
   end
 
   test "DATABASE_SSL=false turns it off entirely, and shouts" do

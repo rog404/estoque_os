@@ -66,22 +66,30 @@ if config_env() == :prod do
   #   * **none** (`DATABASE_SSL_VERIFY=none`): encrypted conversation with
   #     whoever answered. Logged loudly, every boot.
   #
-  # Render is the reason `ca` exists. Its Postgres certificate is issued by
-  # Let's Encrypt and validates against the system store — but it is issued for
-  # `*.virginia-postgres.render.com`, the *external* endpoint, while the
-  # connection string Render wires in is the internal one (`dpg-…-a`, a bare
-  # private hostname the certificate says nothing about). Checked in 2026-08:
+  # `ca` is for a provider that answers on a private hostname with a certificate
+  # a real authority signed: the chain proves who it is, and the name cannot be
+  # checked because the certificate never claimed that name.
+  #
+  # It is deliberately *not* what Render needs, and assuming otherwise cost two
+  # deploys on 2026-08-20:
+  #
+  #     Postgrex.Protocol failed to connect: ssl connect: TLS client:
+  #     ... CLIENT ALERT: Fatal - Bad Certificate — selfsigned_peer
+  #
+  # Render's *external* endpoint is fronted by a proxy holding a genuine Let's
+  # Encrypt certificate, and verify-full passes against it:
   #
   #     openssl s_client -starttls postgres -connect \
-  #       dpg-…-a.virginia-postgres.render.com:5432
-  #     → issuer: Let's Encrypt YR2 → ISRG Root X1, Verify return code: 0 (ok)
-  #     → SAN: *.virginia-postgres.render.com, *.aws-us-east-1-1-postgres.render.com, …
+  #       dpg-…-a.virginia-postgres.render.com:5432 -verify_hostname …
+  #     → issuer Let's Encrypt YR2, SAN *.virginia-postgres.render.com,
+  #       Verify return code: 0 (ok)
   #
-  # So verify-full over the internal host cannot pass, and Render publishes no
-  # CA bundle to download because none is needed — the CA is public. `ca` is
-  # therefore the strongest setting that actually works there: a forged
-  # certificate has to be signed by a real public CA, which is the whole
-  # difference from `none`.
+  # But `fromDatabase: property: connectionString` hands the app the *internal*
+  # URL, and the database itself answers that one with a self-signed
+  # certificate. Nothing public signed it, so `verify_peer` fails however far
+  # the hostname check is relaxed — over the private network `ca` is not a
+  # softer `full`, it is equally impossible. Hence `none` in `render.yaml`,
+  # where the trade-off is written out.
   trust_store = fn
     nil -> [verify: :verify_peer, cacerts: :public_key.cacerts_get()]
     path -> [verify: :verify_peer, cacertfile: path]
@@ -97,12 +105,16 @@ if config_env() == :prod do
   ssl_opts =
     case {System.get_env("DATABASE_SSL_VERIFY"), System.get_env("DATABASE_CA_CERT_FILE")} do
       {"none", _} ->
-        IO.warn("""
-        DATABASE_SSL_VERIFY=none: the database connection is encrypted but the \
-        server's certificate is not being checked at all. Prefer \
-        DATABASE_SSL_VERIFY=ca, which still requires the certificate to be \
-        signed by a real authority.
-        """)
+        # Loud, on stderr, and *not* through `IO.warn`. `IO.warn` prints a
+        # stacktrace under the message, and this is now the standing setting on
+        # Render rather than a temporary lapse: something that looks like an
+        # exception on every boot is how a real crash goes unnoticed.
+        IO.puts(
+          :stderr,
+          "DATABASE_SSL_VERIFY=none: the database connection is encrypted but " <>
+            "the server's certificate is not being checked at all. Only sound " <>
+            "over a private network you trust — see render.yaml."
+        )
 
         [verify: :verify_none]
 

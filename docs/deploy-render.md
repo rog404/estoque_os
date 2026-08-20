@@ -110,21 +110,47 @@ asks.
 
 ### About `DATABASE_SSL_VERIFY=none`
 
-The connection is encrypted. The certificate is not checked. That is a narrow,
+The connection is encrypted. The certificate is not checked. It is a narrow,
 deliberate trade for the private network between the service and its own
 database, and the app writes a warning on every boot so it cannot quietly become
-the permanent arrangement.
+the permanent arrangement by accident.
 
-To do it properly — worth five minutes if this outlives the demo:
+It is also not a choice between this and something stricter on the same URL, and
+believing otherwise cost two failed deploys on 2026-08-20. Raising it to
+`DATABASE_SSL_VERIFY=ca` died at the first query:
 
-1. Download the database's CA certificate from the Render dashboard.
-2. Add it under **Environment → Secret Files** as `render-postgres-ca.crt`
-   (available on the free plan).
-3. Delete `DATABASE_SSL_VERIFY` and set
-   `DATABASE_CA_CERT_FILE=/etc/secrets/render-postgres-ca.crt`.
+    Postgrex.Protocol failed to connect: ssl connect: TLS client:
+    ... CLIENT ALERT: Fatal - Bad Certificate — selfsigned_peer
+    [error] Could not create schema migrations table
 
-The app then verifies the certificate against that CA, and the boot warning
-stops.
+`selfsigned_peer` is the whole story. Render fronts the **external** endpoint
+with a proxy holding a genuine Let's Encrypt certificate — verify-full passes
+against it, checked the same day:
+
+```bash
+openssl s_client -starttls postgres -verify_hostname dpg-….virginia-postgres.render.com \
+  -connect dpg-….virginia-postgres.render.com:5432
+# issuer: Let's Encrypt YR2 · SAN *.virginia-postgres.render.com · Verify return code: 0 (ok)
+```
+
+The **internal** URL the blueprint wires in is answered by the database itself,
+with a self-signed certificate no public authority signed. `verify_peer` cannot
+pass over it however far the hostname check is relaxed, so `ca` is not a softer
+`full` here — it is equally impossible. There is no CA bundle to download; the
+line in this file that used to say there was, was wrong.
+
+So there are exactly two honest arrangements:
+
+- **private network, unverified** (what the blueprint does): encrypted, nobody
+  checked who answered, one warning per boot.
+- **public internet, fully verified**: set `DATABASE_URL` by hand to the
+  database's *external* connection string and delete `DATABASE_SSL_VERIFY`. The
+  chain and the hostname are both checked, and every query leaves Render's
+  network.
+
+`DATABASE_SSL_VERIFY=ca` with `DATABASE_CA_CERT_FILE` under **Environment →
+Secret Files** remains the right answer for a provider that publishes a private
+CA. Render is not one.
 
 ## Loading data by hand, if you ever need to
 
