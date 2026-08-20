@@ -74,6 +74,9 @@ defmodule EstoqueOSWeb.ProductLive.Show do
           <span :if={not @history.product.expiry_expected} class="badge badge-ghost badge-sm ml-1">
             {gettext("no expiry expected")}
           </span>
+          <span :if={not @history.product.lot_expected} class="badge badge-ghost badge-sm ml-1">
+            {gettext("no lot expected")}
+          </span>
         </:subtitle>
         <!-- The screen that answers "how much of this is left" is the screen
              somebody is standing on when they decide to take some out. Sending

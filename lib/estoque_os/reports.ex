@@ -411,7 +411,10 @@ defmodule EstoqueOS.Reports do
           product_id: row.product.id,
           lot_number: row.lot_number,
           expires_on: row.expires_on,
-          needs_review: is_nil(row.lot_number)
+          # Blank because nobody read the pack, or blank because this product
+          # has no lot to read — `lot_expected` is the difference, and the
+          # review list is only useful while it holds the first kind.
+          needs_review: is_nil(row.lot_number) and row.product.lot_expected
         })
         |> Repo.insert!()
 

@@ -19,6 +19,10 @@ defmodule EstoqueOS.Catalog.Product do
     field :controlled, :boolean, default: false
     # Whether a lot arriving with no expiry is normal or worth an alarm.
     field :expiry_expected, :boolean, default: true
+    # The same question about the lot number itself. Gauze carries one printed
+    # on the pack, so a blank means nobody read it; a donated blanket carries
+    # none, and flagging that buries the cases that matter.
+    field :lot_expected, :boolean, default: true
     field :min_stock_override, :decimal
     field :expiry_alert_days_override, :integer
     field :classification, :string
@@ -51,6 +55,7 @@ defmodule EstoqueOS.Catalog.Product do
       :stock_unit,
       :controlled,
       :expiry_expected,
+      :lot_expected,
       :min_stock_override,
       :expiry_alert_days_override,
       :classification,

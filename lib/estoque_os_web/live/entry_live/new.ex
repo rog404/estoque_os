@@ -35,6 +35,7 @@ defmodule EstoqueOSWeb.EntryLive.New do
      |> assign(:similar, [])
      |> assign(:new_product_name, nil)
      |> assign(:expiry_expected, true)
+     |> assign(:lot_expected, true)
      |> assign(:suggestions, [])
      |> assign(:origin, "donation")
      # What is in the form right now, held server-side rather than left to the
@@ -166,6 +167,11 @@ defmodule EstoqueOSWeb.EntryLive.New do
               name="expiry_expected"
               label={gettext("has an expiry date")}
               checked={@expiry_expected}
+            />
+            <.check
+              name="lot_expected"
+              label={gettext("has a lot number")}
+              checked={@lot_expected}
             />
             <.button variant="primary">
               {if @similar == [],
@@ -434,7 +440,8 @@ defmodule EstoqueOSWeb.EntryLive.New do
       name: String.trim(params["name"] || ""),
       stock_unit: blank_to_default(params["stock_unit"], "UN"),
       controlled: params["controlled"] == "true",
-      expiry_expected: params["expiry_expected"] == "true"
+      expiry_expected: params["expiry_expected"] == "true",
+      lot_expected: params["lot_expected"] == "true"
     }
 
     confirmed? = socket.assigns.similar != []
@@ -454,7 +461,8 @@ defmodule EstoqueOSWeb.EntryLive.New do
          socket
          |> assign(:similar, matches)
          |> assign(:new_product_name, attrs.name)
-         |> assign(:expiry_expected, attrs.expiry_expected)}
+         |> assign(:expiry_expected, attrs.expiry_expected)
+         |> assign(:lot_expected, attrs.lot_expected)}
 
       {:error, %Ecto.Changeset{}} ->
         {:noreply, put_flash(socket, :error, gettext("That product could not be created."))}

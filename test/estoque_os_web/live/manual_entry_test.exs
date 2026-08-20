@@ -31,10 +31,10 @@ defmodule EstoqueOSWeb.ManualEntryTest do
     view |> form("#entry-form", params) |> render_submit()
   end
 
-  defp pick(conn, toy) do
+  defp pick(conn, product) do
     {:ok, view, _html} = live(conn, ~p"/entry")
-    render_change(element(view, "#search-form"), %{"query" => "Ursinho"})
-    render_click(element(view, "button[phx-value-product='#{toy.id}']"))
+    render_change(element(view, "#search-form"), %{"query" => product.name})
+    render_click(element(view, "button[phx-value-product='#{product.id}']"))
     view
   end
 
@@ -74,6 +74,21 @@ defmodule EstoqueOSWeb.ManualEntryTest do
 
     assert is_nil(lot.lot_number)
     assert lot.needs_review
+  end
+
+  test "a product that has no lot number is not flagged for one", %{conn: conn} do
+    # The blanket a volunteer brought has no lot printed on it. Flagging that
+    # fills the review list with rows nobody can ever resolve, and a list like
+    # that stops being read — which is how the gauze that *does* have a lot
+    # gets missed.
+    blanket = product_fixture(%{name: "Cobertor doado", lot_expected: false})
+
+    conn |> pick(blanket) |> enter(%{"quantity" => "12"})
+
+    lot = Repo.one!(from l in Lot, where: l.product_id == ^blanket.id)
+
+    assert is_nil(lot.lot_number)
+    refute lot.needs_review
   end
 
   test "a second entry of the same lot number joins the lot, not a twin", %{
@@ -229,7 +244,11 @@ defmodule EstoqueOSWeb.ManualEntryTest do
       # payload a browser sends.
       render_hook(view, "create_product", %{"name" => "Boneca de pano", "stock_unit" => "UN"})
 
-      refute Repo.one!(from p in Product, where: p.name == "Boneca de pano").expiry_expected
+      product = Repo.one!(from p in Product, where: p.name == "Boneca de pano")
+
+      refute product.expiry_expected
+      # Same payload, same reading for the lot number: a rag doll has none.
+      refute product.lot_expected
     end
 
     test "defaults to expecting an expiry, because the catalog is medical supply",
@@ -241,7 +260,10 @@ defmodule EstoqueOSWeb.ManualEntryTest do
 
       # A product nobody classified is better treated as one that should have
       # been dated: silence on an anesthetic is the expensive mistake.
-      assert Repo.one!(from p in Product, where: p.name == "Cetamina 50mg").expiry_expected
+      product = Repo.one!(from p in Product, where: p.name == "Cetamina 50mg")
+
+      assert product.expiry_expected
+      assert product.lot_expected
     end
   end
 
