@@ -163,4 +163,43 @@ defmodule EstoqueOSWeb.ProductLiveTest do
 
     assert html =~ ~s(href="/products/#{gauze.id}")
   end
+
+  # The screen that answers "how much of this is left" is the screen somebody is
+  # standing on when they decide to take some out. Sending them to the menu and
+  # then to a search field, to type the name of the product whose page they were
+  # already reading, is three steps to arrive where they started.
+  describe "writing it off from here" do
+    test "the button carries the product to the write-off screen", %{conn: conn, gauze: gauze} do
+      {:ok, _view, html} = live(conn, ~p"/products/#{gauze.id}")
+
+      assert html =~ ~s(href="/issue?product=#{gauze.id}")
+    end
+
+    test "arriving there opens the product already picked", %{conn: conn, gauze: gauze} do
+      {:ok, view, html} = live(conn, ~p"/issue?product=#{gauze.id}")
+
+      # The quantity form, not the search field: the product is chosen and the
+      # only thing left to say is how many.
+      assert has_element?(view, "#issue-form")
+      assert html =~ "Gaze estéril"
+    end
+
+    # A product deactivated between the two pages is a link that no longer leads
+    # anywhere, not a crash.
+    test "an id that resolves to nothing still opens the screen", %{conn: conn} do
+      {:ok, view, _html} = live(conn, ~p"/issue?product=999999")
+
+      refute has_element?(view, "#issue-form")
+    end
+
+    # The route is the manager's. A shortcut the router would refuse is the same
+    # dead door as the menu entry that was taken away.
+    test "the logistics operator is not offered it", %{gauze: gauze} do
+      %{conn: conn} = register_and_log_in_logistics(%{conn: build_conn()})
+
+      {:ok, _view, html} = live(conn, ~p"/products/#{gauze.id}")
+
+      refute html =~ ~s(href="/issue?product=#{gauze.id}")
+    end
+  end
 end

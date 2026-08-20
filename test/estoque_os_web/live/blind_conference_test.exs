@@ -65,6 +65,16 @@ defmodule EstoqueOSWeb.BlindConferenceTest do
     |> String.replace(~r{<[^>]*>}s, " ")
   end
 
+  # A count that disagrees with the invoice is not believed until it has been
+  # made `Receiving.counts_required/0` times — see `Receiving.record_count/2`.
+  defp count_line(view, line, quantity, box_code) do
+    Enum.reduce(1..Receiving.counts_required(), nil, fn _attempt, _acc ->
+      view
+      |> element("#count-#{line.id}")
+      |> render_submit(%{"counted_quantity" => quantity, "box_code" => box_code})
+    end)
+  end
+
   describe "the operator doing the counting" do
     setup :register_and_log_in_logistics
 
@@ -99,17 +109,40 @@ defmodule EstoqueOSWeb.BlindConferenceTest do
       line = hd(receipt.lines)
       {:ok, view, _html} = live(conn, ~p"/receipts/#{receipt}")
 
-      html =
-        view
-        |> element("#count-#{line.id}")
-        |> render_submit(%{"counted_quantity" => "287", "box_code" => box.code})
+      html = count_line(view, line, "287", box.code)
 
-      assert html =~ "registrado"
       refute html =~ "Divergências em relação à nota"
 
       # Visible text only. A row carries `id="line-13"` whenever the line's id
       # happens to be 13, and matching that made this test pass on luck.
       refute visible_text(html) =~ "-13"
+    end
+
+    # The rule Rogerio asked for reveals one thing by design — that this line
+    # disagrees — and must reveal nothing else. "A nota diz 300" next to "conte
+    # de novo" would hand the operator the number to write down, which is the
+    # whole failure the blind sheet exists to prevent.
+    test "is asked to count again without being told the number to reach", %{
+      conn: conn,
+      receipt: receipt,
+      box: box
+    } do
+      line = hd(receipt.lines)
+      {:ok, view, _html} = live(conn, ~p"/receipts/#{receipt}")
+
+      html =
+        view
+        |> element("#count-#{line.id}")
+        |> render_submit(%{"counted_quantity" => "287", "box_code" => box.code})
+
+      text = visible_text(html)
+
+      assert text =~ "Conte este item de novo"
+      assert text =~ "contagem 2 de 3"
+
+      # Neither the invoice's number nor the distance to it.
+      refute text =~ "300"
+      refute text =~ "-13"
     end
 
     test "sees whether a line is done instead of by how much it is off", %{
@@ -122,12 +155,9 @@ defmodule EstoqueOSWeb.BlindConferenceTest do
 
       assert html =~ "a contar"
 
-      html =
-        view
-        |> element("#count-#{line.id}")
-        |> render_submit(%{"counted_quantity" => "287", "box_code" => box.code})
+      html = count_line(view, line, "287", box.code)
 
-      assert html =~ "contada"
+      assert visible_text(html) =~ "contada"
     end
   end
 
@@ -140,10 +170,13 @@ defmodule EstoqueOSWeb.BlindConferenceTest do
 
       assert html =~ "A nota diz"
 
-      html =
+      Enum.reduce(1..Receiving.counts_required(), nil, fn _attempt, _acc ->
         view
         |> element("#count-#{line.id}")
         |> render_submit(%{"counted_quantity" => "287", "box_code" => box.code})
+      end)
+
+      html = render(view)
 
       assert html =~ "Divergências em relação à nota"
       assert html =~ "-13"

@@ -125,6 +125,186 @@ defmodule EstoqueOS.ReceivingTest do
     end
   end
 
+  # The rule the conference was missing. Whatever was typed used to be booked,
+  # so the logistics operator could record any quantity at all against an
+  # invoice that said something else — the hole `Auditing` had already closed
+  # for box counts.
+  describe "record_count/2" do
+    setup %{invoice: invoice, warehouse: warehouse} do
+      posted = post!(invoice, warehouse)
+      {:ok, receipt} = Receiving.start_receipt(posted, %{location_id: warehouse.id})
+      box = box_fixture(%{code: "RC99", location_id: warehouse.id})
+
+      %{receipt: receipt, box: box}
+    end
+
+    test "believes a count that agrees with the invoice at once", %{receipt: receipt, box: box} do
+      line = line_for(receipt, 1)
+
+      assert {:recorded, counted} =
+               Receiving.record_count(line, %{counted_quantity: "300", box_id: box.id})
+
+      assert Decimal.equal?(counted.counted_quantity, Decimal.new(300))
+      assert [only] = counted.count_attempts
+      assert Decimal.equal?(only, Decimal.new(300))
+      refute ReceiptLine.awaiting_recount?(counted)
+    end
+
+    test "asks again when the count disagrees, and books nothing", %{
+      receipt: receipt,
+      box: box
+    } do
+      line = line_for(receipt, 1)
+
+      assert {:recount, first} =
+               Receiving.record_count(line, %{counted_quantity: "287", box_id: box.id})
+
+      # Nothing is believed yet, and nothing has reached the ledger — a
+      # conference writes when it closes.
+      assert is_nil(first.counted_quantity)
+      assert ReceiptLine.awaiting_recount?(first)
+      assert ReceiptLine.attempts(first) == 1
+
+      # The box is recorded anyway. The operator put the goods on a shelf, and
+      # that is true whichever way the arithmetic ends up.
+      assert first.box_id == box.id
+
+      assert {:recount, second} =
+               Receiving.record_count(first, %{counted_quantity: "287", box_id: box.id})
+
+      assert is_nil(second.counted_quantity)
+      assert ReceiptLine.attempts(second) == 2
+    end
+
+    test "believes the third count and marks it as disputed", %{receipt: receipt, box: box} do
+      line = line_for(receipt, 1)
+
+      {:recount, line} = Receiving.record_count(line, %{counted_quantity: "287", box_id: box.id})
+      {:recount, line} = Receiving.record_count(line, %{counted_quantity: "287", box_id: box.id})
+
+      assert {:recorded, counted} =
+               Receiving.record_count(line, %{counted_quantity: "287", box_id: box.id})
+
+      assert Decimal.equal?(counted.counted_quantity, Decimal.new(287))
+      assert ReceiptLine.attempts(counted) == Receiving.counts_required()
+
+      # Counted three times and still short. Not a miscount, and not the
+      # operator's to close alone.
+      assert ReceiptLine.diverged_after_recounts?(counted)
+    end
+
+    test "a count that agrees on the second try is not disputed", %{
+      receipt: receipt,
+      box: box
+    } do
+      line = line_for(receipt, 1)
+
+      {:recount, line} = Receiving.record_count(line, %{counted_quantity: "287", box_id: box.id})
+
+      assert {:recorded, counted} =
+               Receiving.record_count(line, %{counted_quantity: "300", box_id: box.id})
+
+      # The first count was a miscount, which is what asking twice is for.
+      refute ReceiptLine.diverged_after_recounts?(counted)
+      assert Enum.map(counted.count_attempts, &Decimal.to_string/1) == ~w(287 300)
+    end
+
+    test "counting zero three times is a count, not a blank", %{receipt: receipt, box: box} do
+      line = line_for(receipt, 1)
+
+      counted =
+        Enum.reduce(1..Receiving.counts_required(), line, fn _attempt, line ->
+          case Receiving.record_count(line, %{counted_quantity: "0", box_id: box.id}) do
+            {:recount, line} -> line
+            {:recorded, line} -> line
+          end
+        end)
+
+      # Nothing arrived, three times over. That is a fact about the delivery,
+      # and it is not the same as a line nobody counted.
+      assert Decimal.equal?(counted.counted_quantity, Decimal.new(0))
+      assert ReceiptLine.diverged_after_recounts?(counted)
+    end
+
+    test "refuses a negative count without spending an attempt", %{receipt: receipt, box: box} do
+      line = line_for(receipt, 1)
+
+      assert {:error, :invalid_quantity} =
+               Receiving.record_count(line, %{counted_quantity: "-5", box_id: box.id})
+
+      assert {:error, :invalid_quantity} =
+               Receiving.record_count(line, %{counted_quantity: "abc", box_id: box.id})
+
+      # A typo is not a divergence to be recounted, and it must not cost one of
+      # the three counts.
+      assert Repo.reload!(line).count_attempts == []
+    end
+
+    test "counting again drops the trail so the next count starts fresh", %{
+      receipt: receipt,
+      box: box
+    } do
+      line = line_for(receipt, 1)
+
+      line =
+        Enum.reduce(1..Receiving.counts_required(), line, fn _attempt, line ->
+          case Receiving.record_count(line, %{counted_quantity: "287", box_id: box.id}) do
+            {:recount, line} -> line
+            {:recorded, line} -> line
+          end
+        end)
+
+      assert {:ok, reopened} = Receiving.uncount_line(line)
+      assert reopened.count_attempts == []
+      assert is_nil(reopened.counted_quantity)
+
+      # Keeping the trail would let this single count land as the third attempt
+      # and be believed on the spot, which is the rule deleting itself.
+      assert {:recount, _line} =
+               Receiving.record_count(reopened, %{counted_quantity: "287", box_id: box.id})
+    end
+
+    test "closing flags the adjustment when a line never agreed", %{
+      receipt: receipt,
+      box: box
+    } do
+      line = line_for(receipt, 1)
+
+      line =
+        Enum.reduce(1..Receiving.counts_required(), line, fn _attempt, line ->
+          case Receiving.record_count(line, %{counted_quantity: "287", box_id: box.id}) do
+            {:recount, line} -> line
+            {:recorded, line} -> line
+          end
+        end)
+
+      assert ReceiptLine.diverged_after_recounts?(line)
+
+      assert {:ok, %{corrections: correction}} =
+               Receiving.complete_receipt(receipt, user_id: actor_id())
+
+      # What raises it on the manager's overview, alongside the box counts that
+      # disagreed twice — one list of counts somebody has to look at.
+      assert correction.review_reason == "count_diverged_after_recounts"
+      assert correction.invoice_id == receipt.invoice_id
+    end
+
+    test "a conference where everything agreed flags nothing", %{receipt: receipt, box: box} do
+      {:recorded, _line} =
+        Receiving.record_count(line_for(receipt, 1), %{
+          counted_quantity: "300",
+          box_id: box.id
+        })
+
+      assert {:ok, %{corrections: correction}} =
+               Receiving.complete_receipt(receipt, user_id: actor_id())
+
+      # A count that agreed corrects nothing, so there is nothing to flag — and
+      # a warning that fires on a clean conference teaches people to ignore it.
+      assert is_nil(correction)
+    end
+  end
+
   describe "complete_receipt/2" do
     setup %{invoice: invoice, warehouse: warehouse} do
       posted = post!(invoice, warehouse)

@@ -75,6 +75,36 @@ window.addEventListener("click", (event) => {
   }
 })
 
+// The eye on a password field. Flips the field's own type — nothing is copied
+// out of it and nothing is stored — and swaps which of the two icons is shown.
+// Delegated rather than a hook per field: these fields live on four screens and
+// none of them needs to know about this.
+window.addEventListener("click", (event) => {
+  const toggle = event.target.closest("[data-password-toggle]")
+  if (!toggle) return
+
+  event.preventDefault()
+  const field = document.getElementById(toggle.dataset.passwordToggle)
+  if (!field) return
+
+  const revealing = field.type === "password"
+  field.type = revealing ? "text" : "password"
+  toggle.querySelector(".password-shown")?.classList.toggle("hidden", revealing)
+  toggle.querySelector(".password-hidden")?.classList.toggle("hidden", !revealing)
+
+  const label = revealing ? toggle.dataset.hideLabel : toggle.dataset.showLabel
+  if (label) {
+    toggle.setAttribute("aria-label", label)
+    toggle.setAttribute("title", label)
+  }
+
+  // The caret goes back where it was: revealing a password is something you do
+  // *while* typing it, and losing the caret means retyping the whole thing.
+  const at = field.value.length
+  field.focus()
+  field.setSelectionRange(at, at)
+})
+
 // The fields somebody types a count into, on the three screens that ask for
 // one: the receiving conference, the box count and the mission return.
 //
@@ -108,9 +138,20 @@ const liveSocket = new LiveSocket("/live", Socket, {
   hooks: {...colocatedHooks},
 })
 
-// Show progress bar on live navigation and form submits
-topbar.config({barColors: {0: "#29d"}, shadowColor: "rgba(0, 0, 0, .3)"})
-window.addEventListener("phx:page-loading-start", _info => topbar.show(300))
+// The progress bar for anything that navigates or submits. In the app's own
+// primary rather than the generic blue it shipped with — read at arm's length in
+// a warehouse, a bar in a colour the app uses nowhere else reads as a browser
+// artifact and gets ignored.
+//
+// 120ms, not 300ms: on the phone this is used on, most of these waits are
+// somewhere between the two, and a delay longer than the wait means the slow
+// half of the app looked like it did nothing at all.
+const barColor = getComputedStyle(document.documentElement)
+  .getPropertyValue("--color-primary")
+  .trim() || "#29d"
+
+topbar.config({barColors: {0: barColor}, barThickness: 3, shadowColor: "rgba(0, 0, 0, .3)"})
+window.addEventListener("phx:page-loading-start", _info => topbar.show(120))
 window.addEventListener("phx:page-loading-stop", _info => topbar.hide())
 
 // connect if there are any LiveViews on the page

@@ -58,6 +58,20 @@ defmodule EstoqueOS.Catalog do
 
   def get_product!(id), do: Repo.get!(Product, id)
 
+  @doc """
+  The product, or `:error` when there is no such id.
+
+  For an id that arrived in a URL rather than from a list this screen drew: a
+  product that was deactivated between the two pages is not a crash, it is a
+  link that no longer leads anywhere.
+  """
+  def fetch_product(id) do
+    case Repo.get(Product, id) do
+      nil -> :error
+      product -> {:ok, product}
+    end
+  end
+
   def create_product(attrs), do: %Product{} |> Product.changeset(attrs) |> Repo.insert()
 
   @doc """

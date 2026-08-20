@@ -32,7 +32,21 @@ defmodule EstoqueOSWeb.CoreComponents do
   alias Phoenix.LiveView.JS
 
   @doc """
-  Renders flash notices.
+  Renders one flash notice.
+
+  Positioned at the bottom of the screen by the group around it, not the top:
+  the bar at the top of every page is the navigation, and a toast landing on it
+  covered the menu the operator was reaching for.
+
+  Every flash that carries a message from the server also carries the time it
+  has left, drawn as a bar that empties. A notice that vanishes on its own with
+  no warning reads as a glitch — you look up and something you half-read is
+  gone — and one that never leaves has to be dismissed by hand on a screen used
+  one-handed. The bar is what makes disappearing legible.
+
+  Errors get roughly twice as long as confirmations: an error usually asks for
+  something ("say which box the goods went into") and has to still be there
+  when the eye comes back to it.
 
   ## Examples
 
@@ -50,6 +64,16 @@ defmodule EstoqueOSWeb.CoreComponents do
   attr :flash, :map, default: %{}, doc: "the map of flash messages to display"
   attr :title, :string, default: nil
   attr :kind, :atom, values: [:info, :error], doc: "used for styling and flash lookup"
+
+  attr :dismiss_after, :integer,
+    default: nil,
+    doc: """
+    milliseconds before this notice clears itself, or nil to stay until
+    dismissed. Nil is the right answer for the connection notices: "attempting
+    to reconnect" is a state, not an announcement, and a state that times out
+    is a lie.
+    """
+
   attr :rest, :global, doc: "the arbitrary HTML attributes to add to the flash container"
 
   slot :inner_block, doc: "the optional inner block that renders the flash message"
@@ -62,12 +86,15 @@ defmodule EstoqueOSWeb.CoreComponents do
       :if={msg = render_slot(@inner_block) || Phoenix.Flash.get(@flash, @kind)}
       id={@id}
       phx-click={JS.push("lv:clear-flash", value: %{key: @kind}) |> hide("##{@id}")}
+      phx-hook={@dismiss_after && ".FlashCountdown"}
+      data-key={@kind}
+      data-after={@dismiss_after}
       role="alert"
-      class="toast toast-top toast-end z-50"
+      class="flash-item"
       {@rest}
     >
       <div class={[
-        "alert w-80 sm:w-96 max-w-80 sm:max-w-96 text-wrap",
+        "alert relative overflow-hidden w-80 sm:w-96 max-w-[calc(100vw-2rem)] text-wrap shadow-lg",
         @kind == :info && "alert-info",
         @kind == :error && "alert-error"
       ]}>
@@ -81,8 +108,64 @@ defmodule EstoqueOSWeb.CoreComponents do
         <button type="button" class="group self-start cursor-pointer" aria-label={gettext("close")}>
           <.icon name="hero-x-mark" class="size-5 opacity-40 group-hover:opacity-70" />
         </button>
+
+        <!-- How long is left, and it is the only moving thing on the notice. The
+             bar is drawn inside the alert so it takes the alert's own colour,
+             which is what keeps a red countdown from reading as a progress
+             bar. -->
+        <div
+          :if={@dismiss_after}
+          class="absolute inset-x-0 bottom-0 h-1 bg-current/15"
+          aria-hidden="true"
+        >
+          <div class="flash-countdown h-full w-full bg-current/50"></div>
+        </div>
       </div>
     </div>
+
+    <script :type={Phoenix.LiveView.ColocatedHook} name=".FlashCountdown">
+      // Empties the bar over the notice's lifetime, then folds the notice away
+      // and clears the flash server-side — gone from the socket rather than
+      // only hidden in this tab, because a reconnect used to bring a toast back
+      // from the dead.
+      //
+      // Folding rather than vanishing is the point of the two-step. The notices
+      // are stacked, so one that disappears in a single frame makes every
+      // notice above it jump down a row; collapsing its height first is what
+      // makes them slide.
+      export default {
+        mounted() {
+          const total = parseInt(this.el.dataset.after, 10)
+          if (!total) return
+
+          const bar = this.el.querySelector(".flash-countdown")
+          if (bar) {
+            bar.style.transition = `width ${total}ms linear`
+            // Two frames: setting the transition and the target width in the
+            // same one is a single style computation, and the bar jumps to
+            // empty.
+            requestAnimationFrame(() => requestAnimationFrame(() => {
+              bar.style.width = "0%"
+            }))
+          }
+
+          this.timer = setTimeout(() => this.leave(), total)
+        },
+        leave() {
+          this.el.classList.add("is-leaving")
+          // Matches the transition in app.css. Clearing the flash before the
+          // fold has finished removes the element mid-animation, which is the
+          // jump this exists to avoid.
+          this.exit = setTimeout(() => {
+            this.pushEvent("lv:clear-flash", {key: this.el.dataset.key})
+          }, 220)
+        },
+        destroyed() {
+          clearTimeout(this.timer)
+          clearTimeout(this.exit)
+        }
+      }
+    </script>
     """
   end
 
@@ -294,6 +377,60 @@ defmodule EstoqueOSWeb.CoreComponents do
           ]}
           {@rest}
         >{Phoenix.HTML.Form.normalize_value("textarea", @value)}</textarea>
+      </label>
+      <.error :for={msg <- @errors}>{msg}</.error>
+    </div>
+    """
+  end
+
+  # A password anyone is *setting* rather than typing from memory. Two fields
+  # that must match, both of them dots, and the first sign of a typo is being
+  # told the confirmation disagrees — with no way to see which of the two is
+  # wrong. Rogerio asked for the eye so a new password is not written wrong in
+  # the first place.
+  #
+  # The toggle flips the field's own type; nothing is copied anywhere and
+  # nothing is remembered. `autocomplete` still says `new-password`, so a
+  # manager keeps working normally.
+  def input(%{type: "password"} = assigns) do
+    ~H"""
+    <div class="fieldset mb-2">
+      <label for={@id}>
+        <span :if={@label} class="label mb-1">{@label}</span>
+        <div class="relative">
+          <input
+            type="password"
+            name={@name}
+            id={@id}
+            value={Phoenix.HTML.Form.normalize_value("password", @value)}
+            class={
+              [
+                @class || "w-full input",
+                # Room for the eye, so a long password never runs under it.
+                "pr-11",
+                @errors != [] && (@error_class || "input-error")
+              ]
+            }
+            {@rest}
+          />
+          <!-- `tabindex="-1"` on purpose: tabbing out of the password field
+               goes to the confirmation, which is what somebody typing a
+               password is doing. The eye is for the hand that stopped. -->
+          <button
+            type="button"
+            data-password-toggle={@id}
+            tabindex="-1"
+            class="absolute inset-y-0 right-0 flex w-11 items-center justify-center opacity-50 hover:opacity-90 cursor-pointer"
+            aria-controls={@id}
+            aria-label={gettext("Show password")}
+            title={gettext("Show password")}
+            data-show-label={gettext("Show password")}
+            data-hide-label={gettext("Hide password")}
+          >
+            <.icon name="hero-eye" class="size-5 password-shown" />
+            <.icon name="hero-eye-slash" class="size-5 password-hidden hidden" />
+          </button>
+        </div>
       </label>
       <.error :for={msg <- @errors}>{msg}</.error>
     </div>

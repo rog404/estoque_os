@@ -188,26 +188,29 @@ memory_list(search="relevant term")
 
 ### 4. Git Workflow (Conventional Commits)
 
-**This project commits directly to `main`. No feature branches, no PRs.**
+**This project works in branches and merges through PRs.** Decided 2026-08-20;
+it used to commit straight to `main`, and that is over.
 
-Rogerio is the only developer and there is no remote — nothing has ever been
-pushed. A branch that only ever merges back into `main`, reviewed by nobody, is
-ceremony with no reader. Revisit this the day a second person clones the repo.
+There is a remote (`origin`, github.com/rog404/estoque_os) and `gh` is
+authenticated, so a PR has a reader and a place to live.
 
-- **NEVER** commit without an associated task. The task discipline stays; only
-  the branching is dropped.
-- Commit on `main`. Do not create branches or offer to open PRs unless asked.
+- **NEVER** commit without an associated task.
+- Branch per piece of work, named `feat/short-desc` (or `fix/`, `chore/`,
+  `refactor/`). Never commit on `main`.
+- Open a PR with `gh pr create`. **Put images in the PR when the change is
+  visible** — run the app (`/run-app`), screenshot the screens the PR changes,
+  and embed them in the body. A UI change described in prose is a UI change
+  nobody reviewed.
+  - `gh` cannot attach an image the way the web UI can, so the screenshots live
+    on the orphan branch **`pr-shots`** (`shots/*.png`) and the body links
+    `https://raw.githubusercontent.com/rog404/estoque_os/pr-shots/shots/NAME.png`.
+    Build it from a throwaway worktree (`git worktree add --detach`, `git
+    checkout --orphan pr-shots`) so `main` never carries a PNG.
 - **Never add a `Co-Authored-By` trailer.** The commits are his.
 - Changelog: `git_changelog(from_tag="v0.1.0")` → generates grouped changelog
 
-The Cortex hooks still expect the branch-per-task flow and will object: one of
-them **blocks** `git commit` on `main`, and another wants branches named
-`feat/cx-N-desc`. That is a known and accepted mismatch — the hook is right about
-the general case and wrong about this repository. Disable it per-project through
-the `/hooks` menu if it becomes tiresome.
-
-`git_branch` / `git_pr` / `git_merge` remain available for when this project
-does get a remote and a second developer; they are simply not the flow today.
+The Cortex hook that blocks `git commit` on `main` is right again and should be
+re-enabled (`/hooks`) — it was turned off only while the flow was commit-on-main.
 
 **Conventional Commits (required):**
 

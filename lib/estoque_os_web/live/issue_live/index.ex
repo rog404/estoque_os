@@ -35,6 +35,29 @@ defmodule EstoqueOSWeb.IssueLive.Index do
      |> load_here()}
   end
 
+  # Arrived from a product page, which knows which product and nothing else.
+  # The product comes out picked, with the quantity field focused: the person
+  # who pressed "Dar baixa" over there was already looking at this product and
+  # has no reason to type its name into a search box here.
+  #
+  # An id that does not resolve is not worth a page about an error — the screen
+  # is perfectly usable without it, so it opens as it always does.
+  @impl true
+  def handle_params(%{"product" => product_id}, _uri, socket) do
+    case Integer.parse(product_id) do
+      {id, ""} ->
+        case Catalog.fetch_product(id) do
+          {:ok, product} -> {:noreply, pick_product(socket, product)}
+          :error -> {:noreply, socket}
+        end
+
+      _ ->
+        {:noreply, socket}
+    end
+  end
+
+  def handle_params(_params, _uri, socket), do: {:noreply, socket}
+
   defp load_here(socket) do
     case socket.assigns.location_id do
       nil -> assign(socket, :here, [])
@@ -382,7 +405,7 @@ defmodule EstoqueOSWeb.IssueLive.Index do
                 phx-mounted={JS.focus()}
               />
             </label>
-            <.button variant="primary">{gettext("Add to the list")}</.button>
+            <.button variant="primary">{gettext("Add to the write-off")}</.button>
             <button type="button" phx-click="clear_product" class="btn btn-ghost">
               {gettext("Cancel")}
             </button>
@@ -430,12 +453,17 @@ defmodule EstoqueOSWeb.IssueLive.Index do
 
           <:col :let={row} label={gettext("Actions")} hide_label_on_card={true} field={:inline} group>
             <div class="flex justify-end">
+              <!-- "Separar", not "Adicionar". This screen takes goods *out* of
+                   stock, and a row whose action reads "add" says the opposite of
+                   what the screen does — reported as reading like an antithesis.
+                   Picking is the warehouse's own word for gathering what is
+                   about to leave, and it is what this click actually starts. -->
               <button
                 phx-click="pick"
                 phx-value-product={row.product_id}
                 class="btn btn-sm"
               >
-                {gettext("Add")}
+                {gettext("Pick")}
               </button>
             </div>
           </:col>

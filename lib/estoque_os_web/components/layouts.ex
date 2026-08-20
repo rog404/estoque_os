@@ -44,6 +44,7 @@ defmodule EstoqueOSWeb.Layouts do
       assigns
       |> assign(:section, active_section(assigns[:current_path]))
       |> assign(:sees_money?, EstoqueOSWeb.UserAuth.sees_money?(assigns[:current_scope]))
+      |> assign(:groups, visible_groups(assigns[:current_scope]))
 
     ~H"""
     <div data-section={@section}>
@@ -76,7 +77,7 @@ defmodule EstoqueOSWeb.Layouts do
           class="hidden lg:flex items-center gap-1"
           aria-label={gettext("Main")}
         >
-          <.nav_group :for={group <- nav_groups()} group={group} current_path={@current_path} />
+          <.nav_group :for={group <- @groups} group={group} current_path={@current_path} />
         </nav>
 
         <div class="flex-none flex items-center gap-1">
@@ -99,7 +100,7 @@ defmodule EstoqueOSWeb.Layouts do
               <.icon name="hero-bars-3" class="size-5" />
             </summary>
             <div class="dropdown-content z-50 mt-2 w-64 rounded-box bg-base-100 shadow-lg border border-base-300 max-h-[80vh] overflow-y-auto text-base-content">
-              <ul :for={group <- nav_groups()} class="menu w-full" data-section={group.section}>
+              <ul :for={group <- @groups} class="menu w-full" data-section={group.section}>
                 <li class="menu-title section-label">{group.label}</li>
                 <li :for={item <- group.items}>
                   <.link navigate={item.path} class={nav_item_class(@current_path, item.path)}>
@@ -273,16 +274,25 @@ defmodule EstoqueOSWeb.Layouts do
         label: gettext("Incoming"),
         icon: "hero-arrow-down-tray",
         items: [
-          %{label: gettext("Invoices"), path: ~p"/invoices", icon: "hero-document-text"},
+          %{
+            label: gettext("Invoices"),
+            path: ~p"/invoices",
+            icon: "hero-document-text",
+            roles: ~w(admin manager auditor)
+          },
           %{
             label: gettext("Manual entry"),
             path: ~p"/entry",
-            icon: "hero-inbox-arrow-down"
+            icon: "hero-inbox-arrow-down",
+            roles: ~w(admin manager logistics)
           },
+          # Not the logistics partner's: a spreadsheet import writes counts for
+          # the whole warehouse at once, without a box in anyone's hands.
           %{
             label: gettext("Import data"),
             path: ~p"/stock/spreadsheet",
-            icon: "hero-table-cells"
+            icon: "hero-table-cells",
+            roles: ~w(admin manager)
           }
         ]
       },
@@ -296,12 +306,33 @@ defmodule EstoqueOSWeb.Layouts do
           %{
             label: gettext("Conference"),
             path: ~p"/conferences",
-            icon: "hero-clipboard-document-list"
+            icon: "hero-clipboard-document-list",
+            roles: ~w(admin manager logistics)
           },
-          %{label: gettext("Count boxes"), path: ~p"/audit", icon: "hero-check-circle"},
-          %{label: gettext("Write off"), path: ~p"/issue", icon: "hero-arrow-up-tray"},
-          %{label: gettext("Load-out"), path: ~p"/load-out", icon: "hero-truck"},
-          %{label: gettext("Mission return"), path: ~p"/returns", icon: "hero-arrow-uturn-left"}
+          %{
+            label: gettext("Count boxes"),
+            path: ~p"/audit",
+            icon: "hero-check-circle",
+            roles: ~w(admin manager logistics)
+          },
+          %{
+            label: gettext("Write off"),
+            path: ~p"/issue",
+            icon: "hero-arrow-up-tray",
+            roles: ~w(admin manager)
+          },
+          %{
+            label: gettext("Load-out"),
+            path: ~p"/load-out",
+            icon: "hero-truck",
+            roles: ~w(admin manager logistics)
+          },
+          %{
+            label: gettext("Mission return"),
+            path: ~p"/returns",
+            icon: "hero-arrow-uturn-left",
+            roles: ~w(admin manager logistics)
+          }
         ]
       },
       %{
@@ -309,10 +340,25 @@ defmodule EstoqueOSWeb.Layouts do
         label: gettext("Stock"),
         icon: "hero-archive-box",
         items: [
-          %{label: gettext("Stock"), path: ~p"/stock", icon: "hero-squares-2x2"},
-          %{label: gettext("Boxes"), path: ~p"/boxes", icon: "hero-cube"},
-          %{label: gettext("Locations"), path: ~p"/locations", icon: "hero-map-pin"},
-          %{label: gettext("Kits"), path: ~p"/kits", icon: "hero-rectangle-stack"}
+          %{
+            label: gettext("Stock"),
+            path: ~p"/stock",
+            icon: "hero-squares-2x2",
+            roles: :everyone
+          },
+          %{label: gettext("Boxes"), path: ~p"/boxes", icon: "hero-cube", roles: :everyone},
+          %{
+            label: gettext("Locations"),
+            path: ~p"/locations",
+            icon: "hero-map-pin",
+            roles: :everyone
+          },
+          %{
+            label: gettext("Kits"),
+            path: ~p"/kits",
+            icon: "hero-rectangle-stack",
+            roles: :everyone
+          }
         ]
       },
       %{
@@ -323,14 +369,62 @@ defmodule EstoqueOSWeb.Layouts do
           %{
             label: gettext("Audit report"),
             path: ~p"/reports/audit",
-            icon: "hero-clipboard-document-list"
+            icon: "hero-clipboard-document-list",
+            roles: :everyone
           },
-          %{label: gettext("Manual issues"), path: ~p"/issues", icon: "hero-arrow-up-tray"},
-          %{label: gettext("Missions"), path: ~p"/missions", icon: "hero-map"}
+          %{
+            label: gettext("Manual issues"),
+            path: ~p"/issues",
+            icon: "hero-arrow-up-tray",
+            roles: :everyone
+          },
+          %{label: gettext("Missions"), path: ~p"/missions", icon: "hero-map", roles: :everyone}
         ]
       }
     ]
   end
+
+  @doc """
+  The menu as one role sees it: groups with nothing in them do not appear.
+
+  A menu entry that answers with "you don't have permission to access this
+  page" is not information, it is a door with a wall behind it. The logistics
+  partner has no business being told twice a day that the invoices they cannot
+  open exist.
+
+  This is presentation and never the gate — the router is. `roles` here mirrors
+  the `live_session` each path sits in, and `test/estoque_os_web/live/nav_roles_test.exs`
+  walks every entry with every role to hold the two together.
+  """
+  def visible_groups(scope) do
+    role = Scope.effective_role(scope)
+
+    nav_groups()
+    |> Enum.map(&%{&1 | items: Enum.filter(&1.items, fn item -> allowed?(item, role) end)})
+    |> Enum.reject(&(&1.items == []))
+  end
+
+  @doc """
+  Whether this scope may open the given menu path.
+
+  Asked by screens that offer a shortcut into another one — the product page's
+  "Dar baixa" — so the shortcut and the menu answer from the same table instead
+  of each having its own opinion.
+  """
+  def may_access?(scope, path) do
+    role = Scope.effective_role(scope)
+
+    case Enum.find(all_items(), &(&1.path == path)) do
+      nil -> false
+      item -> allowed?(item, role)
+    end
+  end
+
+  defp allowed?(_item, nil), do: false
+  defp allowed?(%{roles: :everyone}, _role), do: true
+  defp allowed?(%{roles: roles}, role), do: role in roles
+
+  defp all_items, do: Enum.flat_map(nav_groups(), & &1.items)
 
   @doc """
   Which section of the operation a path belongs to, and what that section is
@@ -409,6 +503,23 @@ defmodule EstoqueOSWeb.Layouts do
   @doc """
   Shows the flash group with standard titles and content.
 
+  One fixed container at the bottom right holding all of them, rather than each
+  notice positioning itself: two `toast` elements are both fixed to the same
+  corner, so an error arriving on top of a confirmation drew one exactly over
+  the other — reported as "um sobrepõe o outro".
+
+  So they are a stack now, newest at the bottom, and they behave like one: each
+  notice runs its own clock, folds itself away when it is up, and the ones above
+  it slide down into the space. The folding is what makes the stack readable —
+  a notice that vanishes in a single frame makes everything above it jump a row,
+  and a jump is indistinguishable from a page reloading under you.
+
+  Bottom, not top. It used to sit over the navigation bar — the one part of the
+  screen that is always in the same place — so a notice about the line just
+  recorded covered the menu the operator was reaching for. Down here it covers
+  the end of a list, which is the cheapest thing on the page to cover, and it
+  is beside the thumb that dismisses it.
+
   ## Examples
 
       <.flash_group flash={@flash} />
@@ -418,10 +529,18 @@ defmodule EstoqueOSWeb.Layouts do
 
   def flash_group(assigns) do
     ~H"""
-    <div id={@id} aria-live="polite">
-      <.flash kind={:info} flash={@flash} />
-      <.flash kind={:error} flash={@flash} />
+    <div
+      id={@id}
+      class="toast toast-bottom toast-end z-50 max-w-full items-end gap-2"
+      aria-live="polite"
+    >
+      <.flash kind={:info} flash={@flash} dismiss_after={info_ms()} />
+      <.flash kind={:error} flash={@flash} dismiss_after={error_ms()} />
 
+      <!-- No countdown on these two, deliberately. They are not announcements,
+           they are the state of the connection, and a state that clears itself
+           after fourteen seconds would tell the operator the app is back when
+           it is not. -->
       <.flash
         id="client-error"
         kind={:error}
@@ -454,6 +573,13 @@ defmodule EstoqueOSWeb.Layouts do
     </div>
     """
   end
+
+  # Long enough to read twice, standing up, holding a box. Errors ask for
+  # something and get more than double: "say which box the goods went into" is
+  # an instruction, and an instruction that clears itself before the operator
+  # looks back up has not been given.
+  defp info_ms, do: 6_000
+  defp error_ms, do: 14_000
 
   @doc """
   Provides dark vs light theme toggle based on themes defined in app.css.

@@ -42,7 +42,16 @@ defmodule EstoqueOSWeb.Router do
 
     conn
     |> assign(:csp_nonce, nonce)
-    |> put_secure_browser_headers(%{"content-security-policy" => policy})
+    |> put_secure_browser_headers(%{
+      "content-security-policy" => policy,
+      # Every page here is behind a login, and the browser's back button was
+      # showing them after the session had gone: a page restored from the cache
+      # is never re-checked with the server, so a logged-out person still read
+      # the stock they were looking at a minute ago. `no-store` is what makes
+      # going back a real request, which the auth plug then refuses.
+      "cache-control" => "no-store, no-cache, must-revalidate, private",
+      "pragma" => "no-cache"
+    })
   end
 
   pipeline :api do
@@ -91,13 +100,25 @@ defmodule EstoqueOSWeb.Router do
         {EstoqueOSWeb.UserAuth, :current_path},
         {EstoqueOSWeb.UserAuth, :require_password_not_pending}
       ] do
-      live "/stock/spreadsheet", StockLive.Spreadsheet, :new
       live "/entry", EntryLive.New, :new
       live "/conferences", ConferenceLive.Index, :index
       live "/audit", AuditLive.Index, :index
       live "/audit/:id", AuditLive.Count, :count
       live "/returns", ReturnLive.Index, :index
       live "/load-out", LoadOutLive.Index, :index
+    end
+
+    # Writing the whole warehouse at once, without a box in anyone's hands. The
+    # spreadsheet import is not money and not a hands-on flow: it is a planning
+    # act, and the logistics partner does not do the planning.
+    live_session :planning,
+      on_mount: [
+        {EstoqueOSWeb.UserAuth, :require_authenticated},
+        {EstoqueOSWeb.UserAuth, {:require_role, ~w(admin manager)}},
+        {EstoqueOSWeb.UserAuth, :current_path},
+        {EstoqueOSWeb.UserAuth, :require_password_not_pending}
+      ] do
+      live "/stock/spreadsheet", StockLive.Spreadsheet, :new
     end
 
     # Screens whose whole subject is money. An invoice is a document of prices,

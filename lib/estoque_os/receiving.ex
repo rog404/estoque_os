@@ -190,15 +190,103 @@ defmodule EstoqueOS.Receiving do
     end)
   end
 
-  @doc "Lines nobody has counted yet."
+  @doc """
+  Lines nobody has counted at all.
+
+  Deliberately not "lines with no count of record". A line whose first count
+  disagreed with the invoice has no count of record either, and lumping the two
+  together made a four-line invoice report "4 not counted" and "1 to count
+  again" side by side — five jobs on four lines. They are different jobs: one
+  has not been visited, the other has been visited and is waiting for somebody
+  to go back to the shelf. See `awaiting_recount_lines/1`.
+  """
   def uncounted_lines(%Receipt{} = receipt) do
-    Enum.filter(receipt.lines, &is_nil(&1.counted_quantity))
+    Enum.filter(receipt.lines, &(is_nil(&1.counted_quantity) and ReceiptLine.attempts(&1) == 0))
+  end
+
+  @doc "Lines counted once already and waiting to be counted again."
+  def awaiting_recount_lines(%Receipt{} = receipt) do
+    Enum.filter(receipt.lines, &ReceiptLine.awaiting_recount?/1)
   end
 
   ## Counting
 
   @doc """
-  Records the count and the box for one line.
+  How many times one line is counted before a number that disagrees with the
+  invoice is believed.
+
+  Three, decided with Rogerio on 2026-08-20. The first disagreement is far more
+  often a miscount than a loss, and the cheapest moment to tell them apart is
+  while the operator is still holding the box. The second disagreement could
+  still be the same miscount repeated — the eye that read "27" once reads it
+  again. By the third the number is the number.
+  """
+  def counts_required, do: 3
+
+  @doc """
+  Records one count of a line, and decides whether to believe it.
+
+  This is the rule the conference was missing. It used to take whatever was
+  typed and book it, so the logistics operator could record any quantity at all
+  against an invoice that said something else — the exact hole
+  `AuditLive.Count` was built to close for box counts, still open here.
+
+  Returns:
+
+    * `{:recorded, line}` — the count agreed with the invoice, or it is the
+      last count we are going to ask for. `counted_quantity` is set.
+    * `{:recount, line}` — the count disagreed and there are counts left.
+      Nothing is booked; the trail is kept and the line goes back to asking.
+    * `{:error, reason}`.
+
+  The box is written either way. The operator put the goods somewhere, and that
+  is true regardless of how the arithmetic turns out.
+
+  Nothing here reaches the ledger — a conference writes when it closes — so a
+  count that is not believed costs an edit to a working document, not an
+  adjustment filed forever.
+  """
+  def record_count(%ReceiptLine{} = line, attrs) do
+    attrs = Map.new(attrs, fn {key, value} -> {to_string(key), value} end)
+
+    case to_decimal(attrs["counted_quantity"]) do
+      nil ->
+        {:error, :invalid_quantity}
+
+      # Checked here rather than left to the changeset. A negative count is not
+      # a divergence to be recounted, it is a typo, and storing it as an attempt
+      # would spend one of the three counts on a number that cannot be a count:
+      # `counted_quantity` is only written on the last attempt, so the column
+      # constraint that refuses it would not have been reached until then.
+      counted when is_struct(counted, Decimal) ->
+        if Decimal.negative?(counted) do
+          {:error, :invalid_quantity}
+        else
+          do_record_count(line, counted, attrs["box_id"])
+        end
+    end
+  end
+
+  defp do_record_count(line, counted, box_id) do
+    attempts = (line.count_attempts || []) ++ [counted]
+    agrees? = Decimal.equal?(counted, line.expected_quantity)
+    believed? = agrees? or length(attempts) >= counts_required()
+
+    changes = %{"count_attempts" => attempts, "box_id" => box_id}
+    changes = if believed?, do: Map.put(changes, "counted_quantity", counted), else: changes
+
+    case line |> ReceiptLine.changeset(changes) |> Repo.update() do
+      {:ok, updated} -> {if(believed?, do: :recorded, else: :recount), updated}
+      {:error, changeset} -> {:error, changeset}
+    end
+  end
+
+  @doc """
+  Records the count and the box for one line, believing whatever it is told.
+
+  The way in for anything that is not an operator counting: a fixture, an
+  import, a manager settling a line by hand. `record_count/2` is what the
+  conference screen uses.
   """
   def update_line(%ReceiptLine{} = line, attrs) do
     line
@@ -217,10 +305,14 @@ defmodule EstoqueOS.Receiving do
   Nothing has reached the ledger at this point — a conference writes when it
   closes — so this is an edit to a working document and not an adjustment. The
   box is kept: the operator mistyped a quantity, not the shelf they put it on.
+
+  The counts already made are dropped with it. Keeping them would let the next
+  single count land as the third attempt and be believed on the spot, which is
+  the rule in `record_count/2` deleting itself.
   """
   def uncount_line(%ReceiptLine{} = line) do
     line
-    |> ReceiptLine.changeset(%{counted_quantity: nil})
+    |> ReceiptLine.changeset(%{counted_quantity: nil, count_attempts: []})
     |> Repo.update()
   end
 
@@ -264,6 +356,13 @@ defmodule EstoqueOS.Receiving do
         type: "adjustment",
         reason_code: "count_correction",
         user_id: opts[:user_id],
+        invoice_id: receipt.invoice_id,
+        # What raises this on the manager's overview. A line counted three times
+        # that still disagrees with the invoice is either goods that never
+        # arrived or an invoice that is wrong, and neither is the operator's to
+        # close alone. Same flag the box count uses, so there is one list of
+        # counts somebody has to look at rather than two.
+        review_reason: review_reason(counted),
         notes:
           opts[:notes] ||
             gettext("Receiving conference of invoice %{number}, round %{round}",
@@ -292,6 +391,23 @@ defmodule EstoqueOS.Receiving do
           {:error, reason}
       end
     end
+  end
+
+  defp review_reason(lines) do
+    if Enum.any?(lines, &ReceiptLine.diverged_after_recounts?/1) do
+      "count_diverged_after_recounts"
+    end
+  end
+
+  @doc """
+  Counted lines that were counted more than once and still disagree with the
+  invoice.
+
+  Read by the conference screen, to say so on the line, and by the manager's
+  overview through the transaction flagged at the close.
+  """
+  def diverged_after_recounts(%Receipt{} = receipt) do
+    Enum.filter(receipt.lines, &ReceiptLine.diverged_after_recounts?/1)
   end
 
   defp maybe_post(multi, _name, [], _attrs), do: multi

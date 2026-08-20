@@ -124,6 +124,14 @@ defmodule EstoqueOSWeb.HomeLiveTest do
   # A warning that states a fact and stops there leaves the manager to find the
   # rows by hand, which is the same as not being told at all.
   describe "warnings lead somewhere" do
+    # Overrides the auditor the outer setup signed in: this block is about the
+    # manager's dashboard.
+    setup :register_and_log_in_operator
+
+    # Signed in as the manager on purpose. The alert belongs to the two roles
+    # that decide what to do about a disputed count — chase the supplier, or
+    # accept the loss — and the operator who already counted it three times
+    # cannot act on being told again.
     test "a count that disagreed twice links to the box it was about", %{
       conn: conn,
       warehouse: warehouse
@@ -151,6 +159,39 @@ defmodule EstoqueOSWeb.HomeLiveTest do
       {:ok, _view, html} = live(conn, ~p"/")
 
       assert html =~ ~s(href="/boxes/#{box.id}")
+    end
+
+    # The logistics operator counted it three times already. Telling them again
+    # on every visit is noise they cannot act on, and the decision it asks for
+    # — chase the supplier, or accept the loss — is not theirs to take.
+    test "a disputed count is not on the operator's dashboard", %{
+      conn: conn,
+      warehouse: warehouse
+    } do
+      box = box_fixture(%{code: "HM10", location_id: warehouse.id})
+      lot = lot_fixture()
+      receive_stock(lot, warehouse, 5, box_id: box.id)
+
+      {:ok, _} =
+        Inventory.post_transaction(%{
+          type: "adjustment",
+          reason_code: "count_correction",
+          review_reason: "count_diverged_twice",
+          user_id: actor_id(),
+          entries: [
+            %{
+              lot_id: lot.id,
+              location_id: warehouse.id,
+              box_id: box.id,
+              quantity: Decimal.new(-1)
+            }
+          ]
+        })
+
+      logistics = register_and_log_in_logistics(%{conn: conn})
+      {:ok, _view, html} = live(logistics.conn, ~p"/")
+
+      refute html =~ ~s(href="/boxes/#{box.id}")
     end
 
     test "lots with no lot data link to exactly those rows", %{conn: conn, warehouse: warehouse} do
