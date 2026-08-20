@@ -233,15 +233,15 @@ defmodule EstoqueOSWeb.KitLiveTest do
 
     # The product *is* the component: it is named once, and the line takes the
     # catalog's own wording rather than something retyped beside it.
-    test "adds a component by naming a catalog product", %{conn: conn, kit: kit} do
+    test "adds a component picked from the search", %{conn: conn, kit: kit} do
       drape = product_fixture(%{name: "Campo cirúrgico 50x50"})
 
       {:ok, view, _html} = live(conn, ~p"/kits/#{kit.id}")
 
-      html =
-        view
-        |> form("#add-item", %{"product_name" => drape.name, "quantity" => "2"})
-        |> render_submit()
+      view |> element("#component-search") |> render_change(%{"query" => "campo"})
+      view |> element("button[phx-value-product='#{drape.id}']") |> render_click()
+
+      html = view |> form("#add-item", %{"quantity" => "2"}) |> render_submit()
 
       assert html =~ drape.name
 
@@ -250,32 +250,83 @@ defmodule EstoqueOSWeb.KitLiveTest do
       assert Decimal.equal?(item.quantity, Decimal.new(2))
     end
 
-    # Two lines for one product would have `availability/2` count the same stock
-    # against each of them, so a kit needing 4 and 2 of a thing covers neither.
-    test "refuses a product the recipe already lists", %{conn: conn, kit: kit, gown: gown} do
+    # The question being answered while a recipe is written is "do we have any
+    # of this" — a component nobody has is a kit that cannot be assembled, and
+    # it is worth knowing before the line is added.
+    test "the search says how much of each item is here", %{
+      conn: conn,
+      kit: kit,
+      warehouse: warehouse
+    } do
+      gauze = product_fixture(%{name: "Compressa de gaze 7,5x7,5"})
+
+      {:ok, _} =
+        Inventory.post_transaction(%{
+          type: "purchase_in",
+          user_id: actor_id(),
+          entries: [
+            %{
+              lot_id: lot_fixture(%{product_id: gauze.id}).id,
+              location_id: warehouse.id,
+              quantity: Decimal.new(250)
+            }
+          ]
+        })
+
       {:ok, view, _html} = live(conn, ~p"/kits/#{kit.id}")
 
-      html =
-        view
-        |> form("#add-item", %{"product_name" => gown.name, "quantity" => "2"})
-        |> render_submit()
+      html = view |> element("#component-search") |> render_change(%{"query" => "compressa"})
 
-      assert html =~ "já está neste kit"
+      assert html =~ gauze.name
+      assert html =~ "250 UN aqui"
+    end
+
+    # `Catalog.list_products/1` returns the first fifty products alphabetically.
+    # The old datalist was fed from exactly that, and so was the name lookup on
+    # submit, so a catalog of any real size refused most of itself with "não
+    # está no catálogo" — about products that are.
+    test "finds a product past the fiftieth in the catalog", %{conn: conn, kit: kit} do
+      for index <- 1..60, do: product_fixture(%{name: "Aaa produto #{index}"})
+      zinc = product_fixture(%{name: "Zinco pomada"})
+
+      {:ok, view, _html} = live(conn, ~p"/kits/#{kit.id}")
+
+      html = view |> element("#component-search") |> render_change(%{"query" => "zinco"})
+
+      assert html =~ zinc.name
+
+      view |> element("button[phx-value-product='#{zinc.id}']") |> render_click()
+      view |> form("#add-item", %{"quantity" => "1"}) |> render_submit()
+
+      assert Enum.any?(Kits.get_kit!(kit.id).items, &(&1.product_id == zinc.id))
+    end
+
+    # Two lines for one product would have `availability/2` count the same stock
+    # against each of them, so a kit needing 4 and 2 of a thing covers neither.
+    test "offers no way to add a product the recipe already lists", %{
+      conn: conn,
+      kit: kit,
+      gown: gown
+    } do
+      {:ok, view, _html} = live(conn, ~p"/kits/#{kit.id}")
+
+      html = view |> element("#component-search") |> render_change(%{"query" => "avental"})
+
+      assert html =~ "já está na receita"
+      assert html =~ ~r{<button[^>]*phx-value-product="#{gown.id}"[^>]*disabled}s
       assert Enum.count(Kits.get_kit!(kit.id).items, &(&1.product_id == gown.id)) == 1
     end
 
     # A recipe made of free text cannot say how many kits the stock covers,
-    # cannot be packed and cannot be consumed.
-    test "refuses a component the catalog has never heard of", %{conn: conn, kit: kit} do
+    # cannot be packed and cannot be consumed — so there is no free text left.
+    test "says so when the catalog has never heard of it", %{conn: conn, kit: kit} do
       {:ok, view, _html} = live(conn, ~p"/kits/#{kit.id}")
 
-      html =
-        view
-        |> form("#add-item", %{"product_name" => "Campo cirúrgico", "quantity" => "2"})
-        |> render_submit()
+      html = view |> element("#component-search") |> render_change(%{"query" => "berimbau"})
 
-      assert html =~ "não está no catálogo"
-      refute Enum.any?(Kits.get_kit!(kit.id).items, &(&1.description == "Campo cirúrgico"))
+      assert html =~ "Nada no catálogo corresponde"
+      refute has_element?(view, "#add-item")
+      refute Enum.any?(Kits.get_kit!(kit.id).items, &(&1.description == "berimbau"))
     end
 
     test "changes how many go in each kit", %{conn: conn, kit: kit} do

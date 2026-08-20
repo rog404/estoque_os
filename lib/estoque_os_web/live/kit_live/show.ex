@@ -11,7 +11,8 @@ defmodule EstoqueOSWeb.KitLive.Show do
   Packing a kit moves stock; choosing a location, checking what a quantity
   would need, and changing your mind about the quantity only report.
   """
-  def viewer_events, do: ~w(location review review_again)
+  def viewer_events,
+    do: ~w(location review review_again search_components pick_component clear_component)
 
   import EstoqueOS.Coercion, only: [to_decimal: 1]
 
@@ -19,6 +20,7 @@ defmodule EstoqueOSWeb.KitLive.Show do
   alias EstoqueOS.Catalog
   alias EstoqueOS.Kits
 
+  alias EstoqueOS.Inventory
   alias EstoqueOS.Inventory.Locations
 
   @impl true
@@ -34,6 +36,8 @@ defmodule EstoqueOSWeb.KitLive.Show do
      |> assign(:locations, locations)
      |> assign(:location_id, location && location.id)
      |> assign(:new_box, nil)
+     |> assign(:component_query, "")
+     |> assign(:component_pick, nil)
      |> load_context()}
   end
 
@@ -47,9 +51,53 @@ defmodule EstoqueOSWeb.KitLive.Show do
     |> assign(:availability, location_id && Kits.availability(socket.assigns.kit, location_id))
     |> assign(:boxes, (location_id && Locations.list_boxes(location_id)) || [])
     |> assign(:assembled_count, Kits.assembled_count(socket.assigns.kit))
-    |> assign(:products, Catalog.list_products())
     |> assign(:review, nil)
     |> assign_new(:error, fn -> nil end)
+    |> load_component_results()
+  end
+
+  # Re-run after every reload, not only when somebody types: the quantities in
+  # the list are "how much is here", and both the location picker and adding a
+  # component change what that means.
+  defp load_component_results(socket) do
+    results =
+      case String.trim(socket.assigns[:component_query] || "") do
+        "" -> []
+        term -> search_components(socket, term)
+      end
+
+    socket
+    |> assign(:component_results, results)
+    |> assign(:component_pick, refresh_pick(socket.assigns[:component_pick], results))
+  end
+
+  defp search_components(socket, term) do
+    products = Catalog.list_products(search: term, limit: 20)
+    ids = Enum.map(products, & &1.id)
+    in_recipe = MapSet.new(socket.assigns.kit.items, & &1.product_id)
+
+    balances =
+      case socket.assigns.location_id do
+        nil -> %{}
+        location_id -> Inventory.balances_by_product(ids, location_id)
+      end
+
+    Enum.map(products, fn product ->
+      %{
+        product: product,
+        quantity: Map.get(balances, product.id, Decimal.new(0)),
+        in_recipe?: MapSet.member?(in_recipe, product.id)
+      }
+    end)
+  end
+
+  # A picked component holds a quantity, and a quantity read at another location
+  # is the wrong number on screen. Dropped rather than shown stale when the new
+  # results no longer carry it.
+  defp refresh_pick(nil, _results), do: nil
+
+  defp refresh_pick(pick, results) do
+    Enum.find(results, &(&1.product.id == pick.product.id))
   end
 
   # After a recipe edit: reload the kit, recompute what the stock covers, and say
@@ -262,30 +310,86 @@ defmodule EstoqueOSWeb.KitLive.Show do
         allowed={@writable?}
         reason={plan_block(@current_scope)}
       >
-        <form
-          id="add-item"
-          phx-submit="add_item"
-          class="field-row mt-4"
-        >
-          <!-- The product *is* the component. Asking for a free-text name beside
-               it, with the product optional and a "link later" escape, is exactly
-               how a recipe fills with lines nothing can be assembled from. The
-               description comes from the product now. -->
+        <!-- Search, then pick — the same two steps as the manual entry and the
+             write-off, and for the same reason. It used to be one free-text
+             field backed by a `datalist`, which showed a bare list of names and
+             was fed by `Catalog.list_products/1`: the first fifty products in
+             the catalog, alphabetically. Everything after "C" was invisible in
+             the list *and* refused on submit — "não está no catálogo", about a
+             product that is.
+             The list says how much of each item is here, because that is the
+             question being asked while a recipe is written: a component nobody
+             has any of is a kit that cannot be assembled, and it is worth
+             knowing before the line is added rather than after. -->
+        <form id="component-search" phx-change="search_components" class="field-row mt-4">
           <label class="fieldset grow min-w-72">
             <span class="label">{gettext("Add a component")}</span>
             <input
-              type="text"
-              name="product_name"
-              list="kit-products"
-              placeholder={gettext("Avental EG")}
+              type="search"
+              name="query"
+              value={@component_query}
+              placeholder={gettext("Search the catalog by name")}
               class="input input-bordered w-full"
               autocomplete="off"
-              required
+              phx-debounce="300"
             />
-            <datalist id="kit-products">
-              <option :for={product <- @products} value={product.name}></option>
-            </datalist>
           </label>
+        </form>
+
+        <p :if={@component_query != "" and @component_results == []} class="mt-3 opacity-70">
+          {gettext("Nothing in the catalog matches that.")}
+        </p>
+
+        <!-- Below the field, never above it: this appears while somebody is
+             typing, and anything appearing above the input pushes the input
+             down mid-keystroke. -->
+        <ul
+          :if={@component_results != [] and is_nil(@component_pick)}
+          class="menu bg-base-100 rounded-box mt-3 w-full border border-base-300"
+        >
+          <li :for={result <- @component_results}>
+            <button
+              type="button"
+              phx-click="pick_component"
+              phx-value-product={result.product.id}
+              disabled={result.in_recipe?}
+              class={[
+                "flex items-center justify-between gap-3",
+                result.in_recipe? && "opacity-50"
+              ]}
+            >
+              <span class="min-w-0 truncate">
+                {result.product.name}
+                <.status :if={result.product.controlled} kind={:controlled} />
+              </span>
+              <!-- Always rendered, so a row does not change height when it
+                   happens to be one already in the recipe. -->
+              <span class="shrink-0 text-sm text-base-content/80">
+                <span :if={result.in_recipe?}>{gettext("already in the recipe")}</span>
+                <span :if={not result.in_recipe?}>
+                  {gettext("%{quantity} %{unit} here",
+                    quantity: quantity(result.quantity),
+                    unit: result.product.stock_unit
+                  )}
+                </span>
+              </span>
+            </button>
+          </li>
+        </ul>
+
+        <form :if={@component_pick} id="add-item" phx-submit="add_item" class="field-row mt-4">
+          <div class="fieldset grow min-w-72">
+            <span class="label">{gettext("Add a component")}</span>
+            <p class="input input-bordered w-full flex items-center justify-between gap-2">
+              <span class="min-w-0 truncate font-medium">{@component_pick.product.name}</span>
+              <span class="shrink-0 text-sm text-base-content/80">
+                {gettext("%{quantity} %{unit} here",
+                  quantity: quantity(@component_pick.quantity),
+                  unit: @component_pick.product.stock_unit
+                )}
+              </span>
+            </p>
+          </div>
           <label class="fieldset">
             <span class="label">{gettext("Per kit")}</span>
             <input
@@ -296,9 +400,13 @@ defmodule EstoqueOSWeb.KitLive.Show do
               value="1"
               class="input input-bordered w-20 text-right"
               required
+              phx-mounted={JS.focus()}
             />
           </label>
           <.button>{gettext("Add")}</.button>
+          <button type="button" phx-click="clear_component" class="btn btn-ghost">
+            {gettext("Cancel")}
+          </button>
         </form>
       </.write_gate>
 
@@ -477,6 +585,25 @@ defmodule EstoqueOSWeb.KitLive.Show do
   end
 
   @impl true
+  def handle_event("search_components", %{"query" => query}, socket) do
+    {:noreply,
+     socket
+     |> assign(:component_query, query)
+     |> assign(:component_pick, nil)
+     |> load_component_results()}
+  end
+
+  def handle_event("pick_component", %{"product" => id}, socket) do
+    case Enum.find(socket.assigns.component_results, &("#{&1.product.id}" == id)) do
+      nil -> {:noreply, socket}
+      result -> {:noreply, assign(socket, :component_pick, result)}
+    end
+  end
+
+  def handle_event("clear_component", _params, socket) do
+    {:noreply, assign(socket, :component_pick, nil)}
+  end
+
   def handle_event("add_item", params, socket) do
     if may_plan?(socket.assigns.current_scope) do
       do_add_item(params, socket)
@@ -561,21 +688,11 @@ defmodule EstoqueOSWeb.KitLive.Show do
   end
 
   defp do_add_item(params, socket) do
-    name = String.trim(params["product_name"] || "")
-
-    case Enum.find(socket.assigns.products, &(&1.name == name)) do
+    case socket.assigns.component_pick do
       nil ->
-        {:noreply,
-         assign(
-           socket,
-           :error,
-           gettext(
-             "%{name} is not in the catalog. A kit can only ask for something the stock knows about.",
-             name: name
-           )
-         )}
+        {:noreply, assign(socket, :error, gettext("Pick a component from the list first."))}
 
-      product ->
+      %{product: product} ->
         attrs = %{
           # The name the catalog uses, not one somebody retyped beside it.
           description: product.name,
