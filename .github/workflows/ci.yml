@@ -1,18 +1,71 @@
 name: CI
 
-# There is no remote yet. This runs the moment one exists, and until then it is
-# the written form of what `mix precommit` already does locally — so the two
+# The written form of what `mix precommit` already does locally, so the two
 # cannot drift into disagreeing about what "green" means.
 on:
   push:
     branches: [main]
   pull_request:
 
+# A second push to the same branch makes the first run's answer worthless.
+# Cancel it rather than queue behind it.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   MIX_ENV: test
+  ELIXIR_VERSION: "1.20.2"
+  OTP_VERSION: "29.0.4"
 
+# Two jobs, not one: the linters need no database and the tests need no
+# advisory feed, so running them side by side costs the wall clock of the
+# slower one instead of the sum. They share the same dependency cache.
 jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - uses: erlef/setup-beam@988e02bfe678367a02564f65ca2e37726dc0268f # v1.9.0
+        with:
+          elixir-version: ${{ env.ELIXIR_VERSION }}
+          otp-version: ${{ env.OTP_VERSION }}
+
+      # The compiler version is part of the key: build artifacts from another
+      # Elixir are not a warm cache, they are a confusing failure.
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: |
+            deps
+            _build
+          key: mix-${{ runner.os }}-${{ env.ELIXIR_VERSION }}-${{ env.OTP_VERSION }}-${{ hashFiles('mix.lock') }}
+          restore-keys: |
+            mix-${{ runner.os }}-${{ env.ELIXIR_VERSION }}-${{ env.OTP_VERSION }}-
+
+      - run: mix deps.get
+
+      # Cheapest first, so a misformatted file does not wait on a compile.
+      - run: mix format --check-formatted
+
+      - run: mix deps.unlock --check-unused
+
+      # Advisories published after the lockfile was written. Fails the build so
+      # the news arrives here rather than in an audit.
+      - run: mix hex.audit
+
+      # Warnings become errors here and nowhere else, which is the point: the
+      # editor is free to be noisy while you work.
+      - run: mix compile --warnings-as-errors
+
+      - run: mix credo
+
+      - run: mix sobelow
+
   test:
+    name: Test
     runs-on: ubuntu-latest
 
     services:
@@ -34,39 +87,26 @@ jobs:
 
       - uses: erlef/setup-beam@988e02bfe678367a02564f65ca2e37726dc0268f # v1.9.0
         with:
-          elixir-version: "1.20.2"
-          otp-version: "29.0"
+          elixir-version: ${{ env.ELIXIR_VERSION }}
+          otp-version: ${{ env.OTP_VERSION }}
 
       - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: |
             deps
             _build
-          key: ${{ runner.os }}-mix-${{ hashFiles('mix.lock') }}
-          restore-keys: ${{ runner.os }}-mix-
+          key: mix-${{ runner.os }}-${{ env.ELIXIR_VERSION }}-${{ env.OTP_VERSION }}-${{ hashFiles('mix.lock') }}
+          restore-keys: |
+            mix-${{ runner.os }}-${{ env.ELIXIR_VERSION }}-${{ env.OTP_VERSION }}-
 
       - run: mix deps.get
 
-      # Warnings become errors here and nowhere else, which is the point: the
-      # editor is free to be noisy while you work.
-      - run: mix compile --warnings-as-errors
-
-      - run: mix format --check-formatted
-
-      - run: mix deps.unlock --check-unused
-
-      # A translation that was never extracted must not ship. The gate merges
-      # into the .po with an empty string, where gettext_test.exs fails on it by
-      # name.
+      # A translation that was never extracted must not ship. Merging pulls any
+      # new string into the .po with an empty translation, where
+      # gettext_test.exs fails on it by name — so the gate names the missing
+      # string instead of complaining about line numbers, which is what
+      # `--check-up-to-date` would do every time `format` moved a call.
       - run: mix gettext.extract --merge
-
-      - run: mix credo
-
-      - run: mix sobelow
-
-      # Advisories published after the lockfile was written. Fails the build so
-      # the news arrives here rather than in an audit.
-      - run: mix hex.audit
 
       - run: mix test
         env:
