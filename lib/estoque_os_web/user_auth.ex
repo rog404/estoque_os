@@ -375,15 +375,27 @@ defmodule EstoqueOSWeb.UserAuth do
     end
   end
 
+  # Read from the token every time, deliberately not `assign_new`.
+  #
+  # A live navigation runs `mount` again on the *same* socket, and that socket
+  # already carries `current_scope` from the moment it connected. With
+  # `assign_new` the token was therefore checked once, when the tab was opened,
+  # and never again: a session that had expired or been deleted elsewhere kept
+  # every screen open for as long as the tab stayed alive. You lost the session,
+  # clicked the menu, and the app answered.
+  #
+  # An explicit log out still disconnects the socket outright — see
+  # `log_out_user/1` — but that only covers the logout that happened here, in
+  # this browser.
+  #
+  # The cost is one query per navigation, for an app with two users.
   defp mount_current_scope(socket, session) do
-    Phoenix.Component.assign_new(socket, :current_scope, fn ->
-      {user, _} =
-        if user_token = session["user_token"] do
-          Accounts.get_user_by_session_token(user_token)
-        end || {nil, nil}
+    {user, _} =
+      if user_token = session["user_token"] do
+        Accounts.get_user_by_session_token(user_token)
+      end || {nil, nil}
 
-      scope_with_view_as(user, session["view_as"])
-    end)
+    Phoenix.Component.assign(socket, :current_scope, scope_with_view_as(user, session["view_as"]))
   end
 
   defp scope_with_view_as(user, nil), do: Scope.for_user(user)

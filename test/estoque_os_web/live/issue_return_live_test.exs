@@ -107,7 +107,9 @@ defmodule EstoqueOSWeb.IssueReturnLiveTest do
     test "picking from the shelf opens the same form as the search", %{conn: conn} do
       {:ok, view, _html} = live(conn, ~p"/issue")
 
-      html = view |> element("button", "Adicionar") |> render_click()
+      # "Separar", not "Adicionar": this screen takes goods out of stock, and a
+      # row whose action read "add" said the opposite of what the screen does.
+      html = view |> element("button", "Separar") |> render_click()
 
       assert html =~ "disponíveis aqui" or html =~ "Eletrodo ECG adulto"
       assert has_element?(view, "#issue-form")
@@ -122,7 +124,7 @@ defmodule EstoqueOSWeb.IssueReturnLiveTest do
     } do
       {:ok, view, _html} = live(conn, ~p"/issue")
 
-      view |> element("button", "Adicionar") |> render_click()
+      view |> element("button", "Separar") |> render_click()
       view |> element("#issue-form") |> render_submit(%{"quantity" => "30"})
 
       # An icon now, so it is found by the name it carries for anyone who

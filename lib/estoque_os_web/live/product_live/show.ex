@@ -75,6 +75,26 @@ defmodule EstoqueOSWeb.ProductLive.Show do
             {gettext("no expiry expected")}
           </span>
         </:subtitle>
+        <!-- The screen that answers "how much of this is left" is the screen
+             somebody is standing on when they decide to take some out. Sending
+             them to the menu, then to a search field, to type the name of the
+             product whose page they were already reading, is three steps to
+             arrive where they started. The product travels in the link and
+             comes out picked.
+
+             Only for whoever may actually write the movement off — the same
+             table the menu reads, so this shortcut and the menu can never
+             disagree about who is allowed through. -->
+        <:actions>
+          <.button
+            :if={Layouts.may_access?(@current_scope, ~p"/issue")}
+            navigate={~p"/issue?product=#{@history.product.id}"}
+            variant="primary"
+          >
+            <.icon name="hero-arrow-up-tray" class="size-4" />
+            {gettext("Write off")}
+          </.button>
+        </:actions>
       </.header>
 
       <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-6">

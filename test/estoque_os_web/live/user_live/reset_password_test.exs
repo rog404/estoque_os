@@ -115,4 +115,65 @@ defmodule EstoqueOSWeb.UserLive.ResetPasswordTest do
       assert Accounts.get_user!(user.id).hashed_password == user.hashed_password
     end
   end
+
+  # Two fields that must match, both of them dots, and the first sign of a typo
+  # is being told the confirmation disagrees — with no way to see which of the
+  # two is wrong. Asked for by Rogerio: "ao gerar nova senha, ter o ícone para
+  # ver a senha, para não escrever a senha errada".
+  describe "the eye on a password field" do
+    setup do
+      user = user_fixture()
+
+      token =
+        extract_user_token(fn url ->
+          Accounts.deliver_reset_password_instructions(user, url)
+        end)
+
+      %{user: user, token: token}
+    end
+
+    test "is offered for both fields when setting a new password", %{conn: conn, token: token} do
+      {:ok, _lv, html} = live(conn, ~p"/users/reset-password/#{token}")
+
+      # Both fields, by id, so a toggle wired to the wrong one fails here. The
+      # new password and its confirmation are exactly the pair the eye exists
+      # for: told only that they disagree, there is no way to see which is
+      # wrong.
+      assert [_first, _second] = password_field_ids(html)
+
+      for id <- password_field_ids(html) do
+        assert html =~ ~s(data-password-toggle="#{id}")
+      end
+
+      assert html =~ "Mostrar senha"
+
+      # And the field still arrives hidden: revealing is something the person
+      # does, never the state it opens in.
+      assert html =~ ~s(type="password")
+    end
+
+    test "is offered on the forced first-login change too", %{conn: conn, user: user} do
+      {:ok, user} =
+        user
+        |> Ecto.Changeset.change(must_reset_password: true)
+        |> Repo.update()
+
+      {:ok, _lv, html} =
+        conn
+        |> log_in_user(user)
+        |> live(~p"/users/reset-password/required")
+
+      for id <- password_field_ids(html) do
+        assert html =~ ~s(data-password-toggle="#{id}")
+      end
+
+      assert password_field_ids(html) != []
+    end
+  end
+
+  defp password_field_ids(html) do
+    ~r/<input[^>]*type="password"[^>]*id="([^"]+)"/
+    |> Regex.scan(html)
+    |> Enum.map(fn [_whole, id] -> id end)
+  end
 end

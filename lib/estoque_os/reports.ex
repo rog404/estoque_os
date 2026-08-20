@@ -557,11 +557,16 @@ defmodule EstoqueOS.Reports do
   @doc """
   Counts somebody needs to look at.
 
-  A box counted twice that still disagreed with the ledger is not a correction
-  anyone should file quietly: either goods are leaving without a record, or the
-  count cannot be trusted, and both are the manager's problem rather than the
-  counter's. The counting screen flags the adjustment; this is where the flag
-  surfaces.
+  A count that was repeated and still disagreed is not a correction anyone
+  should file quietly: either goods are leaving without a record, or the count
+  cannot be trusted, and both are the manager's problem rather than the
+  counter's. The screen that took the count flags the adjustment; this is where
+  the flag surfaces.
+
+  Two screens flag: the box count (`count_diverged_twice`) and the receiving
+  conference (`count_diverged_after_recounts`). One list, because the question a
+  manager is answering is the same either way — somebody counted this more than
+  once and we still do not agree with our own records.
 
   Ordered newest first and deliberately unfiltered by date — an unexplained
   divergence does not become acceptable by ageing.
@@ -573,11 +578,16 @@ defmodule EstoqueOS.Reports do
     |> where([t], not is_nil(t.review_reason))
     |> order_by([t], desc: t.occurred_at, desc: t.id)
     |> limit(^(opts[:limit] || 5))
-    |> preload([:user, entries: ^entries])
+    # The invoice comes along because half of these are now receiving
+    # conferences rather than box counts, and for those the row the manager
+    # wants to open is the delivery, not the box.
+    |> preload([:user, [invoice: :supplier], entries: ^entries])
     |> Repo.all()
     |> Enum.map(fn transaction ->
       %{
         transaction: transaction,
+        reason: transaction.review_reason,
+        invoice: transaction.invoice,
         box: transaction.entries |> Enum.find_value(&(&1.box && &1.box.code)),
         # The id as well as the code: the overview names the box that disagreed
         # and has to be able to lead there. A code alone leaves the manager

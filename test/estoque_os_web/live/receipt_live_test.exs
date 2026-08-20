@@ -7,6 +7,7 @@ defmodule EstoqueOSWeb.ReceiptLiveTest do
   import EstoqueOS.InventoryFixtures
 
   alias EstoqueOS.{Inventory, Invoices, Receiving}
+  alias EstoqueOS.Receiving.ReceiptLine
   alias EstoqueOS.Inventory.Locations
 
   @samples EstoqueOS.Samples.dir()
@@ -61,6 +62,26 @@ defmodule EstoqueOSWeb.ReceiptLiveTest do
     ~r{<input[^>]*name="counted_quantity"[^>]*>}
     |> Regex.scan(html)
     |> Enum.map(fn [field] -> field end)
+  end
+
+  defp reload_line(receipt, line) do
+    Receiving.get_receipt!(receipt.id).lines |> Enum.find(&(&1.id == line.id))
+  end
+
+  # Counting a line the way the screen now asks for it: a number that disagrees
+  # with the invoice is not believed until it has been counted
+  # `Receiving.counts_required/0` times. A number that agrees is recorded on the
+  # first submit, so this stops as soon as the line is settled rather than
+  # submitting a fixed three times into a locked form.
+  defp count_line(view, receipt, line, quantity, box_code) do
+    Enum.reduce_while(1..Receiving.counts_required(), nil, fn _attempt, _acc ->
+      html =
+        view
+        |> element("#count-#{line.id}")
+        |> render_submit(%{"counted_quantity" => quantity, "box_code" => box_code})
+
+      if reload_line(receipt, line).counted_quantity, do: {:halt, html}, else: {:cont, html}
+    end)
   end
 
   test "the invoice screen offers the conference once it is posted", %{
@@ -165,14 +186,36 @@ defmodule EstoqueOSWeb.ReceiptLiveTest do
 
       view |> element("#count-#{line.id}") |> render_change(%{"counted_quantity" => "9"})
 
+      html = count_line(view, receipt, line, "287", box.code)
+
+      form = form_for_line(html, line)
+      assert form =~ ~s(value="287")
+      refute form =~ ~s(value="9")
+    end
+
+    # The other half of the same rule, and the one the recount depends on: a
+    # count that was taken but not believed must leave the field empty. Keeping
+    # the number in it makes the second count a reading of the first.
+    test "a line waiting to be counted again shows an empty field", %{
+      conn: conn,
+      receipt: receipt,
+      box: box
+    } do
+      line = line_for(receipt, 1)
+      {:ok, view, _html} = live(conn, ~p"/receipts/#{receipt}")
+
       html =
         view
         |> element("#count-#{line.id}")
         |> render_submit(%{"counted_quantity" => "287", "box_code" => box.code})
 
       form = form_for_line(html, line)
-      assert form =~ ~s(value="287")
-      refute form =~ ~s(value="9")
+      assert form =~ ~s(name="counted_quantity" value="")
+      refute form =~ ~s(value="287")
+
+      # The box stays: the goods are on that shelf whatever the count turns out
+      # to be, and asking for it again is asking a question already answered.
+      assert form =~ box.code
     end
 
     # "registrado" used to belong to whichever line was saved last, so counting
@@ -260,10 +303,18 @@ defmodule EstoqueOSWeb.ReceiptLiveTest do
       assert box
       assert box.location_id == receipt.location_id
 
-      saved = Receiving.get_receipt!(receipt.id).lines |> Enum.find(&(&1.id == line.id))
-      assert Decimal.equal?(saved.counted_quantity, Decimal.new(287))
-
       refute html =~ "Criar a caixa"
+
+      # The count that was waiting was taken — and, disagreeing with the
+      # invoice, taken as a first count rather than as the answer. The box is
+      # already recorded: the operator put the goods on a shelf, which is true
+      # whichever way the arithmetic ends up.
+      saved = reload_line(receipt, line)
+      assert is_nil(saved.counted_quantity)
+      assert [attempt] = saved.count_attempts
+      assert Decimal.equal?(attempt, Decimal.new(287))
+      assert saved.box_id == box.id
+      assert html =~ "Conte este item de novo"
     end
 
     test "declining keeps the typed count so the code can be corrected", %{
@@ -295,18 +346,99 @@ defmodule EstoqueOSWeb.ReceiptLiveTest do
       line = line_for(receipt, 1)
       {:ok, view, _html} = live(conn, ~p"/receipts/#{receipt}")
 
-      html =
+      first =
         view
         |> element("#count-#{line.id}")
         |> render_submit(%{"counted_quantity" => "287", "box_code" => box.code})
 
-      # On the row, not in a flash: forty lines is forty toasts over the table
-      # they are about.
+      # Not booked, and not yet a divergence anybody reports: one count that
+      # disagrees with the invoice is more often a miscount than a loss, and the
+      # line goes back to asking. On the row, not in a flash — forty lines is
+      # forty toasts over the table they are about.
+      assert first =~ "Conte este item de novo"
+      assert first =~ "contagem 2 de 3"
+      refute first =~ "Divergências em relação à nota"
+
+      html = count_line(view, receipt, line, "287", box.code)
+
       assert html =~ "registrado"
       assert html =~ "Divergências em relação à nota"
       assert html =~ "a nota diz 300, contamos 287"
       assert html =~ "-13"
       assert html =~ "3 linha(s) não contada(s)"
+
+      # Counted three times, still short. Not the operator's to close alone.
+      assert reload_line(receipt, line) |> ReceiptLine.diverged_after_recounts?()
+    end
+
+    test "a count that agrees with the invoice is believed the first time", %{
+      conn: conn,
+      receipt: receipt,
+      box: box
+    } do
+      line = line_for(receipt, 1)
+      {:ok, view, _html} = live(conn, ~p"/receipts/#{receipt}")
+
+      html =
+        view
+        |> element("#count-#{line.id}")
+        |> render_submit(%{"counted_quantity" => "300", "box_code" => box.code})
+
+      # Nobody is sent back to the shelf to confirm a number that already
+      # matches. Counting again is the price of a disagreement, not a ritual.
+      refute html =~ "Conte este item de novo"
+      assert Decimal.equal?(reload_line(receipt, line).counted_quantity, Decimal.new(300))
+    end
+
+    test "the trail of every count is kept, in the order they were made", %{
+      conn: conn,
+      receipt: receipt,
+      box: box
+    } do
+      line = line_for(receipt, 1)
+      {:ok, view, _html} = live(conn, ~p"/receipts/#{receipt}")
+
+      for counted <- ~w(287 290 288) do
+        view
+        |> element("#count-#{line.id}")
+        |> render_submit(%{"counted_quantity" => counted, "box_code" => box.code})
+      end
+
+      saved = reload_line(receipt, line)
+
+      # Three different counts, and the last one is the one booked: it is the
+      # count made with the most care, by an operator who now knows the first
+      # two were disputed.
+      assert Enum.map(saved.count_attempts, &Decimal.to_string/1) == ~w(287 290 288)
+      assert Decimal.equal?(saved.counted_quantity, Decimal.new(288))
+    end
+
+    test "counting a line again starts the count from nothing", %{
+      conn: conn,
+      receipt: receipt,
+      box: box
+    } do
+      line = line_for(receipt, 1)
+      {:ok, view, _html} = live(conn, ~p"/receipts/#{receipt}")
+
+      count_line(view, receipt, line, "287", box.code)
+
+      view
+      |> element(~s(button[phx-click="count_again"][phx-value-line="#{line.id}"]))
+      |> render_click()
+
+      # The trail goes with it. Keeping it would let the next single count land
+      # as the third attempt and be believed on the spot, which is the rule
+      # deleting itself.
+      assert reload_line(receipt, line).count_attempts == []
+
+      html =
+        view
+        |> element("#count-#{line.id}")
+        |> render_submit(%{"counted_quantity" => "287", "box_code" => box.code})
+
+      assert html =~ "Conte este item de novo"
+      assert is_nil(reload_line(receipt, line).counted_quantity)
     end
 
     test "closing the conference writes the correction and fills the box", %{
@@ -318,9 +450,7 @@ defmodule EstoqueOSWeb.ReceiptLiveTest do
       line = line_for(receipt, 1)
       {:ok, view, _html} = live(conn, ~p"/receipts/#{receipt}")
 
-      view
-      |> element("#count-#{line.id}")
-      |> render_submit(%{"counted_quantity" => "287", "box_code" => box.code})
+      count_line(view, receipt, line, "287", box.code)
 
       html = view |> element("#complete-form") |> render_submit()
 
@@ -346,9 +476,7 @@ defmodule EstoqueOSWeb.ReceiptLiveTest do
       line = line_for(receipt, 1)
       {:ok, view, _html} = live(conn, ~p"/receipts/#{receipt}")
 
-      view
-      |> element("#count-#{line.id}")
-      |> render_submit(%{"counted_quantity" => "287", "box_code" => box.code})
+      count_line(view, receipt, line, "287", box.code)
 
       html =
         view
@@ -416,9 +544,7 @@ defmodule EstoqueOSWeb.ReceiptLiveTest do
 
       # And with everything counted, there is nothing to warn about.
       Enum.each(receipt.lines, fn each ->
-        view
-        |> element("#count-#{each.id}")
-        |> render_submit(%{"counted_quantity" => "1", "box_code" => box.code})
+        count_line(view, receipt, each, "1", box.code)
       end)
 
       refute render(view) =~ ~s(id="uncounted-warning")

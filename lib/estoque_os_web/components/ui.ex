@@ -332,6 +332,7 @@ defmodule EstoqueOSWeb.UI do
       :controlled,
       :presumed,
       :counted,
+      :recount,
       :in_transit,
       :under_way,
       :unboxed,
@@ -394,6 +395,13 @@ defmodule EstoqueOSWeb.UI do
 
   defp status_spec(:counted),
     do: %{class: "badge-success", icon: nil, label: gettext("counted")}
+
+  # A count that was made and not believed, so it is being asked for again. Not
+  # an error and not the operator's fault: the first count disagreeing with the
+  # invoice is more often a miscount than a loss, and this is the state of
+  # finding out which.
+  defp status_spec(:recount),
+    do: %{class: "badge-warning", icon: nil, label: gettext("count again")}
 
   defp status_spec(:under_way),
     do: %{class: "badge-info", icon: nil, label: gettext("under way")}

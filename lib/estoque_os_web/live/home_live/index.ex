@@ -9,6 +9,8 @@ defmodule EstoqueOSWeb.HomeLive.Index do
 
   use EstoqueOSWeb, :live_view
 
+  alias EstoqueOS.Accounts.Scope
+  alias EstoqueOS.Accounts.User
   alias EstoqueOS.Inventory.Locations
   alias EstoqueOS.Kits
   alias EstoqueOS.Reports
@@ -29,10 +31,17 @@ defmodule EstoqueOSWeb.HomeLive.Index do
      |> assign(:stale_boxes, Reports.stale_boxes(limit: @preview))
      |> assign(:activity, Reports.recent_activity(limit: @preview))
      |> assign(:to_review, Reports.counts_needing_review(limit: @preview))
+     |> assign(:may_review?, may_review?(socket))
      # No screen goes deeper into shortages, so this one carries its own weight
      # rather than teasing five rows and stopping.
      |> assign(:below_minimum, Reports.below_minimum(limit: @shortage_limit))
      |> assign_readiness()}
+  end
+
+  # Whose problem a disputed count is. Admin and manager: the two roles that
+  # decide what to do about it — chase the supplier, or accept the loss.
+  defp may_review?(socket) do
+    Scope.effective_role(socket.assigns.current_scope) in User.roles_that_plan()
   end
 
   # Read at the warehouse the stock actually leaves from. A kit's coverage at a
@@ -72,8 +81,13 @@ defmodule EstoqueOSWeb.HomeLive.Index do
           hint={gettext("donations without a value are not counted")}
         />
         <!-- Amber only while something is actually waiting. Colouring a zero
-             teaches people that the colour means nothing. -->
+             teaches people that the colour means nothing.
+
+             Not shown to a role that cannot open the invoices — a tile whose
+             whole purpose is to be clicked, leading to a page that refuses, is
+             the same dead door as the menu entry that was removed. -->
         <.stat
+          :if={Layouts.may_access?(@current_scope, ~p"/invoices")}
           label={gettext("Invoices pending")}
           value={@summary.invoices_pending}
           hint={gettext("waiting for confirmation")}
@@ -82,28 +96,50 @@ defmodule EstoqueOSWeb.HomeLive.Index do
         />
       </div>
 
-      <!-- Above everything else, and only when it is not empty. A box counted
-           twice that still disagreed is either goods leaving unrecorded or a
-           count nobody can trust, and both are this person's problem. -->
-      <div :if={@to_review != []} class="alert alert-warning flex-col items-start gap-2">
+      <!-- Above everything else, and only when it is not empty. A count that was
+           repeated and still disagreed is either goods leaving unrecorded or a
+           count nobody can trust, and both are this person's problem.
+
+           Only theirs, too. The operator who counted it three times already
+           knows; telling them again on every visit to the dashboard is noise
+           they cannot act on, and the decision — chase the supplier, or accept
+           the loss — is not theirs to take. -->
+      <div
+        :if={@may_review? and @to_review != []}
+        class="alert alert-warning flex-col items-start gap-2"
+      >
         <p class="font-semibold">
-          {gettext("%{count} count(s) disagreed twice and need a look",
+          {gettext("%{count} count(s) were repeated and still disagree",
             count: length(@to_review)
           )}
         </p>
         <ul class="text-sm w-full divide-y divide-warning/20">
           <li :for={row <- @to_review} class="py-1 flex flex-wrap justify-between gap-x-4">
-            <!-- Straight to the box that disagreed. A warning that states a
+            <!-- Straight to the thing that disagreed. A warning that states a
                  fact and stops there leaves the manager to find the row by
-                 hand, which is the same as not being told. -->
+                 hand, which is the same as not being told.
+
+                 Which thing depends on what was counted: a conference is about
+                 a delivery, and the row a manager wants open for one of those
+                 is the invoice, not the box the goods ended up in. -->
             <.link
-              :if={row.box_id}
+              :if={row.invoice}
+              navigate={~p"/invoices/#{row.invoice.id}"}
+              class="link link-hover font-medium"
+            >
+              {gettext("Invoice %{number}", number: row.invoice.number)} · {Enum.join(
+                row.products,
+                ", "
+              )}
+            </.link>
+            <.link
+              :if={is_nil(row.invoice) and row.box_id}
               navigate={~p"/boxes/#{row.box_id}"}
               class="link link-hover font-medium"
             >
               {gettext("Box %{box}", box: row.box)} · {Enum.join(row.products, ", ")}
             </.link>
-            <span :if={is_nil(row.box_id)}>
+            <span :if={is_nil(row.invoice) and is_nil(row.box_id)}>
               {gettext("Loose stock")} · {Enum.join(row.products, ", ")}
             </span>
             <span class="opacity-80">

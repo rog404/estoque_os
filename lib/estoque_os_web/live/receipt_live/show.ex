@@ -6,6 +6,23 @@ defmodule EstoqueOSWeb.ReceiptLive.Show do
   Counting is deliberately unblocked — you can finish a round having counted
   three of ten lines. What was not counted is reported as not counted, never
   as zero.
+
+  What is *not* unblocked is the number itself. A count that disagrees with the
+  invoice is not booked on the first pass: the field empties and the line asks
+  to be counted again, up to `Receiving.counts_required/0` times, and only then
+  is the number believed. Until this existed the operator could type any
+  quantity at all against an invoice that said something else, which is the
+  same hole `AuditLive.Count` was built to close for box counts.
+
+  The screen stays blind throughout. It says *which* line to count again and
+  never by how much it was off — told the target, a person counting a hundred
+  gauzes finds ninety-eight and writes a hundred.
+
+  A line that disagreed every time it was counted is recorded as counted and
+  flagged: the adjustment posted at the close carries a `review_reason`, and it
+  surfaces on the manager's overview. Somebody counted the same goods three
+  times and we still do not agree with the invoice — that is a conversation
+  with the supplier, not a number for the operator to settle alone.
   """
 
   use EstoqueOSWeb, :live_view
@@ -55,9 +72,27 @@ defmodule EstoqueOSWeb.ReceiptLive.Show do
   defp assign_receipt(socket, receipt) do
     socket
     |> assign(:receipt, receipt)
+    |> assign_counts(receipt)
+    |> assign(:suggestions, suggestions_for(receipt))
+  end
+
+  # The three ways a line can be outstanding, all derived from the same list so
+  # they can never disagree about a line: never counted, counted and waiting to
+  # be counted again, and counted repeatedly and still short.
+  defp assign_counts(socket, receipt) do
+    socket
     |> assign(:divergences, Receiving.divergences(receipt))
     |> assign(:uncounted, Receiving.uncounted_lines(receipt))
-    |> assign(:suggestions, suggestions_for(receipt))
+    |> assign(:recounting, Receiving.awaiting_recount_lines(receipt))
+    # Everything still owed before this conference is finished, of either kind.
+    # The close gate asks this rather than either list on its own: a line
+    # waiting for its second count is work left, exactly like one nobody
+    # opened.
+    |> assign(
+      :outstanding,
+      Receiving.uncounted_lines(receipt) ++ Receiving.awaiting_recount_lines(receipt)
+    )
+    |> assign(:disputed, Receiving.diverged_after_recounts(receipt))
   end
 
   # Recording one line used to refetch the whole conference, which re-rendered
@@ -72,6 +107,7 @@ defmodule EstoqueOSWeb.ReceiptLive.Show do
           %{
             line
             | counted_quantity: updated.counted_quantity,
+              count_attempts: updated.count_attempts,
               box_id: updated.box_id,
               box: box_for(socket, updated.box_id)
           }
@@ -84,8 +120,7 @@ defmodule EstoqueOSWeb.ReceiptLive.Show do
 
     socket
     |> assign(:receipt, receipt)
-    |> assign(:divergences, Receiving.divergences(receipt))
-    |> assign(:uncounted, Receiving.uncounted_lines(receipt))
+    |> assign_counts(receipt)
     |> drop_draft(updated.id)
   end
 
@@ -142,9 +177,17 @@ defmodule EstoqueOSWeb.ReceiptLive.Show do
             detail={gettext("Conference closed")}
           />
           <.status
-            :if={@receipt.status == "draft"}
+            :if={@receipt.status == "draft" and @uncounted != []}
             kind={:pending}
             detail={gettext("%{count} line(s) not counted", count: length(@uncounted))}
+          />
+          <!-- Separate from "not counted", because it is a different job: those
+               lines have not been visited, these have been visited and are
+               waiting for the operator to go back to the shelf. -->
+          <.status
+            :if={@receipt.status == "draft" and @recounting != []}
+            kind={:recount}
+            detail={gettext("%{count} line(s) to count again", count: length(@recounting))}
           />
         </:actions>
       </.header>
@@ -360,6 +403,35 @@ defmodule EstoqueOSWeb.ReceiptLive.Show do
                   code={@new_box.code}
                   class="basis-full text-left"
                 />
+
+                <!-- The line asking to be counted again. Same deliberate
+                     exception as the box banner above: it grows the row, and it
+                     is allowed to, because it is a decision the operator has to
+                     answer before moving on rather than a confirmation glanced
+                     at while the thumb is already on the next line. Reserving
+                     its height in all forty rows would be a conference sheet
+                     made mostly of blank space for something a count that
+                     agrees never shows.
+
+                     It never says by how much. Which line, and which attempt —
+                     told the target, the eye stops when it reaches it. -->
+                <!-- Not `flex-wrap`, and not `justify-end` like the row it sits
+                     in: at phone width the icon was pushed onto a line of its
+                     own, right-aligned, above the sentence it belongs to. -->
+                <div
+                  :if={recount?(line)}
+                  class="basis-full flex items-start gap-2 rounded-box bg-warning/15 px-2 py-1.5 text-left"
+                >
+                  <.icon name="hero-arrow-path" class="size-4 shrink-0 mt-0.5 text-warning" />
+                  <p class="text-sm">
+                    <span class="font-medium">{gettext("Count this one again.")}</span>
+                    <span class="opacity-80">
+                      {gettext("It does not match the invoice — %{attempt}.",
+                        attempt: attempt_label(line)
+                      )}
+                    </span>
+                  </p>
+                </div>
               </form>
             </:col>
 
@@ -370,6 +442,15 @@ defmodule EstoqueOSWeb.ReceiptLive.Show do
               align={:right}
             >
               {quantity(line.counted_quantity) |> blank_as_dash()}
+              <!-- Counted three times and never agreed. Worth saying on the
+                   closed sheet: read a month later, a line that is simply short
+                   and a line somebody counted three times are the same number,
+                   and only one of them is evidence. -->
+              <.status
+                :if={ReceiptLine.diverged_after_recounts?(line)}
+                kind={:needs_review}
+                detail={gettext("counted %{count}x", count: ReceiptLine.attempts(line))}
+              />
             </:col>
 
             <:col :let={line} :if={@receipt.status == "completed"} label={gettext("Box")}>
@@ -390,10 +471,11 @@ defmodule EstoqueOSWeb.ReceiptLive.Show do
             <!-- What the operator gets instead: whether this line is done. -->
             <:col :let={line} :if={not @sees_money?} label={gettext("Status")} align={:right}>
               <.status
-                :if={is_nil(line.counted_quantity)}
+                :if={is_nil(line.counted_quantity) and not recount?(line)}
                 kind={:pending}
                 detail={gettext("to count")}
               />
+              <.status :if={recount?(line)} kind={:recount} />
               <.status :if={line.counted_quantity} kind={:counted} />
             </:col>
           </.data_table>
@@ -406,7 +488,11 @@ defmodule EstoqueOSWeb.ReceiptLive.Show do
         phx-submit="complete"
         class="flex flex-wrap items-center gap-4 border-t border-base-300 pt-4 mt-4"
       >
-        <.button :if={@uncounted == []} variant="primary" phx-disable-with={gettext("Closing...")}>
+        <.button
+          :if={@outstanding == []}
+          variant="primary"
+          phx-disable-with={gettext("Closing...")}
+        >
           {gettext("Close conference")}
         </.button>
 
@@ -414,7 +500,7 @@ defmodule EstoqueOSWeb.ReceiptLive.Show do
              first. Not disabled: closing with lines uncounted is allowed and
              sometimes right — the delivery is short and everyone knows it. -->
         <button
-          :if={@uncounted != []}
+          :if={@outstanding != []}
           type="button"
           data-confirm-open="uncounted-warning"
           class="btn btn-primary"
@@ -435,19 +521,45 @@ defmodule EstoqueOSWeb.ReceiptLive.Show do
            are usually built: going back is the primary button, because it is
            what the operator almost always wants once they read the list.
            Continuing is offered plainly, in a ghost, and is never blocked. -->
-      <dialog :if={@uncounted != []} id="uncounted-warning" class="modal">
+      <dialog :if={@outstanding != []} id="uncounted-warning" class="modal">
         <div class="modal-box">
           <h2 class="text-lg font-semibold">
-            {gettext("%{count} line(s) were not counted.", count: length(@uncounted))}
+            {gettext("%{count} line(s) are still open.", count: length(@outstanding))}
           </h2>
 
-          <ul class="mt-3 list-disc list-inside text-sm space-y-1 max-h-64 overflow-y-auto">
-            <li :for={line <- @uncounted}>{product_name(line)}</li>
-          </ul>
+          <div :if={@uncounted != []}>
+            <p class="mt-3 text-sm font-semibold">
+              {gettext("%{count} nobody counted:", count: length(@uncounted))}
+            </p>
+            <ul class="mt-1 list-disc list-inside text-sm space-y-1 max-h-64 overflow-y-auto">
+              <li :for={line <- @uncounted}>{product_name(line)}</li>
+            </ul>
+          </div>
 
           <p class="mt-3 text-sm opacity-70">
             {gettext("Closing now books these exactly as the invoice said, uncounted.")}
           </p>
+
+          <!-- Named apart, because these are not lines nobody looked at: they
+               were counted, the number did not match the invoice, and the
+               recount they are waiting for is the whole point of asking twice.
+               Closing over them books the invoice's number and leaves the
+               operator's first count as a note nobody reads. Still allowed —
+               the van left, the delivery is short and everyone knows it — but
+               it should not be allowed quietly. -->
+          <div :if={@recounting != []} class="mt-3 rounded-box bg-warning/15 p-3">
+            <p class="text-sm font-semibold">
+              {gettext("%{count} were counted and did not match:", count: length(@recounting))}
+            </p>
+            <ul class="mt-1 list-disc list-inside text-sm space-y-1">
+              <li :for={line <- @recounting}>{product_name(line)}</li>
+            </ul>
+            <p class="mt-2 text-sm opacity-80">
+              {gettext(
+                "Counting them again is what tells a miscount from a delivery that came short."
+              )}
+            </p>
+          </div>
 
           <div class="modal-action">
             <button
@@ -487,6 +599,21 @@ defmodule EstoqueOSWeb.ReceiptLive.Show do
 
   defp recorded?(%{counted_quantity: nil}), do: false
   defp recorded?(_line), do: true
+
+  # Counted once and not believed. A different row from one nobody has touched,
+  # and it has to look different: both have an empty field, and only one of them
+  # is asking the operator to go back to the shelf.
+  defp recount?(line), do: ReceiptLine.awaiting_recount?(line)
+
+  # Which count this is, said out loud. "2 de 3" tells the operator this will
+  # end, which is what stops the screen feeling like it is refusing their work
+  # — and it says nothing about the number they are being measured against.
+  defp attempt_label(line) do
+    gettext("count %{n} of %{total}",
+      n: ReceiptLine.attempts(line) + 1,
+      total: Receiving.counts_required()
+    )
+  end
 
   defp difference_label(line) do
     case ReceiptLine.divergence(line) do
@@ -612,12 +739,22 @@ defmodule EstoqueOSWeb.ReceiptLive.Show do
       box_id: box && box.id
     }
 
-    case Receiving.update_line(line, attrs) do
+    case Receiving.record_count(line, attrs) do
       # No flash. Forty lines is forty toasts covering the table they are about,
       # and a banner that appears on every keystroke-and-enter reads as the page
       # reloading. The row says it itself, where the operator is already looking.
-      {:ok, updated} ->
+      {:recorded, updated} ->
         {:noreply, replace_line(socket, updated)}
+
+      # Counted, and not believed yet. The field goes back to empty rather than
+      # keeping the first number: a second count that starts from the first one
+      # is not a second count — the eye stops when it reaches the number it was
+      # shown, which is the whole reason this screen is blind.
+      {:recount, updated} ->
+        {:noreply, socket |> replace_line(updated) |> put_draft(updated.id, %{})}
+
+      {:error, :invalid_quantity} ->
+        {:noreply, put_flash(socket, :error, gettext("Type the counted quantity as a number."))}
 
       {:error, _changeset} ->
         {:noreply, put_flash(socket, :error, gettext("Type the counted quantity as a number."))}

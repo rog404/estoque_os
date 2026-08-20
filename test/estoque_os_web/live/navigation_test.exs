@@ -11,6 +11,9 @@ defmodule EstoqueOSWeb.NavigationTest do
   setup :register_and_log_in_user
 
   test "groups the destinations instead of listing ten links", %{conn: conn} do
+    # As the admin, who may reach all of them. What each *other* role sees is
+    # `nav_roles_test.exs`.
+    %{conn: conn} = register_and_log_in_admin(%{conn: conn})
     {:ok, _view, html} = live(conn, ~p"/")
 
     for group <- ["Entradas", "Operação", "Estoque", "Relatórios"] do
