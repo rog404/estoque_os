@@ -481,7 +481,7 @@ msgstr "Lançada no estoque"
 #: lib/estoque_os_web/live/issue_live/index.ex:205
 #: lib/estoque_os_web/live/issue_live/index.ex:250
 #: lib/estoque_os_web/live/issue_live/index.ex:463
-#: lib/estoque_os_web/live/kit_live/show.ex:324
+#: lib/estoque_os_web/live/kit_live/show.ex:432
 #: lib/estoque_os_web/live/mission_live/show.ex:201
 #: lib/estoque_os_web/live/return_live/index.ex:159
 #: lib/estoque_os_web/live/stock_live/index.ex:269
@@ -660,7 +660,7 @@ msgstr "Importar contagem"
 #: lib/estoque_os_web/live/box_live/index.ex:59
 #: lib/estoque_os_web/live/box_live/index.ex:88
 #: lib/estoque_os_web/live/kit_live/index.ex:58
-#: lib/estoque_os_web/live/kit_live/show.ex:107
+#: lib/estoque_os_web/live/kit_live/show.ex:155
 #: lib/estoque_os_web/live/location_live/index.ex:77
 #: lib/estoque_os_web/live/stock_live/index.ex:176
 #, elixir-autogen, elixir-format
@@ -866,7 +866,7 @@ msgid "Expiring soon"
 msgstr "Vencendo em breve"
 
 #: lib/estoque_os_web/live/home_live/index.ex:72
-#: lib/estoque_os_web/live/kit_live/show.ex:333
+#: lib/estoque_os_web/live/kit_live/show.ex:441
 #, elixir-autogen, elixir-format
 msgid "In stock"
 msgstr "Em estoque"
@@ -1231,7 +1231,7 @@ msgstr "Caixa marcada como contada hoje."
 #: lib/estoque_os_web/live/box_live/index.ex:20
 #: lib/estoque_os_web/live/box_live/index.ex:34
 #: lib/estoque_os_web/live/box_live/show.ex:42
-#: lib/estoque_os_web/live/kit_live/show.ex:206
+#: lib/estoque_os_web/live/kit_live/show.ex:254
 #: lib/estoque_os_web/live/load_out_live/index.ex:112
 #: lib/estoque_os_web/live/location_live/index.ex:103
 #, elixir-autogen, elixir-format
@@ -1571,7 +1571,7 @@ msgid "To"
 msgstr "Para"
 
 #: lib/estoque_os_web/live/kit_live/index.ex:105
-#: lib/estoque_os_web/live/kit_live/show.ex:96
+#: lib/estoque_os_web/live/kit_live/show.ex:144
 #, elixir-autogen, elixir-format
 msgid "%{count} component(s)"
 msgstr "%{count} componente(s)"
@@ -1582,12 +1582,12 @@ msgstr "%{count} componente(s)"
 msgid "%{count} component(s) not linked to a product yet"
 msgstr "%{count} componente(s) ainda sem produto"
 
-#: lib/estoque_os_web/live/kit_live/show.ex:663
+#: lib/estoque_os_web/live/kit_live/show.ex:780
 #, elixir-autogen, elixir-format
 msgid "%{count} component(s) still need a product."
 msgstr "%{count} componente(s) ainda precisam de um produto."
 
-#: lib/estoque_os_web/live/kit_live/show.ex:98
+#: lib/estoque_os_web/live/kit_live/show.ex:146
 #, elixir-autogen, elixir-format
 msgid "%{possible} kit(s) possible here"
 msgstr "%{possible} kit(s) possíveis aqui"
@@ -1597,23 +1597,23 @@ msgstr "%{possible} kit(s) possíveis aqui"
 msgid "Assembly of %{quantity}x %{kit}"
 msgstr "Montagem de %{quantity}x %{kit}"
 
-#: lib/estoque_os_web/live/kit_live/show.ex:185
-#: lib/estoque_os_web/live/kit_live/show.ex:320
+#: lib/estoque_os_web/live/kit_live/show.ex:233
+#: lib/estoque_os_web/live/kit_live/show.ex:428
 #, elixir-autogen, elixir-format
 msgid "Component"
 msgstr "Componente"
 
-#: lib/estoque_os_web/live/kit_live/show.ex:337
+#: lib/estoque_os_web/live/kit_live/show.ex:445
 #, elixir-autogen, elixir-format
 msgid "Covers"
 msgstr "Cobre"
 
-#: lib/estoque_os_web/live/kit_live/show.ex:140
+#: lib/estoque_os_web/live/kit_live/show.ex:188
 #, elixir-autogen, elixir-format
 msgid "How many"
 msgstr "Quantos"
 
-#: lib/estoque_os_web/live/kit_live/show.ex:213
+#: lib/estoque_os_web/live/kit_live/show.ex:261
 #: lib/estoque_os_web/live/return_live/index.ex:193
 #, elixir-autogen, elixir-format
 msgid "Into box"
@@ -1622,7 +1622,7 @@ msgstr "Na caixa"
 #: lib/estoque_os_web/components/layouts.ex:411
 #: lib/estoque_os_web/live/kit_live/index.ex:29
 #: lib/estoque_os_web/live/kit_live/index.ex:52
-#: lib/estoque_os_web/live/kit_live/show.ex:93
+#: lib/estoque_os_web/live/kit_live/show.ex:141
 #, elixir-autogen, elixir-format
 msgid "Kits"
 msgstr "Kits"
@@ -1633,29 +1633,29 @@ msgstr "Kits"
 msgid "No kit registered yet."
 msgstr "Nenhum kit cadastrado ainda."
 
-#: lib/estoque_os_web/live/kit_live/show.ex:632
+#: lib/estoque_os_web/live/kit_live/show.ex:749
 #, elixir-autogen, elixir-format
 msgid "Not enough %{item}: %{missing} missing."
 msgstr "Falta %{item}: %{missing} em falta."
 
-#: lib/estoque_os_web/live/kit_live/show.ex:147
+#: lib/estoque_os_web/live/kit_live/show.ex:195
 #, elixir-autogen, elixir-format
 msgid "Number of kits"
 msgstr "Número de kits"
 
-#: lib/estoque_os_web/live/kit_live/show.ex:290
-#: lib/estoque_os_web/live/kit_live/show.ex:329
+#: lib/estoque_os_web/live/kit_live/show.ex:394
+#: lib/estoque_os_web/live/kit_live/show.ex:437
 #, elixir-autogen, elixir-format
 msgid "Per kit"
 msgstr "Por kit"
 
-#: lib/estoque_os_web/live/kit_live/show.ex:672
+#: lib/estoque_os_web/live/kit_live/show.ex:789
 #, elixir-autogen, elixir-format
 msgid "The operation could not be completed."
 msgstr "Não foi possível concluir a operação."
 
-#: lib/estoque_os_web/live/kit_live/show.ex:534
-#: lib/estoque_os_web/live/kit_live/show.ex:668
+#: lib/estoque_os_web/live/kit_live/show.ex:661
+#: lib/estoque_os_web/live/kit_live/show.ex:785
 #, elixir-autogen, elixir-format
 msgid "Type how many kits."
 msgstr "Digite quantos kits."
@@ -2099,6 +2099,7 @@ msgstr "As caixas viajam inteiras e não são recontadas."
 #: lib/estoque_os_web/components/core_components.ex:624
 #: lib/estoque_os_web/live/invoice_live/show.ex:508
 #: lib/estoque_os_web/live/issue_live/index.ex:420
+#: lib/estoque_os_web/live/kit_live/show.ex:408
 #: lib/estoque_os_web/live/location_live/index.ex:95
 #, elixir-autogen, elixir-format
 msgid "Cancel"
@@ -2181,7 +2182,7 @@ msgstr "Nenhum local cadastrado ainda."
 msgid "Showing the %{count} most recent movements of this period."
 msgstr "Mostrando os %{count} movimentos mais recentes do período."
 
-#: lib/estoque_os_web/live/kit_live/show.ex:311
+#: lib/estoque_os_web/live/kit_live/show.ex:419
 #, elixir-autogen, elixir-format
 msgid "This kit has no components yet."
 msgstr "Este kit ainda não tem componentes."
@@ -2356,7 +2357,7 @@ msgstr "%{name} foi desativado."
 #: lib/estoque_os_web/live/conference_live/index.ex:78
 #: lib/estoque_os_web/live/issue_live/index.ex:261
 #: lib/estoque_os_web/live/issue_live/index.ex:480
-#: lib/estoque_os_web/live/kit_live/show.ex:346
+#: lib/estoque_os_web/live/kit_live/show.ex:454
 #: lib/estoque_os_web/live/location_live/index.ex:111
 #, elixir-autogen, elixir-format
 msgid "Actions"
@@ -2398,7 +2399,7 @@ msgstr "Agora se chama %{name}."
 msgid "Rename"
 msgstr "Renomear"
 
-#: lib/estoque_os_web/live/kit_live/show.ex:362
+#: lib/estoque_os_web/live/kit_live/show.ex:470
 #: lib/estoque_os_web/live/location_live/index.ex:93
 #: lib/estoque_os_web/live/product_live/show.ex:129
 #, elixir-autogen, elixir-format
@@ -2615,6 +2616,7 @@ msgid "Say how many arrived."
 msgstr "Diga quantas chegaram."
 
 #: lib/estoque_os_web/live/entry_live/new.ex:81
+#: lib/estoque_os_web/live/kit_live/show.ex:331
 #, elixir-autogen, elixir-format
 msgid "Search the catalog by name"
 msgstr "Buscar no catálogo por nome"
@@ -2834,6 +2836,7 @@ msgstr "Nenhum destes? Algo que chegou por doação pode ser novo."
 
 #: lib/estoque_os_web/live/entry_live/new.ex:137
 #: lib/estoque_os_web/live/invoice_live/show.ex:356
+#: lib/estoque_os_web/live/kit_live/show.ex:340
 #, elixir-autogen, elixir-format
 msgid "Nothing in the catalog matches that."
 msgstr "Nada no catálogo corresponde a isso."
@@ -2943,32 +2946,28 @@ msgstr "Muitas tentativas. Tente de novo em %{count} minuto(s)."
 msgid "Too many attempts. Try again in %{count} second(s)."
 msgstr "Muitas tentativas. Tente de novo em %{count} segundo(s)."
 
-#: lib/estoque_os_web/live/kit_live/show.ex:518
+#: lib/estoque_os_web/live/kit_live/show.ex:645
 #, elixir-autogen, elixir-format
 msgid "%{item} removed from the recipe."
 msgstr "%{item} removido da receita."
 
-#: lib/estoque_os_web/live/kit_live/show.ex:301
+#: lib/estoque_os_web/live/kit_live/show.ex:406
 #, elixir-autogen, elixir-format
 msgid "Add"
 msgstr "Adicionar"
 
-#: lib/estoque_os_web/live/kit_live/show.ex:275
+#: lib/estoque_os_web/live/kit_live/show.ex:326
+#: lib/estoque_os_web/live/kit_live/show.ex:382
 #, elixir-autogen, elixir-format
 msgid "Add a component"
 msgstr "Adicionar componente"
 
-#: lib/estoque_os_web/live/kit_live/show.ex:280
-#, elixir-autogen, elixir-format
-msgid "Avental EG"
-msgstr "Avental EG"
-
-#: lib/estoque_os_web/live/kit_live/show.ex:588
+#: lib/estoque_os_web/live/kit_live/show.ex:705
 #, elixir-autogen, elixir-format
 msgid "Component added."
 msgstr "Componente adicionado."
 
-#: lib/estoque_os_web/live/kit_live/show.ex:500
+#: lib/estoque_os_web/live/kit_live/show.ex:627
 #, elixir-autogen, elixir-format
 msgid "Component updated."
 msgstr "Componente atualizado."
@@ -2988,22 +2987,22 @@ msgstr "Kit Recuperação"
 msgid "New kit"
 msgstr "Novo kit"
 
-#: lib/estoque_os_web/live/kit_live/show.ex:357
+#: lib/estoque_os_web/live/kit_live/show.ex:465
 #, elixir-autogen, elixir-format
 msgid "Quantity per kit for %{item}"
 msgstr "Quantidade por kit de %{item}"
 
-#: lib/estoque_os_web/live/kit_live/show.ex:378
+#: lib/estoque_os_web/live/kit_live/show.ex:486
 #, elixir-autogen, elixir-format
 msgid "Remove"
 msgstr "Remover"
 
-#: lib/estoque_os_web/live/kit_live/show.ex:377
+#: lib/estoque_os_web/live/kit_live/show.ex:485
 #, elixir-autogen, elixir-format
 msgid "Remove %{item} from the recipe?"
 msgstr "Remover %{item} da receita?"
 
-#: lib/estoque_os_web/live/kit_live/show.ex:86
+#: lib/estoque_os_web/live/kit_live/show.ex:134
 #, elixir-autogen, elixir-format
 msgid "That change could not be saved."
 msgstr "Não foi possível salvar essa alteração."
@@ -3145,7 +3144,7 @@ msgstr "%{count} posição(ões) nesta página"
 msgid "A box is what travels. Register the ones the logistics operator already uses, with the codes written on them."
 msgstr "A caixa é o que viaja. Cadastre as que o operador logístico já usa, com os códigos escritos nelas."
 
-#: lib/estoque_os_web/live/kit_live/show.ex:313
+#: lib/estoque_os_web/live/kit_live/show.ex:421
 #, elixir-autogen, elixir-format
 msgid "Add what a single kit is made of, and the system can say how many are possible."
 msgstr "Informe do que um kit é feito, e o sistema passa a dizer quantos são possíveis."
@@ -3260,7 +3259,7 @@ msgstr "Linhas para conferir"
 msgid "Mission lines"
 msgstr "Linhas da missão"
 
-#: lib/estoque_os_web/live/kit_live/show.ex:307
+#: lib/estoque_os_web/live/kit_live/show.ex:415
 #, elixir-autogen, elixir-format
 msgid "Recipe"
 msgstr "Composição"
@@ -3285,7 +3284,7 @@ msgstr "Digite o que está escrito na caixa. Se o catálogo ainda não tiver, d�
 msgid "Rename %{name}"
 msgstr "Renomear %{name}"
 
-#: lib/estoque_os_web/live/kit_live/show.ex:363
+#: lib/estoque_os_web/live/kit_live/show.ex:471
 #, elixir-autogen, elixir-format
 msgid "Save %{item}"
 msgstr "Salvar %{item}"
@@ -3504,7 +3503,7 @@ msgstr "Escolha outro local, ou dê entrada em mercadoria antes."
 
 #: lib/estoque_os_web/live/box_live/show.ex:290
 #: lib/estoque_os_web/live/entry_live/new.ex:533
-#: lib/estoque_os_web/live/kit_live/show.ex:689
+#: lib/estoque_os_web/live/kit_live/show.ex:806
 #: lib/estoque_os_web/live/receipt_live/show.ex:718
 #, elixir-autogen, elixir-format
 msgid "Box %{code} created here."
@@ -3516,7 +3515,7 @@ msgid "Box %{code} is at %{location}. Move it first, or use another."
 msgstr "A caixa %{code} está em %{location}. Mova-a antes, ou use outra."
 
 #: lib/estoque_os_web/live/box_live/show.ex:298
-#: lib/estoque_os_web/live/kit_live/show.ex:697
+#: lib/estoque_os_web/live/kit_live/show.ex:814
 #: lib/estoque_os_web/live/receipt_live/show.ex:726
 #, elixir-autogen, elixir-format
 msgid "Box %{code} is somewhere else. Move it first, or use another."
@@ -3534,7 +3533,7 @@ msgstr "Caixa(s) criada(s) aqui: %{codes}"
 
 #: lib/estoque_os_web/live/box_live/show.ex:304
 #: lib/estoque_os_web/live/entry_live/new.ex:548
-#: lib/estoque_os_web/live/kit_live/show.ex:703
+#: lib/estoque_os_web/live/kit_live/show.ex:820
 #: lib/estoque_os_web/live/receipt_live/show.ex:732
 #, elixir-autogen, elixir-format
 msgid "That box code could not be used."
@@ -3603,7 +3602,7 @@ msgstr "Caixa contada e sinalizada para o gestor: não bateu duas vezes."
 
 #: lib/estoque_os_web/live/audit_live/count.ex:142
 #: lib/estoque_os_web/live/audit_live/count.ex:186
-#: lib/estoque_os_web/live/kit_live/show.ex:150
+#: lib/estoque_os_web/live/kit_live/show.ex:198
 #, elixir-autogen, elixir-format
 msgid "Checking..."
 msgstr "Conferindo..."
@@ -3770,12 +3769,7 @@ msgstr "Saindo juntos"
 msgid "Take these goods out of stock?"
 msgstr "Dar baixa nesta mercadoria?"
 
-#: lib/estoque_os_web/live/kit_live/show.ex:572
-#, elixir-autogen, elixir-format
-msgid "%{name} is not in the catalog. A kit can only ask for something the stock knows about."
-msgstr "%{name} não está no catálogo. Um kit só pode pedir algo que o estoque conhece."
-
-#: lib/estoque_os_web/live/kit_live/show.ex:595
+#: lib/estoque_os_web/live/kit_live/show.ex:712
 #, elixir-autogen, elixir-format
 msgid "%{name} is already in this kit. Change how many it needs instead."
 msgstr "%{name} já está neste kit. Mude quantos ele precisa, em vez disso."
@@ -3858,7 +3852,7 @@ msgstr "um produto novo"
 msgid "You are seeing the app as another role. Nothing here can be recorded."
 msgstr "Você está vendo o app como outro papel. Nada aqui pode ser registrado."
 
-#: lib/estoque_os_web/live/kit_live/show.ex:376
+#: lib/estoque_os_web/live/kit_live/show.ex:484
 #, elixir-autogen, elixir-format
 msgid "Remove %{item}"
 msgstr "Remover %{item}"
@@ -4000,102 +3994,102 @@ msgstr "Passar para"
 msgid "Where to carry this box"
 msgstr "Para onde levar esta caixa"
 
-#: lib/estoque_os_web/live/kit_live/show.ex:159
+#: lib/estoque_os_web/live/kit_live/show.ex:207
 #, elixir-autogen, elixir-format
 msgid "%{quantity} kit(s) — what it takes"
 msgstr "%{quantity} kit(s) — o que precisa"
 
-#: lib/estoque_os_web/live/kit_live/show.ex:191
+#: lib/estoque_os_web/live/kit_live/show.ex:239
 #, elixir-autogen, elixir-format
 msgid "Available here"
 msgstr "Disponível aqui"
 
-#: lib/estoque_os_web/live/kit_live/show.ex:164
+#: lib/estoque_os_web/live/kit_live/show.ex:212
 #, elixir-autogen, elixir-format
 msgid "Change quantity"
 msgstr "Alterar quantidade"
 
-#: lib/estoque_os_web/live/kit_live/show.ex:150
+#: lib/estoque_os_web/live/kit_live/show.ex:198
 #, elixir-autogen, elixir-format
 msgid "Check"
 msgstr "Conferir"
 
-#: lib/estoque_os_web/live/kit_live/show.ex:188
+#: lib/estoque_os_web/live/kit_live/show.ex:236
 #, elixir-autogen, elixir-format
 msgid "Needed"
 msgstr "Necessário"
 
-#: lib/estoque_os_web/live/kit_live/show.ex:459
+#: lib/estoque_os_web/live/kit_live/show.ex:567
 #, elixir-autogen, elixir-format
 msgid "loose: %{qty}"
 msgstr "solto: %{qty}"
 
-#: lib/estoque_os_web/live/kit_live/show.ex:455
+#: lib/estoque_os_web/live/kit_live/show.ex:563
 #, elixir-autogen, elixir-format
 msgid "nowhere at this location"
 msgstr "não tem neste local"
 
-#: lib/estoque_os_web/live/kit_live/show.ex:123
+#: lib/estoque_os_web/live/kit_live/show.ex:171
 #, elixir-autogen, elixir-format
 msgid "%{count} component(s) are not linked to a catalog product, so this kit cannot be assembled yet."
 msgstr "%{count} componente(s) não estão ligados a um produto do catálogo, então este kit ainda não pode ser montado."
 
-#: lib/estoque_os_web/live/kit_live/show.ex:254
+#: lib/estoque_os_web/live/kit_live/show.ex:302
 #, elixir-autogen, elixir-format
 msgid "%{count} kit(s) already assembled are in stock. Editing the recipe does not touch them."
 msgstr "%{count} kit(s) já montados estão em estoque. Editar a receita não muda os que já existem."
 
-#: lib/estoque_os_web/live/kit_live/show.ex:231
+#: lib/estoque_os_web/live/kit_live/show.ex:279
 #, elixir-autogen, elixir-format
 msgid "Assemble"
 msgstr "Montar"
 
-#: lib/estoque_os_web/live/kit_live/show.ex:134
+#: lib/estoque_os_web/live/kit_live/show.ex:182
 #, elixir-autogen, elixir-format
 msgid "Assemble kits"
 msgstr "Montar kits"
 
-#: lib/estoque_os_web/live/kit_live/show.ex:239
+#: lib/estoque_os_web/live/kit_live/show.ex:287
 #, elixir-autogen, elixir-format
 msgid "Assemble what has arrived, and note what is missing"
 msgstr "Montar o que chegou, e anotar o que falta"
 
-#: lib/estoque_os_web/live/kit_live/show.ex:411
+#: lib/estoque_os_web/live/kit_live/show.ex:519
 #, elixir-autogen, elixir-format
 msgid "Assembled %{built} of %{requested}, short on %{item}."
 msgstr "Montados %{built} de %{requested}, faltando %{item}."
 
-#: lib/estoque_os_web/live/kit_live/show.ex:229
+#: lib/estoque_os_web/live/kit_live/show.ex:277
 #, elixir-autogen, elixir-format
 msgid "Assembling..."
 msgstr "Montando..."
 
-#: lib/estoque_os_web/live/kit_live/show.ex:220
+#: lib/estoque_os_web/live/kit_live/show.ex:268
 #, elixir-autogen, elixir-format
 msgid "Box to assemble into"
 msgstr "Caixa de destino"
 
-#: lib/estoque_os_web/live/kit_live/show.ex:136
+#: lib/estoque_os_web/live/kit_live/show.ex:184
 #, elixir-autogen, elixir-format
 msgid "Components leave stock for good, and the kit takes their place."
 msgstr "Os componentes saem do estoque de vez, e o kit toma o lugar deles."
 
-#: lib/estoque_os_web/live/kit_live/show.ex:421
+#: lib/estoque_os_web/live/kit_live/show.ex:529
 #, elixir-autogen, elixir-format
 msgid "Kits assembled."
 msgstr "Kits montados."
 
-#: lib/estoque_os_web/live/kit_live/show.ex:429
+#: lib/estoque_os_web/live/kit_live/show.ex:537
 #, elixir-autogen, elixir-format
 msgid "Nothing here to assemble it from."
 msgstr "Não há nada aqui para montar."
 
-#: lib/estoque_os_web/live/kit_live/show.ex:682
+#: lib/estoque_os_web/live/kit_live/show.ex:799
 #, elixir-autogen, elixir-format
 msgid "Say which box the kits are assembled into."
 msgstr "Diga em qual caixa os kits serão montados."
 
-#: lib/estoque_os_web/live/kit_live/show.ex:385
+#: lib/estoque_os_web/live/kit_live/show.ex:493
 #, elixir-autogen, elixir-format
 msgid "The kit will no longer list it. Kits already assembled do not change."
 msgstr "O kit deixa de listá-lo. Kits já montados não são afetados."
@@ -4125,16 +4119,16 @@ msgstr "Tirar de"
 msgid "loose — %{qty} — expires %{expiry}"
 msgstr "solto — %{qty} — vence %{expiry}"
 
-#: lib/estoque_os_web/live/kit_live/show.ex:77
-#: lib/estoque_os_web/live/kit_live/show.ex:484
-#: lib/estoque_os_web/live/kit_live/show.ex:491
-#: lib/estoque_os_web/live/kit_live/show.ex:509
+#: lib/estoque_os_web/live/kit_live/show.ex:125
+#: lib/estoque_os_web/live/kit_live/show.ex:611
+#: lib/estoque_os_web/live/kit_live/show.ex:618
+#: lib/estoque_os_web/live/kit_live/show.ex:636
 #, elixir-autogen, elixir-format
 msgid "Only a manager changes the kit recipe."
 msgstr "Somente o gestor altera a receita do kit."
 
-#: lib/estoque_os_web/live/kit_live/show.ex:494
-#: lib/estoque_os_web/live/kit_live/show.ex:512
+#: lib/estoque_os_web/live/kit_live/show.ex:621
+#: lib/estoque_os_web/live/kit_live/show.ex:639
 #, elixir-autogen, elixir-format
 msgid "That component is not in this kit."
 msgstr "Esse componente não faz parte deste kit."
@@ -4315,27 +4309,27 @@ msgstr "Esta instalação não envia e-mail. Entre com sua senha."
 msgid "This installation does not send email. Log in with your password, or ask an administrator to reset it."
 msgstr "Esta instalação não envia e-mail. Entre com sua senha ou fale com um administrador para redefini-la."
 
-#: lib/estoque_os_web/live/kit_live/show.ex:172
+#: lib/estoque_os_web/live/kit_live/show.ex:220
 #, elixir-autogen, elixir-format
 msgid "Cannot assemble: %{count} component(s) have expired stock here."
 msgstr "Não é possível montar: %{count} componente(s) têm lote vencido aqui."
 
-#: lib/estoque_os_web/live/kit_live/show.ex:198
+#: lib/estoque_os_web/live/kit_live/show.ex:246
 #, elixir-autogen, elixir-format
 msgid "Expired here"
 msgstr "Vencido aqui"
 
-#: lib/estoque_os_web/live/kit_live/show.ex:649
+#: lib/estoque_os_web/live/kit_live/show.ex:766
 #, elixir-autogen, elixir-format
 msgid "%{count} component(s) have expired stock here, starting with %{item}, expired since %{date}. Write the expired stock off first — a kit is sealed, and nobody opens one to read a date."
 msgstr "%{count} componente(s) têm lote vencido aqui, a começar por %{item}, vencido desde %{date}. Dê baixa no estoque vencido primeiro — um kit é lacrado, e ninguém abre um para ler a data."
 
-#: lib/estoque_os_web/live/kit_live/show.ex:177
+#: lib/estoque_os_web/live/kit_live/show.ex:225
 #, elixir-autogen, elixir-format
 msgid "A kit is sealed — once an expired item is inside one, nobody opens it to read the date. Write the expired stock off first, then assemble."
 msgstr "Um kit é lacrado — depois que um item vencido está dentro, ninguém abre para ler a data. Dê baixa no estoque vencido primeiro e monte em seguida."
 
-#: lib/estoque_os_web/live/kit_live/show.ex:227
+#: lib/estoque_os_web/live/kit_live/show.ex:275
 #, elixir-autogen, elixir-format
 msgid "Write the expired stock off before assembling."
 msgstr "Dê baixa no estoque vencido antes de montar."
@@ -4436,3 +4430,19 @@ msgstr "tem número de lote"
 #, elixir-autogen, elixir-format
 msgid "no lot expected"
 msgstr "sem lote esperado"
+
+#: lib/estoque_os_web/live/kit_live/show.ex:370
+#: lib/estoque_os_web/live/kit_live/show.ex:386
+#, elixir-autogen, elixir-format
+msgid "%{quantity} %{unit} here"
+msgstr "%{quantity} %{unit} aqui"
+
+#: lib/estoque_os_web/live/kit_live/show.ex:693
+#, elixir-autogen, elixir-format
+msgid "Pick a component from the list first."
+msgstr "Escolha um componente da lista primeiro."
+
+#: lib/estoque_os_web/live/kit_live/show.ex:368
+#, elixir-autogen, elixir-format
+msgid "already in the recipe"
+msgstr "já está na receita"
