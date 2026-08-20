@@ -50,20 +50,60 @@ if config_env() == :prod do
 
   maybe_ipv6 = if System.get_env("ECTO_IPV6") in ~w(true 1), do: [:inet6], else: []
 
+  database_host = database_url |> URI.parse() |> Map.fetch!(:host)
+
+  # Encrypted always. Verified against the host's own certificate by default,
+  # which is the only version of TLS that means anything — an unverified
+  # connection is an encrypted conversation with whoever answered.
+  #
+  # The escape hatch exists because managed Postgres is often presented behind
+  # a private certificate authority that is not in the system store, and the
+  # symptom is a deploy that cannot reach its database at all. Two ways out,
+  # in order of preference: point DATABASE_CA_CERT_FILE at the provider's CA
+  # bundle, or — knowing what it costs, and it is logged on every boot —
+  # DATABASE_SSL_VERIFY=none.
+  ssl_opts =
+    case {System.get_env("DATABASE_SSL_VERIFY"), System.get_env("DATABASE_CA_CERT_FILE")} do
+      {"none", _} ->
+        IO.warn("""
+        DATABASE_SSL_VERIFY=none: the database connection is encrypted but the \
+        server's certificate is not being checked. Set DATABASE_CA_CERT_FILE to \
+        the provider's CA bundle instead as soon as you have it.
+        """)
+
+        [verify: :verify_none]
+
+      {_, nil} ->
+        [verify: :verify_peer, cacerts: :public_key.cacerts_get()]
+
+      {_, path} ->
+        [verify: :verify_peer, cacertfile: path]
+    end
+
+  # Off only for smoke-testing the built release against a local Postgres, which
+  # does not speak TLS. Never for a real deployment — hence the shout.
+  database_ssl? = System.get_env("DATABASE_SSL") not in ~w(false 0)
+
+  if not database_ssl? do
+    IO.warn("DATABASE_SSL=false: connecting to the database in the clear.")
+  end
+
   config :estoque_os, EstoqueOS.Repo,
-    ssl: true,
-    ssl_opts: [
-      verify: :verify_peer,
-      cacerts: :public_key.cacerts_get(),
-      server_name_indication: database_url |> URI.parse() |> Map.fetch!(:host) |> to_charlist(),
-      customize_hostname_check: [
-        match_fun: :public_key.pkix_verify_hostname_match_fun(:https)
-      ]
-    ],
+    ssl: database_ssl?,
+    ssl_opts:
+      ssl_opts ++
+        [
+          server_name_indication: to_charlist(database_host),
+          customize_hostname_check: [
+            match_fun: :public_key.pkix_verify_hostname_match_fun(:https)
+          ]
+        ],
     url: database_url,
-    pool_size: String.to_integer(System.get_env("POOL_SIZE") || "10"),
-    # For machines with several cores, consider starting multiple pools of `pool_size`
-    # pool_count: 4,
+    # Two, because the free-tier database allows two connections in total and
+    # the deploy needs one of them for the migration. Raise it with the plan,
+    # not before: a pool larger than the database permits fails as a timeout
+    # under load, which reads like a slow query rather than a misconfiguration.
+    pool_size: String.to_integer(System.get_env("POOL_SIZE") || "2"),
     socket_options: maybe_ipv6
 
   # The secret key base is used to sign/encrypt cookies and other secrets.

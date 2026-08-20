@@ -1,0 +1,6 @@
+# Read by asdf locally and by the Gigalixir buildpacks at build time, so the
+# deployment cannot compile against a different Elixir than the tests did.
+# Keep in step with mise.toml and with the versions pinned in CI.
+erlang 29.0.4
+elixir 1.20.2-otp-29
+nodejs 26.3.1

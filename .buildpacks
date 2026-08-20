@@ -1,0 +1,5 @@
+# Assets are built inside `mix release` (see the :assets step in mix.exs), so
+# the phoenix-static buildpack — and Node, and an npm install — are not in the
+# picture. Two buildpacks: compile, then assemble the release.
+https://github.com/gigalixir/gigalixir-buildpack-elixir
+https://github.com/gigalixir/gigalixir-buildpack-releases

@@ -16,6 +16,7 @@ defmodule EstoqueOS.MixProject do
       consolidate_protocols: Mix.env() == :prod,
       aliases: aliases(),
       deps: deps(),
+      releases: releases(),
       compilers: [:phoenix_live_view] ++ Mix.compilers(),
       listeners: [Phoenix.CodeReloader]
     ]
@@ -35,6 +36,29 @@ defmodule EstoqueOS.MixProject do
     [
       preferred_envs: [precommit: :test]
     ]
+  end
+
+  # The release, and the one thing it does that `:assemble` would not: build the
+  # digested assets first.
+  #
+  # Phoenix's own advice is to run `mix assets.deploy` as a separate build step.
+  # Making it a release step instead means `MIX_ENV=prod mix release` produces a
+  # complete, servable release on its own — which is testable on a laptop, and
+  # is what lets the deployment drop the Node buildpack and the npm install
+  # that only existed to invoke a Mix task.
+  defp releases do
+    [
+      estoque_os: [
+        steps: [&build_assets/1, :assemble, :tar],
+        include_executables_for: [:unix]
+      ]
+    ]
+  end
+
+  defp build_assets(release) do
+    Mix.Task.run("assets.setup")
+    Mix.Task.run("assets.deploy")
+    release
   end
 
   # Specifies which paths to compile per environment.

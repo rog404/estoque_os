@@ -53,3 +53,10 @@ npm-debug.log
 /strix_runs/
 /.claude/skills/
 /skills-lock.json
+
+# `mix phx.digest` writes, beside every static file, a copy named with the
+# digest of its contents and a gzipped version of each. Build output, and now
+# produced on a laptop as well as on a server because the release builds its
+# own assets. `mix phx.digest.clean --all` removes them.
+/priv/static/**/*.gz
+/priv/static/**/*-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f].*
