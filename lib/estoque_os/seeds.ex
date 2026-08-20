@@ -22,6 +22,7 @@ defmodule EstoqueOS.Seeds do
   alias EstoqueOS.Catalog
   alias EstoqueOS.Catalog.Product
   alias EstoqueOS.Inventory.Location
+  alias EstoqueOS.Kits
   alias EstoqueOS.Kits.Kit
   alias EstoqueOS.Repo
   alias EstoqueOS.Samples
@@ -181,9 +182,14 @@ defmodule EstoqueOS.Seeds do
 
     case Repo.one(from k in Kit, where: fragment("lower(?)", k.name) == ^String.downcase(title)) do
       nil ->
-        %Kit{}
-        |> Kit.changeset(%{name: title, items: items})
-        |> Repo.insert!()
+        # Through the context, not `Repo.insert!/1`. A kit is a product —
+        # assembling one converts components into a lot of the kit's own
+        # product, and `Kits.create_kit/1` is what creates the pair. Inserting
+        # the kit on its own seeded five kits that could never be assembled,
+        # and the failure surfaced two contexts away, as a nil `kit.product`
+        # inside the conversion.
+        {:ok, kit} = Kits.create_kit(%{name: title, items: items})
+        kit
 
       kit ->
         kit
