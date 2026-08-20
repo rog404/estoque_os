@@ -11,8 +11,9 @@ defmodule EstoqueOSWeb.StockFilterTest do
   import EstoqueOS.CatalogFixtures
   import EstoqueOS.InventoryFixtures
 
-  alias EstoqueOS.{Catalog, Inventory}
+  alias EstoqueOS.{Catalog, Inventory, Repo}
   alias EstoqueOS.Inventory.Locations
+  alias EstoqueOS.Invoices.Invoice
 
   setup :register_and_log_in_user
 
@@ -63,15 +64,28 @@ defmodule EstoqueOSWeb.StockFilterTest do
       })
   end
 
+  # An unchecked checkbox is not submitted at all, so the defaults carry only
+  # the two fields a browser always sends. A test that hands the filter form a
+  # value the browser never produces is a test that can pass while the screen is
+  # broken — which is exactly what happened here: the checkboxes send "true" and
+  # the view was reading "on".
   defp filter(view, params) do
-    defaults = %{
-      "search" => "",
-      "location_id" => "",
-      "only_expiring" => "off",
-      "only_controlled" => "off"
-    }
+    defaults = %{"search" => "", "location_id" => ""}
 
     view |> element("#filter-form") |> render_change(Map.merge(defaults, params))
+  end
+
+  # The value the rendered checkbox would actually send, read off the page
+  # rather than typed here.
+  defp checkbox_value(html, name) do
+    case Regex.run(~r/<input[^>]*name="#{name}"[^>]*>/, html) do
+      [input] ->
+        [_all, value] = Regex.run(~r/value="([^"]*)"/, input)
+        value
+
+      nil ->
+        flunk("there is no #{name} checkbox on the page")
+    end
   end
 
   test "searches by product name", %{conn: conn} do
@@ -111,15 +125,50 @@ defmodule EstoqueOSWeb.StockFilterTest do
   end
 
   test "filters to what is expiring and to controlled substances", %{conn: conn} do
-    {:ok, view, _html} = live(conn, ~p"/stock")
+    {:ok, view, html} = live(conn, ~p"/stock")
 
-    expiring = filter(view, %{"only_expiring" => "on"})
+    expiring = filter(view, %{"only_expiring" => checkbox_value(html, "only_expiring")})
     assert expiring =~ "Fentanila"
     refute expiring =~ "Compressa de gaze"
 
-    controlled = filter(view, %{"only_controlled" => "on"})
+    controlled = filter(view, %{"only_controlled" => checkbox_value(html, "only_controlled")})
     assert controlled =~ "Fentanila"
     refute controlled =~ "Eletrodo ECG adulto"
+  end
+
+  test "filters to the goods that arrived without lot data", %{conn: conn, warehouse: warehouse} do
+    product = product_fixture(%{name: "Atadura doada"})
+    lot = lot_fixture(%{product_id: product.id, lot_number: nil, needs_review: true})
+    stock_in(lot, warehouse, 12)
+
+    {:ok, view, html} = live(conn, ~p"/stock")
+
+    # The bug all three of these hold: `<.check>` renders value="true" and the
+    # view compared against "on", so every checkbox in the filter panel was dead
+    # on the page while the tests handed the event an "on" no browser sends.
+    # Both halves are read from the DOM now, so they cannot drift apart again.
+    filtered = filter(view, %{"only_needs_review" => checkbox_value(html, "only_needs_review")})
+
+    assert filtered =~ "Atadura doada"
+    refute filtered =~ "Eletrodo ECG adulto"
+  end
+
+  test "a link may still turn a filter on from the address bar", %{conn: conn} do
+    {:ok, _view, html} = live(conn, ~p"/stock?expiring=on")
+
+    assert html =~ "Fentanila"
+    refute html =~ "Compressa de gaze"
+  end
+
+  test "clearing the filters clears the one for missing lot data too", %{conn: conn} do
+    {:ok, view, html} = live(conn, ~p"/stock")
+
+    filter(view, %{"only_needs_review" => checkbox_value(html, "only_needs_review")})
+
+    cleared = view |> element("#filter-form button", "Limpar filtros") |> render_click()
+
+    assert cleared =~ "Eletrodo ECG adulto"
+    assert cleared =~ "Compressa de gaze"
   end
 
   test "says so when nothing matches, without pretending stock is empty", %{conn: conn} do
@@ -232,6 +281,43 @@ defmodule EstoqueOSWeb.StockFilterTest do
     html = filter(view, %{"search" => "7898733218198"})
 
     assert html =~ "Cateter intravenoso 22G"
+    refute html =~ "Compressa de gaze"
+  end
+
+  test "finds what is left of a delivery by the number printed on the invoice",
+       %{conn: conn, warehouse: warehouse} do
+    supplier = supplier_fixture()
+
+    {:ok, invoice} =
+      %Invoice{}
+      |> Invoice.changeset(%{
+        access_key: "35260411222333000424550010009770981447856989",
+        number: "977098",
+        series: "1",
+        issued_on: ~D[2026-04-23],
+        raw_xml: "<nfeProc/>",
+        supplier_id: supplier.id
+      })
+      |> Repo.insert()
+
+    product = product_fixture(%{name: "Avental cirúrgico EG"})
+    lot = lot_fixture(%{product_id: product.id, lot_number: "AV-7"})
+
+    {:ok, _} =
+      Inventory.post_transaction(%{
+        type: "purchase_in",
+        user_id: actor_id(),
+        invoice_id: invoice.id,
+        entries: [
+          %{lot_id: lot.id, location_id: warehouse.id, quantity: Decimal.new(40)}
+        ]
+      })
+
+    {:ok, view, _html} = live(conn, ~p"/stock")
+
+    html = filter(view, %{"search" => "977098"})
+
+    assert html =~ "Avental cirúrgico EG"
     refute html =~ "Compressa de gaze"
   end
 

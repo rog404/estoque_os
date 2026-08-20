@@ -59,9 +59,9 @@ defmodule EstoqueOSWeb.StockLive.Index do
      socket
      |> assign(:search, params["search"] || "")
      |> assign(:location_id, parse_id(params["location_id"]))
-     |> assign(:only_expiring, params["expiring"] == "on")
-     |> assign(:only_controlled, params["controlled"] == "on")
-     |> assign(:only_needs_review, params["review"] == "on")
+     |> assign(:only_expiring, checked?(params["expiring"]))
+     |> assign(:only_controlled, checked?(params["controlled"]))
+     |> assign(:only_needs_review, checked?(params["review"]))
      |> load_rows()}
   end
 
@@ -156,7 +156,7 @@ defmodule EstoqueOSWeb.StockLive.Index do
               type="search"
               name="search"
               value={@search}
-              placeholder={gettext("Product, lot, box or GTIN")}
+              placeholder={gettext("Product, lot, box, GTIN or invoice number")}
               class="grow"
               phx-debounce="300"
             />
@@ -403,9 +403,9 @@ defmodule EstoqueOSWeb.StockLive.Index do
      socket
      |> assign(:search, params["search"] || "")
      |> assign(:location_id, parse_id(params["location_id"]))
-     |> assign(:only_expiring, params["only_expiring"] == "on")
-     |> assign(:only_controlled, params["only_controlled"] == "on")
-     |> assign(:only_needs_review, params["only_needs_review"] == "on")
+     |> assign(:only_expiring, checked?(params["only_expiring"]))
+     |> assign(:only_controlled, checked?(params["only_controlled"]))
+     |> assign(:only_needs_review, checked?(params["only_needs_review"]))
      |> assign(:page, 1)
      |> load_rows()}
   end
@@ -428,6 +428,7 @@ defmodule EstoqueOSWeb.StockLive.Index do
      |> assign(:location_id, nil)
      |> assign(:only_expiring, false)
      |> assign(:only_controlled, false)
+     |> assign(:only_needs_review, false)
      |> assign(:sort, %{key: "product", dir: :asc})
      |> assign(:page, 1)
      |> load_rows()}
@@ -491,6 +492,14 @@ defmodule EstoqueOSWeb.StockLive.Index do
   defp presumed_label(%{box_verified_at: verified_at}) do
     gettext("presumed since %{date}", date: date(verified_at))
   end
+
+  # A checkbox sends whatever `value` it carries, and `<.check>` carries "true".
+  # Comparing against "on" was reading a value the browser never sends, so all
+  # three filters were dead on the page while passing a test that handed the
+  # event "on" by hand. Presence is the signal — an unchecked box is not
+  # submitted at all — with the explicit falsy words honoured so a link, a test
+  # or a future hidden input can say "off" and be believed.
+  defp checked?(value), do: value not in [nil, "", "false", "off", "0"]
 
   defp parse_id(nil), do: nil
   defp parse_id(""), do: nil

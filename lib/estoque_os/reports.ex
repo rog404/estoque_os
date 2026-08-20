@@ -178,8 +178,23 @@ defmodule EstoqueOS.Reports do
       query,
       [s, l, p, _g, b],
       ilike(p.name, ^term) or ilike(l.lot_number, ^term) or ilike(b.code, ^term) or
-        p.id in subquery(coded)
+        p.id in subquery(coded) or l.id in subquery(invoiced_lots(trimmed))
     )
+  end
+
+  # "Which of this delivery is still here?" — asked with the DANFE in hand, so
+  # the number typed is the one printed on the paper. The invoice is not a
+  # column on a stock position: a lot arrived on a `purchase_in` and that
+  # transaction carries the invoice, so the search reaches it through the
+  # ledger. Exact rather than partial, because an NF number is a whole number
+  # somebody reads off a document, and `ilike "%7%"` would match half the
+  # warehouse.
+  defp invoiced_lots(number) do
+    TransactionEntry
+    |> join(:inner, [e], t in Transaction, on: t.id == e.transaction_id)
+    |> join(:inner, [e, t], i in Invoice, on: i.id == t.invoice_id)
+    |> where([e, t, i], i.number == ^number)
+    |> select([e], e.lot_id)
   end
 
   defp maybe_only_controlled(query, true), do: where(query, [_s, _l, p], p.controlled)
