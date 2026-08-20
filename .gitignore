@@ -44,3 +44,12 @@ npm-debug.log
 # Everything below is per-machine and must not be.
 /.claude/settings.local.json
 /.claude/worktrees/
+
+# Local tool state. Cortex keeps its task database here, the Strix runs are
+# scan output, and the vendored skills are installed per-machine — none of it
+# is this application, and cortex.db in particular changes on every command.
+/.cortex/
+/.agents/
+/strix_runs/
+/.claude/skills/
+/skills-lock.json
