@@ -1,0 +1,34 @@
+# Everything the image must not carry: build output that would be stale, the
+# git history, and the local tool state.
+.git
+.gitignore
+_build
+deps
+.elixir_ls
+.elixir-tools
+.lexical
+
+# Built assets. The release builds its own inside the image; copying a laptop's
+# output in would ship whatever was last compiled there.
+priv/static/assets
+priv/static/cache_manifest.json
+
+# Tests, docs and screenshots do not run in production.
+test
+docs
+strix_runs
+.agents
+.cortex
+.claude
+tmp
+erl_crash.dump
+
+# Compose and CI describe how to run the image, not what goes in it.
+docker-compose.yml
+.github
+README.md
+CLAUDE.md
+AGENTS.md
+PRODUCT.md
+DESIGN.md
+skills-lock.json

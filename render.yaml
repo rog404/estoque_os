@@ -1,0 +1,126 @@
+# Render blueprint: the whole demo described in one file, so the deployment is
+# something you can read and re-create rather than a set of clicks somebody
+# remembers making.
+#
+#   1. Push this repository to GitHub.
+#   2. Render → New → Blueprint → pick the repo. It reads this file.
+#   3. Approve. First build takes a few minutes (it compiles Elixir and the
+#      assets inside the image).
+#   4. Load the data once — see docs/deploy-render.md.
+#
+# Both the service and the database are on the free plan, and both must stay in
+# the same region or the internal connection string cannot resolve.
+#
+# ⚠ The free database is DELETED 30 DAYS AFTER IT IS CREATED (plus a 14-day
+# grace period to upgrade). Write the date down. If the demo needs to outlive
+# that, either move `DATABASE_URL` to an external Postgres whose free tier does
+# not expire, or put the database on a paid plan — nothing else about this file
+# changes.
+
+services:
+  - type: web
+    name: estoque-os
+    runtime: docker
+    plan: free
+    region: virginia
+    dockerfilePath: ./Dockerfile
+
+    # Both stated rather than left to the default, because both were being
+    # relied on invisibly: an omitted `branch` takes the repository's default
+    # branch, and an omitted trigger deploys on every commit.
+    branch: main
+
+    # `checksPass`, not `commit`. CI on this repository is not decorative — it
+    # runs the formatter, the unused-dependency check, the advisory feed,
+    # warnings-as-errors, Credo in strict mode, Sobelow and 829 tests. Deploying
+    # on `commit` would let a red commit reach the demo and wait for a person to
+    # notice; this way a commit has to be green before it is served.
+    #
+    # On the day of a presentation, set this to `off` (or pause the service in
+    # the dashboard). A redeploy compiles Elixir and rebuilds the assets, which
+    # takes minutes, and on the free plan there is one instance — so an
+    # absent-minded push mid-demo takes the demo down while it builds.
+    autoDeployTrigger: checksPass
+
+    # `/` redirects an anonymous visitor to the login page, so a health check
+    # pointed there reads a 302 and can be argued about. The login page itself
+    # is a plain 200 and exercises the same stack: router, LiveView, template,
+    # digested assets.
+    healthCheckPath: /users/log-in
+
+    envVars:
+      # NOT `generateValue: true`. Render's generated value is shorter than the
+      # 64 bytes Phoenix's cookie store requires, and the failure is not a boot
+      # error — the app starts, migrates, serves, and then answers every single
+      # request with
+      #
+      #   ** (ArgumentError) cookie store expects conn.secret_key_base
+      #      to be at least 64 bytes
+      #
+      # so the health check never passes and the deploy reports `update_failed`
+      # while the logs look like the app is fine.
+      #
+      # `sync: false` makes Render ask for it instead. Generate one with
+      # `mix phx.gen.secret`, which produces exactly the 64 bytes required.
+      # Rotating it later logs everybody out — the correct consequence, and not
+      # something to do by accident.
+      - key: SECRET_KEY_BASE
+        sync: false
+
+      # The internal connection string: same region, private network, no
+      # egress. Wired automatically from the database below.
+      - key: DATABASE_URL
+        fromDatabase:
+          name: estoque-os-db
+          property: connectionString
+
+      # The connection is encrypted; the certificate is not checked. That is a
+      # deliberate, narrow trade for the private network between this service
+      # and its database, and the app shouts about it on every boot so it
+      # cannot quietly become the permanent state.
+      #
+      # To do it properly: download the database's CA certificate from the
+      # Render dashboard, add it under Environment → Secret Files as
+      # `render-postgres-ca.crt`, then delete this variable and set
+      # DATABASE_CA_CERT_FILE=/etc/secrets/render-postgres-ca.crt instead.
+      - key: DATABASE_SSL_VERIFY
+        value: none
+
+      # The free plan gives no shell, so there is no moment at which a person
+      # could run the seeds on the server. This lets the first boot do it —
+      # once, and only into a database with no accounts in it. Safe to leave
+      # on: after that first boot it costs one SELECT per wake-up.
+      - key: SEED_ON_EMPTY
+        value: true
+
+      # Two connections is what the app opens by default, which suits a free
+      # database. Raise it with the plan, not before.
+      - key: POOL_SIZE
+        value: 2
+
+      # The letterhead printed on the donation certificates. `config/config.exs`
+      # ships placeholders on purpose — this repository is public — so an
+      # unconfigured deployment prints 00.000.000/0000-00 onto a document handed
+      # to a hospital. `sync: false` means Render asks you for the value instead
+      # of storing it here.
+      - key: ORGANIZATION_NAME
+        sync: false
+      - key: ORGANIZATION_DOCUMENT
+        sync: false
+      - key: ORGANIZATION_ADDRESS
+        sync: false
+      - key: ORGANIZATION_CONTACT
+        sync: false
+
+      # PHX_HOST is deliberately absent: `config/runtime.exs` falls back to
+      # RENDER_EXTERNAL_HOSTNAME, which Render sets to this service's own
+      # hostname. Getting it wrong is the classic cause of a LiveView that
+      # renders once and then never connects, because `check_origin` refuses a
+      # socket from a host the endpoint does not think it is.
+
+databases:
+  - name: estoque-os-db
+    plan: free
+    region: virginia
+    databaseName: estoque_os
+    user: estoque_os

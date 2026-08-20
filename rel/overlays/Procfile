@@ -1,6 +1,0 @@
-# Gigalixir reads this from the release tarball. Migrations run before the web
-# server starts, in the same command, so a deploy that cannot migrate does not
-# come up serving the old schema.
-#
-# $GIGALIXIR_COMMAND is what the platform wants run — normally `start`.
-web: /app/bin/$GIGALIXIR_APP_NAME eval "EstoqueOS.Release.migrate()" && /app/bin/$GIGALIXIR_APP_NAME $GIGALIXIR_COMMAND

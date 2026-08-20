@@ -68,6 +68,47 @@ defmodule EstoqueOS.Release do
     end
   end
 
+  @doc """
+  Loads the catalog and the demo scenario, but only into a database that has
+  nobody in it yet.
+
+  This exists because the free plans these demos run on do not give you a
+  shell. Without it there is no way to run `seed/0` on the server, and the
+  deployment comes up correct and empty — which for a demo is the same as
+  broken.
+
+  Guarded twice, so it cannot become a surprise. It runs only when
+  `SEED_ON_EMPTY` is set, and only when the `users` table is empty — which is
+  true exactly once, on the first boot against a fresh database. After that it
+  costs one `SELECT` per boot, which matters on a plan where the service sleeps
+  and wakes all day.
+  """
+  def seed_if_empty do
+    load_app()
+
+    if System.get_env("SEED_ON_EMPTY") in ~w(true 1) do
+      for repo <- repos() do
+        {:ok, seeded?, _} = Ecto.Migrator.with_repo(repo, &seed_empty_repo/1)
+
+        if seeded? do
+          IO.puts("[seed] fresh database — catalog and demo scenario loaded")
+        else
+          IO.puts("[seed] database already has accounts — nothing to do")
+        end
+      end
+    end
+  end
+
+  defp seed_empty_repo(repo) do
+    if repo.aggregate(EstoqueOS.Accounts.User, :count) == 0 do
+      EstoqueOS.Seeds.run()
+      EstoqueOS.DemoData.run!()
+      true
+    else
+      false
+    end
+  end
+
   defp repos do
     Application.fetch_env!(@app, :ecto_repos)
   end

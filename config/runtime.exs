@@ -118,7 +118,15 @@ if config_env() == :prod do
       You can generate one by calling: mix phx.gen.secret
       """
 
-  host = System.get_env("PHX_HOST") || "example.com"
+  # RENDER_EXTERNAL_HOSTNAME is set by Render to this service's own hostname.
+  # Reading it means one fewer thing to configure by hand, and it removes the
+  # classic misconfiguration: a wrong host makes `check_origin` refuse the
+  # LiveView socket, so every page renders once and then never updates —
+  # which looks like a broken app rather than a wrong variable. PHX_HOST still
+  # wins when set, for a custom domain or another platform.
+  host =
+    System.get_env("PHX_HOST") || System.get_env("RENDER_EXTERNAL_HOSTNAME") ||
+      "example.com"
 
   config :estoque_os, :dns_cluster_query, System.get_env("DNS_CLUSTER_QUERY")
 

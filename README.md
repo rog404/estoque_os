@@ -91,45 +91,45 @@ one with lot data only in free text.
 
 ## Deploying the demo
 
-Sized for the [Gigalixir](https://gigalixir.com) free tier: one replica, 0.5 GB
-of memory, and a database with two connections and a ten thousand row ceiling.
-The seeded demo scenario settles near fourteen hundred rows.
+Free, and no card: one web service and one Postgres on
+[Render](https://render.com)'s free plan, both described in
+[`render.yaml`](render.yaml). Push to GitHub, then **New → Blueprint** and pick
+the repository — Render reads the file, asks for the four `ORGANIZATION_*`
+values, and builds. There is no separate step to migrate or to load the data:
+`rel/entrypoint.sh` migrates, seeds a database that has nobody in it yet, and
+then serves.
 
-The release builds its own assets, so `MIX_ENV=prod mix release` produces a
-complete, servable release locally — which is how to check a deploy before
-making it.
+It deploys from `main`, and only when CI is green — `autoDeployTrigger:
+checksPass`, so a red commit never reaches the demo. Turn it off on the day of a
+presentation: a redeploy compiles Elixir and takes minutes, and the free plan
+runs one instance.
+
+Two facts about the free plan, easier to accept than to discover during a
+presentation: the service **sleeps** after 15 minutes idle and takes about a
+minute to wake, and the free database is **deleted 30 days after it is
+created**. [`docs/deploy-render.md`](docs/deploy-render.md) has the full runbook,
+including how to keep full certificate verification on the database connection
+and how to load data by hand from a laptop.
+
+The `Dockerfile` is the actual deployment contract — pinned to the same Elixir
+1.20.2 and Erlang 29.0.4 the tests run on, published for amd64 and arm64. So
+anything that runs a container runs this: Fly.io, Koyeb, a VPS with Compose, an
+ARM instance on Oracle Cloud. Only `render.yaml` and the
+`RENDER_EXTERNAL_HOSTNAME` fallback are Render-specific.
+
+And because the release builds its own assets, the whole image is testable
+before it is deployed — which is how the above was verified rather than hoped:
 
 ```bash
-pip3 install gigalixir --user
-gigalixir login
-gigalixir create -n estoque-os
-gigalixir pg:create --free
-gigalixir account:ssh_keys:add "$(cat ~/.ssh/id_ed25519.pub)"
+docker build -t estoque-os .
 
-gigalixir config:set SECRET_KEY_BASE="$(mix phx.gen.secret)"
-gigalixir config:set PHX_HOST=estoque-os.gigalixirapp.com
-gigalixir config:set PHX_SERVER=true
-gigalixir config:set POOL_SIZE=2
-
-git push gigalixir main
+docker run --rm --network host \
+  -e SECRET_KEY_BASE="$(mix phx.gen.secret)" \
+  -e DATABASE_URL="ecto://postgres:postgres@localhost:5433/estoque_os_docker" \
+  -e DATABASE_SSL=false -e SEED_ON_EMPTY=true \
+  -e PHX_HOST=localhost -e PORT=4021 \
+  estoque-os
 ```
-
-Migrations run before the web server starts, from `rel/overlays/Procfile`, so a
-deploy that cannot migrate never comes up serving the old schema. The data is
-loaded once, afterwards:
-
-```bash
-# locations, 322 products, 5 kits — safe to run more than once
-gigalixir run bin/estoque_os eval 'EstoqueOS.Release.seed()'
-
-# boxes, stock, two invoices, assembled kits, missions, the admin account
-# — refuses to run twice, because it would double every balance
-gigalixir run bin/estoque_os eval 'EstoqueOS.Release.demo()'
-```
-
-`gigalixir ps:remote_console` gets you an IEx prompt on the running node if you
-would rather watch it happen. `gigalixir ps` shows status, `gigalixir logs`
-tails.
 
 ### Configuration
 
@@ -137,13 +137,15 @@ tails.
 |---|---|---|
 | `DATABASE_URL` | — | required |
 | `SECRET_KEY_BASE` | — | required; `mix phx.gen.secret` |
-| `PHX_HOST` | `example.com` | the public hostname |
-| `POOL_SIZE` | `2` | the free tier allows two connections in total |
+| `PHX_HOST` | `RENDER_EXTERNAL_HOSTNAME`, then `example.com` | the public hostname |
+| `POOL_SIZE` | `2` | what a free-plan database allows |
+| `SEED_ON_EMPTY` | unset | load the catalog and demo on a first boot into an empty database |
 | `EMAIL_ENABLED` | `false` | see below |
 | `ORGANIZATION_DOCUMENT` | placeholder | printed on donation certificates |
 | `ORGANIZATION_ADDRESS` / `_CONTACT` / `_NAME` | placeholder | same |
 | `DATABASE_CA_CERT_FILE` | — | when the database sits behind a private CA |
 | `DATABASE_SSL_VERIFY` | `peer` | `none` to skip verification. Shouts on boot |
+| `DATABASE_SSL` | `true` | `false` only to smoke-test the image against a local Postgres |
 
 **Email is off by default, and production leaves it off.** Accounts are handed
 out by an administrator with a temporary password, so nothing about getting in
@@ -164,7 +166,11 @@ lib/estoque_os_web/live/ one directory per screen
 priv/repo/migrations/    seven, one per context
 priv/samples/            the fiscal documents and spreadsheets the seeds and
                          the parser tests read
+Dockerfile               the deployment contract: pinned Elixir and Erlang,
+                         assets built inside the release, amd64 and arm64
+render.yaml              the free-plan deployment, as a file
 docs/SPEC.md             the source of truth for domain and design decisions
+docs/deploy-render.md    the deployment runbook
 docs/production-acceptance.html
                          fifty acceptance tests to run against a deployment,
                          with steps and acceptance criteria

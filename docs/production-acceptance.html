@@ -562,7 +562,7 @@
     lança o estoque que a Fase 7 consome.
   </p>
   <div class="meta">
-    <span><b>Ambiente</b> Gigalixir free tier · 1 réplica · 0,5 GB · banco de 10.000 linhas</span>
+    <span><b>Ambiente</b> Render free · 1 instância · 512 MB · Postgres de 1 GB</span>
     <span><b>Dado inicial</b> <code>Release.seed()</code> + <code>Release.demo()</code></span>
     <span><b>Conta inicial</b> <code>admin@exemplo.org</code></span>
   </div>
@@ -610,9 +610,11 @@
         o admin cria outra.
       </p>
       <p>
-        <b>O app dorme.</b> No free tier, sem deploy por 30 dias a aplicação é
-        escalada para zero. Se a apresentação for depois disso, faça um deploy no
-        dia anterior.
+        <b>O app dorme, e o banco tem prazo.</b> No plano gratuito o serviço
+        hiberna depois de 15 minutos sem acesso e leva cerca de um minuto para
+        acordar — abra a URL dez minutos antes de mostrar a alguém. E o banco
+        gratuito é <b>apagado 30 dias depois de criado</b>, com 14 dias de
+        carência para migrar de plano. Anote a data (T-49).
       </p>
     </div>
 
@@ -639,10 +641,10 @@
 
       <article class="test" data-test="T-02">
         <div class="test-head"><span class="tid">T-02</span><h3>As sete migrations rodaram</h3></div>
-        <p class="why">O <code>Procfile</code> migra antes de subir o servidor, justamente para o app não atender servindo o schema antigo.</p>
+        <p class="why"><code>rel/entrypoint.sh</code> migra antes de subir o servidor, com <code>set -e</code>, justamente para o app não atender servindo o schema antigo.</p>
         <ol class="steps">
-          <li><code>gigalixir logs</code> e procure as linhas de migração do último deploy.</li>
-          <li>Ou <code>gigalixir pg:psql</code> e <code>select count(*) from schema_migrations;</code></li>
+          <li>No painel do Render, aba <b>Logs</b> do serviço, procure as linhas de migração do último deploy.</li>
+          <li>Ou conecte no banco com a string de conexão externa: <code>psql "&lt;external connection string&gt;"</code> e depois <code>select count(*) from schema_migrations;</code></li>
         </ol>
         <div class="accept"><b>Aceite</b><ul>
           <li><code>schema_migrations</code> tem <b>7</b> linhas.</li>
@@ -654,25 +656,24 @@
         <div class="test-head"><span class="tid">T-03</span><h3>O papel timbrado está configurado</h3></div>
         <p class="why">É a única configuração cuja falta só aparece num PDF entregue a um hospital.</p>
         <ol class="steps">
-          <li><code>gigalixir config</code> e confira as três variáveis.</li>
-          <li>Se faltarem: <code>gigalixir config:set ORGANIZATION_DOCUMENT="…"</code> e o mesmo para <code>_ADDRESS</code> e <code>_CONTACT</code>.</li>
+          <li>No painel do Render, aba <b>Environment</b> do serviço, confira as quatro variáveis <code>ORGANIZATION_*</code>.</li>
+          <li>Se faltarem, preencha ali e salve — o serviço reinicia sozinho.</li>
         </ol>
         <div class="accept"><b>Aceite</b><p><code>ORGANIZATION_DOCUMENT</code> não é <code>00.000.000/0000-00</code>.</p></div>
       </article>
 
       <article class="test" data-test="T-04">
-        <div class="test-head"><span class="tid">T-04</span><h3>Catálogo e cenário carregados, dentro do teto de linhas</h3></div>
-        <p class="why">O banco gratuito para de aceitar escrita em 10.000 linhas, e passar disso trava a demonstração no meio.</p>
+        <div class="test-head"><span class="tid">T-04</span><h3>Catálogo e cenário carregados no primeiro boot</h3></div>
+        <p class="why">O plano gratuito não dá shell, então a carga acontece no primeiro boot — e só uma vez. Se ela não aconteceu, a demo sobe correta e vazia, que para demonstrar é o mesmo que quebrada.</p>
         <ol class="steps">
-          <li><code>gigalixir run bin/estoque_os eval 'EstoqueOS.Release.seed()'</code></li>
-          <li><code>gigalixir run bin/estoque_os eval 'EstoqueOS.Release.demo()'</code></li>
-          <li>Confira a contagem: <code>gigalixir pg:psql</code> e depois
-            <code>select sum(n_live_tup) from pg_stat_user_tables;</code></li>
+          <li>Abra os <b>Logs</b> do primeiro deploy e procure o bloco <code>=== what was created ===</code>.</li>
+          <li>Se não houver, confirme que <code>SEED_ON_EMPTY</code> está <code>true</code> em Environment e force um <b>Manual Deploy</b>.</li>
+          <li>Confira no app: <code>/stock</code> deve listar posições, e <code>/missions</code> três missões.</li>
         </ol>
         <div class="accept"><b>Aceite</b><ul>
-          <li>O <code>demo()</code> imprime o resumo: 10 caixas, 95 produtos de suprimento, 2 notas, 2 missões fechadas, 1 em andamento.</li>
-          <li>Total de linhas <b>abaixo de 2.500</b> — folga de quatro vezes até o teto.</li>
-          <li>Rodar <code>demo()</code> de novo responde que já está carregado e <b>não</b> duplica nada.</li>
+          <li>O log traz o resumo: 10 caixas, 95 produtos de suprimento, 2 notas, 2 missões fechadas, 1 em andamento, e a conta para entrar.</li>
+          <li>Depois dele, a linha <code>[seed] fresh database — catalog and demo scenario loaded</code>.</li>
+          <li>Num deploy seguinte o log diz <code>[seed] database already has accounts — nothing to do</code>, e nada é duplicado.</li>
         </ul></div>
       </article>
 
@@ -715,7 +716,7 @@
       <article class="test" data-test="T-07">
         <div class="test-head"><span class="tid">T-07</span><h3>O admin entra com a senha do seed</h3></div>
         <ol class="steps">
-          <li>Entre com <code>admin@exemplo.org</code> e a senha que o <code>demo()</code> imprimiu.</li>
+          <li>Entre com <code>admin@exemplo.org</code> e a senha impressa no log do primeiro deploy (<code>demonstracao2026</code>).</li>
         </ol>
         <div class="accept"><b>Aceite</b><ul>
           <li>Cai direto na Visão geral, <b>sem</b> pedir troca de senha.</li>
@@ -807,7 +808,7 @@
         <div class="accept"><b>Aceite</b><ul>
           <li>Entra sem VPN nem lista de IPs.</li>
           <li>As telas ao vivo atualizam (o LiveView conectou; não há aviso “Sem conexão com a internet”).</li>
-          <li>Pergunte se pareceu lento — o free tier tem uma réplica só.</li>
+          <li>Pergunte se pareceu lento — é uma instância só, e se estava hibernando o primeiro acesso leva cerca de um minuto.</li>
         </ul></div>
       </article>
     </section>
@@ -1324,21 +1325,28 @@
       </article>
 
       <article class="test" data-test="T-49">
-        <div class="test-head"><span class="tid">T-49</span><h3>O banco continua longe do teto depois de tudo</h3></div>
+        <div class="test-head"><span class="tid">T-49</span><h3>O banco tem espaço — e prazo</h3></div>
+        <p class="why">O banco gratuito não enche; ele <b>vence</b>. É apagado 30 dias depois de criado, e descobrir isso depois é perder os dados da demo.</p>
         <ol class="steps">
-          <li><code>gigalixir pg:psql</code> e <code>select sum(n_live_tup) from pg_stat_user_tables;</code></li>
+          <li>No painel do Render, abra o banco e anote a <b>data de criação</b> e a de expiração.</li>
+          <li>Confira o espaço usado no mesmo painel.</li>
         </ol>
-        <div class="accept"><b>Aceite</b><p>Abaixo de <b>10.000</b>, com folga. Se estiver perto, pare de gerar movimento e avise — o banco gratuito recusa escrita a partir daí.</p></div>
+        <div class="accept"><b>Aceite</b><ul>
+          <li>A data de expiração está <b>depois</b> da data da apresentação — com margem.</li>
+          <li>Espaço usado muito abaixo de 1 GB (o cenário inteiro são ~1.400 linhas).</li>
+          <li>Se a demo precisar durar mais que isso, troque <code>DATABASE_URL</code> por um Postgres cujo plano gratuito não expire, ou passe o banco para plano pago — nada mais muda.</li>
+        </ul></div>
       </article>
 
       <article class="test" data-test="T-50">
         <div class="test-head"><span class="tid">T-50</span><h3>A aplicação não está reiniciando em loop</h3></div>
-        <p class="why">0,5 GB é pouco. Um processo que morre por memória volta sozinho e some do olhar de quem só usa a tela.</p>
+        <p class="why">512 MB é pouco. Um processo que morre por memória volta sozinho e some do olhar de quem só usa a tela.</p>
         <ol class="steps">
-          <li><code>gigalixir ps</code> e <code>gigalixir logs</code> depois de toda a bateria.</li>
+          <li>Depois de toda a bateria, abra <b>Events</b>, <b>Metrics</b> e <b>Logs</b> do serviço no Render.</li>
         </ol>
         <div class="accept"><b>Aceite</b><ul>
-          <li>Uma réplica, no ar, sem reinício recente.</li>
+          <li>Sem reinício que você não tenha pedido; memória estável, não subindo a cada tela.</li>
+          <li>Hibernar por inatividade é esperado e <b>não</b> é reinício por falha.</li>
           <li>Sem <code>OOM</code> nem <code>Killed</code> no log.</li>
           <li>Sem erro de conexão de banco — o pool é de duas conexões, e é o número certo para este plano.</li>
         </ul></div>
