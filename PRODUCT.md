@@ -127,12 +127,16 @@ purchase-order lifecycle, supplier invoicing/AP, budget codes.
 
 ## Evidence on Hand
 
-Real, in `samples/`:
+In `priv/samples/` — real in structure, fictional in party:
 
-- Two genuine NF-e XMLs — MedSul (7 items, structured `rastro` group) and
-  Cirúrgica Atlântica (4 items, lot data only in `infAdProd` free text) — with
-  their DANFEs.
-- A real CC-e (correction letter) for the MedSul invoice.
+- Two NF-e XMLs — MedSul (7 items, structured `rastro` group) and Cirúrgica
+  Atlântica (4 items, lot data only in `infAdProd` free text). Both came off a
+  real SEFAZ authorization, so the layout, the tax groups and the mess in
+  `infAdProd` are exactly what the parser meets in production; the companies,
+  registrations, addresses and signatures were replaced.
+- A CC-e (correction letter) for the MedSul invoice.
+- The DANFE PDFs are not here. A PDF renders the same parties and cannot be
+  anonymized, and nothing in the app reads one.
 - `Tabela_padrão_-_suprimentos_médicos_Missão_de_4_mesas.xlsx`: the OSI standard
   supply table, 326 lines, with its real messiness (40 without NCM, 3 whose NCM
   is not an NCM, a unit column reading "OK", a sector typed both CRASHBOX and

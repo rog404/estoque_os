@@ -9,7 +9,7 @@ defmodule EstoqueOSWeb.InvoiceLiveTest do
 
   alias EstoqueOS.{Inventory, Invoices}
 
-  @samples Path.expand("../../../samples", __DIR__)
+  @samples EstoqueOS.Samples.dir()
   @atlantica "35260455666777000181550040019851671590327796-nfe.xml"
 
   setup :register_and_log_in_operator

@@ -8,7 +8,7 @@ defmodule EstoqueOS.InvoicesTest do
 
   alias EstoqueOS.{Catalog, Inventory, Invoices}
 
-  @samples Path.expand("../../samples", __DIR__)
+  @samples EstoqueOS.Samples.dir()
   @medsul "35260411222333000424550010009770981447856989-nfe.xml"
   @atlantica "35260455666777000181550040019851671590327796-nfe.xml"
   @correction_letter "1101103526041122233300042455001000977098144785698901-cce.xml"

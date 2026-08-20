@@ -28,7 +28,7 @@ defmodule EstoqueOS.SeedsTest do
   alias EstoqueOS.Kits.{Kit, KitItem}
   alias EstoqueOS.Seeds
 
-  @samples Path.expand("../../samples", __DIR__)
+  @samples EstoqueOS.Samples.dir()
 
   describe "catalog" do
     setup do

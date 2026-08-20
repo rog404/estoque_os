@@ -1,6 +1,7 @@
 defmodule EstoqueOS.Invoices.Importers.NFeTest do
   @moduledoc """
-  Every assertion here is checked against the two real invoices in `samples/`.
+  Every assertion here is checked against the two sample invoices in
+  `priv/samples/` — fictional companies, real NF-e 4.00 structure.
   They are the two shapes that matter: one supplier ships structured lot data,
   the other buries it in free text.
   """
@@ -9,7 +10,7 @@ defmodule EstoqueOS.Invoices.Importers.NFeTest do
 
   alias EstoqueOS.Invoices.Importers.NFe
 
-  @samples Path.expand("../../../../samples", __DIR__)
+  @samples EstoqueOS.Samples.dir()
 
   @medsul "35260411222333000424550010009770981447856989-nfe.xml"
   @atlantica "35260455666777000181550040019851671590327796-nfe.xml"

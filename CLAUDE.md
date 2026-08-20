@@ -1,8 +1,10 @@
 # CLAUDE.md — Estoque Operação Sorriso
 
 Read `docs/SPEC.md` before doing anything. It is the source of truth for
-domain, design decisions and phases. Sample real-world files are in
-`samples/` (2 real NF-e XMLs, 1 CC-e, kit definitions, standard supply table).
+domain, design decisions and phases. Sample documents are in `priv/samples/`
+(2 NF-e XMLs, 1 CC-e, kit definitions, standard supply table) — real in shape,
+fictional in party: this repository is public, so the companies, registrations
+and people in them were replaced.
 
 ## Hard rules
 
@@ -23,7 +25,8 @@ domain, design decisions and phases. Sample real-world files are in
 - NF-e parsing: one parser for layout 4.00 behind an importer behaviour
   (`Invoices.Importers.NFe`). Extraction order: `rastro` group → `infAdProd`
   regex → flag `needs_review`. Parser must pass tests against both XMLs in
-  `samples/`.
+  `priv/samples/`. Reach them through `EstoqueOS.Samples`, never a relative
+  path — a release has no working directory to be relative to.
 
 ## Four mistakes this codebase has already made
 

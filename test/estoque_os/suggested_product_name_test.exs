@@ -1,6 +1,6 @@
 defmodule EstoqueOS.SuggestedProductNameTest do
   @moduledoc """
-  The cases are the real descriptions from the sample NF-e XMLs in `samples/`,
+  The cases are the item descriptions from the sample NF-e XMLs in `priv/samples/`,
   not invented ones. Every truncation here is a truncation a supplier actually
   sent.
   """

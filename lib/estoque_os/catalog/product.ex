@@ -93,7 +93,7 @@ defmodule EstoqueOS.Catalog.Product do
   the naming chaos SPEC §3.13 blames for killing a previous SAP attempt, arriving
   through the back door of a form nobody thought was important.
 
-  These are the units that turn up in the real invoices in `samples/` plus the
+  These are the units that turn up in the sample invoices in `priv/samples/` plus the
   handful the warehouse uses by hand. It is not a closed set in the database:
   `normalize_unit/1` still accepts anything an NF-e brings in, because refusing
   a supplier's unit at import time would block a delivery over a label.

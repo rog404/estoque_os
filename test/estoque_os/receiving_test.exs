@@ -10,7 +10,7 @@ defmodule EstoqueOS.ReceivingTest do
   alias EstoqueOS.Receiving.ReceiptLine
   alias EstoqueOS.Repo
 
-  @samples Path.expand("../../samples", __DIR__)
+  @samples EstoqueOS.Samples.dir()
   @atlantica "35260455666777000181550040019851671590327796-nfe.xml"
 
   setup do

@@ -16,7 +16,7 @@ defmodule EstoqueOSWeb.InvoiceNewProductNameTest do
 
   setup :register_and_log_in_operator
 
-  @sample "samples/35260411222333000424550010009770981447856989-nfe.xml"
+  @sample "priv/samples/35260411222333000424550010009770981447856989-nfe.xml"
 
   defp imported_invoice(%{user: user}) do
     xml = File.read!(@sample)

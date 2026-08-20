@@ -30,7 +30,7 @@ Initial deployment: Brazil. Design must not block future international use
 ## 3. Domain context (how the operation works today)
 
 1. OSI (Operation Smile International) provides a standard supply table for a
-   mission (e.g. "4 surgical tables" — see `samples/Tabela_padrão_*.xlsx`,
+   mission (e.g. "4 surgical tables" — see `priv/samples/Tabela_padrão_*.xlsx`,
    sheet "Tabela padrão - Suprimentos méd": columns DESCRIÇÃO, QUANTIDADE,
    OBSERVAÇÃO, NCM, UNIDADE DE MEDIDA, Classificação, SETOR).
 2. The supply coordinator buys from ~17 suppliers (see "Resumo" sheet in the same file).
@@ -140,7 +140,7 @@ Initial deployment: Brazil. Design must not block future international use
 ### 4.6 Kits (BOM)
 
 - `kits` + `kit_items`: named kits (Kit Paciente, Anestesia, Enfermagem,
-  Pré e Pós, Recuperação — seed from `samples/Kits.xlsx`, one sheet per kit,
+  Pré e Pós, Recuperação — seed from `priv/samples/Kits.xlsx`, one sheet per kit,
   columns: item description, quantity).
 - A kit is a product too: `products.kit_id` links a kit to the catalog
   product that represents it in stock. Every kit gets one, created
@@ -193,7 +193,7 @@ Initial deployment: Brazil. Design must not block future international use
 
 NF-e layout 4.00 is standardized nationally — **one parser**, not one per
 supplier. Store the raw XML and the 44-digit access key (unique constraint).
-Real samples in `samples/` (analyzed):
+Sample documents in `priv/samples/` (analyzed; parties anonymized):
 
 - `35260411222333000424550010009770981447856989-nfe.xml` — **MedSul**.
   All 7 items have `cEAN` (real GTINs), all have the structured `rastro`
@@ -291,7 +291,7 @@ termo de doação / termo de recebimento PDFs, auditor report.
 
 ## 10. Quality bar
 
-- Tests: NF-e parser MUST be tested against both real XMLs in `samples/`
+- Tests: NF-e parser MUST be tested against both XMLs in `priv/samples/`
   (assert item counts, GTINs, lots, expiry dates, unit values, and the
   Atlântica infAdProd regex). Ledger invariants tested (balance = sum of
   entries; no negative stock without explicit adjustment; snapshot equals

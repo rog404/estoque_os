@@ -24,6 +24,7 @@ defmodule EstoqueOS.Seeds do
   alias EstoqueOS.Inventory.Location
   alias EstoqueOS.Kits.Kit
   alias EstoqueOS.Repo
+  alias EstoqueOS.Samples
 
   @locations [
     %{name: "Escritório SP", kind: "warehouse"},
@@ -37,16 +38,12 @@ defmodule EstoqueOS.Seeds do
   Runs every seed. Safe to run twice: existing rows are left alone.
   """
   def run(opts \\ []) do
-    samples = opts[:samples_dir] || Path.join(File.cwd!(), "samples")
-
     %{
       locations: seed_locations(),
-      products: seed_catalog(Path.join(samples, catalog_file())),
-      kits: seed_kits(Path.join(samples, "Kits.xlsx"))
+      products: seed_catalog(opts[:catalog_sheet] || Samples.catalog_sheet()),
+      kits: seed_kits(opts[:kits_sheet] || Samples.kits_sheet())
     }
   end
-
-  defp catalog_file, do: "Tabela_padrão_-_suprimentos_médicos_Missão_de_4_mesas.xlsx"
 
   def seed_locations do
     Enum.map(@locations, fn attrs ->
