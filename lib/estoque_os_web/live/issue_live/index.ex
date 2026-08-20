@@ -30,6 +30,7 @@ defmodule EstoqueOSWeb.IssueLive.Index do
      |> assign(:product, nil)
      |> assign(:box_options, [])
      |> assign(:picks, nil)
+     |> assign(:quantity, "")
      |> assign(:destination, nil)
      |> assign(:basket, [])
      |> load_here()}
@@ -125,6 +126,7 @@ defmodule EstoqueOSWeb.IssueLive.Index do
     |> assign(:product, product)
     |> assign(:box_options, Inventory.box_quantities(product.id, socket.assigns.location_id))
     |> assign(:picks, nil)
+    |> assign(:quantity, "")
   end
 
   defp compute_picks(socket, params) do
@@ -381,25 +383,28 @@ defmodule EstoqueOSWeb.IssueLive.Index do
             </select>
           </label>
 
-          <div :if={@picks} class="text-sm">
-            <p class="font-medium">{gettext("Will come out of:")}</p>
-            <ul class="list-disc list-inside opacity-80">
-              <li :for={pick <- @picks}>
-                {gettext("lot %{lot}", lot: pick.lot_number || gettext("unknown"))}
-                <span :if={pick.expires_on}>· {date(pick.expires_on)}</span>
-                <span :if={pick.box_code}> · {pick.box_code}</span> — {quantity(pick.take)}
-              </li>
-            </ul>
-          </div>
-
           <div class="field-row">
             <label class="fieldset">
               <span class="label">{gettext("Quantity")}</span>
+              <!-- The value comes from the server, and it has to.
+                   `phx-change` repaints this form on every keystroke, and an
+                   input rendered without a value is repainted *empty*: the
+                   operator typed "30", the FEFO preview appeared, and the field
+                   they were still typing into went blank under them. Reported as
+                   a bug, and read as one — it looks exactly like the app
+                   throwing the number away.
+
+                   The conference screen learned this first and calls it a draft;
+                   here one field is enough. Empty string rather than nil, so
+                   the field always carries a `value` — nil renders no attribute
+                   at all, and a reader cannot tell that from an oversight. -->
               <input
                 type="text"
                 name="quantity"
+                value={@quantity}
                 inputmode="decimal"
                 data-numeric
+                phx-debounce="300"
                 class="input input-bordered w-28"
                 aria-label={gettext("Quantity to issue")}
                 phx-mounted={JS.focus()}
@@ -409,6 +414,22 @@ defmodule EstoqueOSWeb.IssueLive.Index do
             <button type="button" phx-click="clear_product" class="btn btn-ghost">
               {gettext("Cancel")}
             </button>
+          </div>
+
+          <!-- Below the field, never above it. It appears while somebody is
+               typing, and anything that appears above the input pushes the
+               input — and the button beside it — down mid-keystroke. Same rule
+               the conference rows are built on: what shows up on its own does
+               not get to move what the thumb is already aimed at. -->
+          <div :if={@picks} class="text-sm">
+            <p class="font-medium">{gettext("Will come out of:")}</p>
+            <ul class="list-disc list-inside opacity-80">
+              <li :for={pick <- @picks}>
+                {gettext("lot %{lot}", lot: pick.lot_number || gettext("unknown"))}
+                <span :if={pick.expires_on}>· {date(pick.expires_on)}</span>
+                <span :if={pick.box_code}> · {pick.box_code}</span> — {quantity(pick.take)}
+              </li>
+            </ul>
           </div>
         </div>
       </form>
@@ -538,7 +559,10 @@ defmodule EstoqueOSWeb.IssueLive.Index do
   # changes — this is what finally answers "will come out of", rather than
   # asking the operator to trust a pick they cannot see.
   def handle_event("preview", params, socket) do
-    {:noreply, assign(socket, :picks, compute_picks(socket, params))}
+    {:noreply,
+     socket
+     |> assign(:quantity, params["quantity"])
+     |> assign(:picks, compute_picks(socket, params))}
   end
 
   # Adds to the basket. Nothing is written until the whole thing is confirmed,
@@ -567,6 +591,7 @@ defmodule EstoqueOSWeb.IssueLive.Index do
            |> assign(:product, nil)
            |> assign(:box_options, [])
            |> assign(:picks, nil)
+           |> assign(:quantity, "")
            |> assign(:query, "")
            |> assign(:products, [])}
         end
@@ -579,6 +604,7 @@ defmodule EstoqueOSWeb.IssueLive.Index do
      |> assign(:product, nil)
      |> assign(:box_options, [])
      |> assign(:picks, nil)
+     |> assign(:quantity, "")
      |> assign(:query, "")
      |> assign(:products, [])}
   end
@@ -609,6 +635,7 @@ defmodule EstoqueOSWeb.IssueLive.Index do
          |> assign(:product, nil)
          |> assign(:box_options, [])
          |> assign(:picks, nil)
+         |> assign(:quantity, "")
          |> assign(:destination, nil)
          |> assign(:query, "")
          # The shelf just changed, and this screen is now showing it.
