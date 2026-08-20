@@ -21,6 +21,11 @@ defmodule EstoqueOSWeb.IssueLive.List do
   def viewer_events, do: ~w(filter)
 
   alias EstoqueOS.Inventory.Transaction
+
+  # One copy of these, in `EstoqueOSWeb.Movement`. This screen and the list of
+  # write-offs each had their own, which is how a new destination gets a label
+  # on one screen and its raw key on the other.
+  import EstoqueOSWeb.Movement, only: [destination_label: 1]
   alias EstoqueOS.Reports
   alias EstoqueOSWeb.UserAuth
 
@@ -180,12 +185,6 @@ defmodule EstoqueOSWeb.IssueLive.List do
   end
 
   defp format_tax_id(other), do: other
-
-  defp destination_label("pacu"), do: gettext("PACU")
-  defp destination_label("operating_room"), do: gettext("Operating room")
-  defp destination_label("donation"), do: gettext("Donation")
-  defp destination_label("pre_and_post"), do: gettext("Pre and post")
-  defp destination_label("triage"), do: gettext("Triage")
 
   @impl true
   def handle_event("filter", params, socket) do

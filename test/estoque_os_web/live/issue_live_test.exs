@@ -5,7 +5,11 @@ defmodule EstoqueOSWeb.IssueLiveTest do
   import EstoqueOS.CatalogFixtures
   import EstoqueOS.InventoryFixtures
 
+  import Ecto.Query, only: [from: 2]
+
   alias EstoqueOS.Inventory
+  alias EstoqueOS.Inventory.Transaction
+  alias EstoqueOS.Repo
 
   setup :register_and_log_in_operator
 
@@ -225,6 +229,54 @@ defmodule EstoqueOSWeb.IssueLiveTest do
       html = view |> element("#basket-form") |> render_submit(%{})
 
       assert html =~ "Não há o bastante aqui"
+    end
+  end
+
+  describe "descarte" do
+    test "is one of the places goods can go", %{conn: conn, lone: lone} do
+      {:ok, view, _html} = live(conn, ~p"/issue")
+
+      view |> element("#search-form") |> render_change(%{"query" => lone.name})
+      view |> element("button", lone.name) |> render_click()
+      html = view |> element("#issue-form") |> render_submit(%{"quantity" => "4"})
+
+      assert html =~ "Descarte"
+    end
+
+    test "is recorded on the movement, not buried in a note", %{conn: conn, lone: lone} do
+      {:ok, view, _html} = live(conn, ~p"/issue")
+
+      view |> element("#search-form") |> render_change(%{"query" => lone.name})
+      view |> element("button", lone.name) |> render_click()
+      view |> element("#issue-form") |> render_submit(%{"quantity" => "4"})
+
+      view
+      |> element("#basket-form")
+      |> render_submit(%{"destination" => "disposal", "notes" => ""})
+
+      # The whole point of a closed list: "how much did we throw away" is a
+      # query, not somebody reading notes.
+      assert [transaction] = Repo.all(from(t in Transaction, where: t.type == "manual_out"))
+      assert transaction.destination == "disposal"
+
+      {:ok, _view, html} = live(conn, ~p"/issues")
+      assert html =~ "Descarte"
+    end
+
+    test "gets no donation certificate", %{conn: conn, lone: lone} do
+      {:ok, view, _html} = live(conn, ~p"/issue")
+
+      view |> element("#search-form") |> render_change(%{"query" => lone.name})
+      view |> element("button", lone.name) |> render_click()
+      view |> element("#issue-form") |> render_submit(%{"quantity" => "4"})
+      view |> element("#basket-form") |> render_submit(%{"destination" => "disposal"})
+
+      [transaction] = Repo.all(from(t in Transaction, where: t.type == "manual_out"))
+
+      # A termo de doação declares a value to a hospital. Nothing was given to
+      # anybody here.
+      assert conn |> get(~p"/issues/#{transaction.id}/termo/doacao") |> redirected_to() ==
+               ~p"/issues"
     end
   end
 end

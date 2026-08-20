@@ -15,6 +15,11 @@ defmodule EstoqueOSWeb.IssueLive.Index do
   alias EstoqueOS.Inventory.Locations
   alias EstoqueOS.Inventory.Transaction
 
+  # One copy of these, in `EstoqueOSWeb.Movement`. This screen and the list of
+  # write-offs each had their own, which is how a new destination gets a label
+  # on one screen and its raw key on the other.
+  import EstoqueOSWeb.Movement, only: [destination_label: 1]
+
   @impl true
   def mount(_params, _session, socket) do
     locations = Locations.list_locations()
@@ -497,12 +502,6 @@ defmodule EstoqueOSWeb.IssueLive.Index do
   defp blank_to_nil(nil), do: nil
   defp blank_to_nil(""), do: nil
   defp blank_to_nil(value), do: value
-
-  defp destination_label("pacu"), do: gettext("PACU")
-  defp destination_label("operating_room"), do: gettext("Operating room")
-  defp destination_label("donation"), do: gettext("Donation")
-  defp destination_label("pre_and_post"), do: gettext("Pre and post")
-  defp destination_label("triage"), do: gettext("Triage")
 
   defp match_label(:gtin), do: gettext("GTIN")
   defp match_label(:supplier_code), do: gettext("supplier code")
