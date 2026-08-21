@@ -9,6 +9,7 @@ defmodule EstoqueOSWeb.BoxLive.Index do
 
   use EstoqueOSWeb, :live_view
 
+  alias EstoqueOS.Auditing
   alias EstoqueOS.Inventory.Locations
 
   @stale_after_days 30
@@ -24,7 +25,30 @@ defmodule EstoqueOSWeb.BoxLive.Index do
      |> load_boxes()}
   end
 
-  defp load_boxes(socket), do: assign(socket, :rows, Locations.list_boxes_with_contents())
+  # In the order somebody should work through them, not alphabetically. The
+  # guided list this replaces was a second page ranking the same boxes; a list
+  # that is already the queue cannot disagree with itself. `Auditing.priorities/0`
+  # carries the reasons too, so the row can say why it is near the top.
+  defp load_boxes(socket) do
+    priorities = Auditing.priorities()
+
+    rows =
+      Locations.list_boxes_with_contents()
+      |> Enum.map(&Map.put(&1, :priority, priorities[&1.box.id]))
+      |> Enum.sort_by(&queue_order/1)
+
+    assign(socket, :rows, rows)
+  end
+
+  # Highest score first; among boxes the score cannot separate — an empty box
+  # has no score at all — the one nobody has counted, then the one counted
+  # longest ago, then the code, so the order is stable between two page loads.
+  defp queue_order(%{priority: priority, box: box}) do
+    {-(priority[:score] || 0), verified_order(box.last_verified_at), box.code}
+  end
+
+  defp verified_order(nil), do: {0, 0}
+  defp verified_order(verified_at), do: {1, DateTime.to_unix(verified_at)}
 
   @impl true
   def render(assigns) do
@@ -101,6 +125,26 @@ defmodule EstoqueOSWeb.BoxLive.Index do
 
           <:col :let={row} label={gettext("Last count")}>
             <span class={stale_class(row.box)}>{verified_label(row.box)}</span>
+
+            <!-- Why this box is where it is in the list. Without it the order is
+                 a ranking nobody understands, which is a ranking nobody
+                 follows — and the page that used to explain it is gone. -->
+            <div :if={reasons(row) != []} class="flex flex-wrap gap-1 mt-1">
+              <span
+                :for={{kind, label} <- reasons(row)}
+                class={["badge badge-sm", reason_class(kind)]}
+              >
+                {label}
+              </span>
+            </div>
+          </:col>
+
+          <:col :let={row} label={gettext("Count")}>
+            <.write_gate may={@role_may_write?} allowed={@writable?} reason={@write_block}>
+              <.link navigate={~p"/boxes/#{row.box}/count"} class="btn btn-sm">
+                {gettext("Count")}
+              </.link>
+            </.write_gate>
           </:col>
 
           <:col :let={row} label={gettext("Move to")}>
@@ -139,6 +183,18 @@ defmodule EstoqueOSWeb.BoxLive.Index do
   end
 
   defp by_hand?(%{kind: kind}), do: kind not in ~w(mission_site transit)
+
+  # Never counted is already said by the cell above it, so it is dropped here
+  # rather than printed twice on the same row.
+  defp reasons(%{priority: nil}), do: []
+
+  defp reasons(%{priority: priority}) do
+    Enum.reject(priority.reasons, fn {kind, _label} -> kind == :never_counted end)
+  end
+
+  defp reason_class(:controlled), do: "badge-error"
+  defp reason_class(:expiring), do: "badge-warning"
+  defp reason_class(_kind), do: "badge-ghost"
 
   defp stale_class(box) do
     if stale?(box), do: "text-warning", else: "opacity-70"

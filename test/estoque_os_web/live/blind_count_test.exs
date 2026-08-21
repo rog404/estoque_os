@@ -39,7 +39,7 @@ defmodule EstoqueOSWeb.BlindCountTest do
   end
 
   test "does not reveal the expected quantity while counting", %{conn: conn, box: box} do
-    {:ok, view, _html} = live(conn, ~p"/audit/#{box.id}")
+    {:ok, view, _html} = live(conn, ~p"/boxes/#{box.id}/count")
 
     # Scoped to the sheet itself: the page chrome is full of "100" in class names
     # like bg-base-100, and a page-wide refute would fail on the nav.
@@ -61,7 +61,7 @@ defmodule EstoqueOSWeb.BlindCountTest do
     box: box,
     lot: lot
   } do
-    {:ok, view, _html} = live(conn, ~p"/audit/#{box.id}")
+    {:ok, view, _html} = live(conn, ~p"/boxes/#{box.id}/count")
 
     render_submit(element(view, "#count-form"), %{"counts" => %{"#{lot.id}" => "98"}})
 
@@ -83,7 +83,7 @@ defmodule EstoqueOSWeb.BlindCountTest do
     box: box,
     lot: lot
   } do
-    {:ok, view, _html} = live(conn, ~p"/audit/#{box.id}")
+    {:ok, view, _html} = live(conn, ~p"/boxes/#{box.id}/count")
 
     render_submit(element(view, "#count-form"), %{"counts" => %{"#{lot.id}" => "98"}})
     html = render_submit(element(view, "#recount-form"), %{"counts" => %{"#{lot.id}" => "98"}})
@@ -101,7 +101,7 @@ defmodule EstoqueOSWeb.BlindCountTest do
   end
 
   test "says so plainly when the count matched", %{conn: conn, box: box, lot: lot} do
-    {:ok, view, _html} = live(conn, ~p"/audit/#{box.id}")
+    {:ok, view, _html} = live(conn, ~p"/boxes/#{box.id}/count")
 
     # Agreeing with the ledger skips the recount: there is nothing to settle.
     render_submit(element(view, "#count-form"), %{"counts" => %{"#{lot.id}" => "100"}})
@@ -116,7 +116,7 @@ defmodule EstoqueOSWeb.BlindCountTest do
     box: box,
     lot: lot
   } do
-    {:ok, view, _html} = live(conn, ~p"/audit/#{box.id}")
+    {:ok, view, _html} = live(conn, ~p"/boxes/#{box.id}/count")
 
     render_submit(element(view, "#count-form"), %{"counts" => %{"#{lot.id}" => "98"}})
     render_submit(element(view, "#recount-form"), %{"counts" => %{"#{lot.id}" => "97"}})
@@ -136,7 +136,7 @@ defmodule EstoqueOSWeb.BlindCountTest do
     box: box,
     lot: lot
   } do
-    {:ok, view, _html} = live(conn, ~p"/audit/#{box.id}")
+    {:ok, view, _html} = live(conn, ~p"/boxes/#{box.id}/count")
 
     render_submit(element(view, "#count-form"), %{"counts" => %{"#{lot.id}" => "98"}})
     render_submit(element(view, "#recount-form"), %{"counts" => %{"#{lot.id}" => "100"}})

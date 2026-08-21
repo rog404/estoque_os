@@ -382,12 +382,6 @@ defmodule EstoqueOSWeb.Layouts do
             roles: ~w(admin manager logistics)
           },
           %{
-            label: gettext("Count boxes"),
-            path: ~p"/audit",
-            icon: "hero-check-circle",
-            roles: ~w(admin manager logistics)
-          },
-          %{
             label: gettext("Write off"),
             path: ~p"/issue",
             icon: "hero-arrow-up-tray",

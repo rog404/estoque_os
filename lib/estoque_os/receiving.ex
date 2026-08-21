@@ -229,7 +229,7 @@ defmodule EstoqueOS.Receiving do
   This is the rule the conference was missing. It used to take whatever was
   typed and book it, so the logistics operator could record any quantity at all
   against an invoice that said something else — the exact hole
-  `AuditLive.Count` was built to close for box counts, still open here.
+  `BoxLive.Count` was built to close for box counts, still open here.
 
   Returns:
 

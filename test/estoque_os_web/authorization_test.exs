@@ -13,7 +13,7 @@ defmodule EstoqueOSWeb.AuthorizationTest do
 
   alias EstoqueOS.Inventory
 
-  @writes ~w(/invoices/import /audit /issue /returns /load-out)
+  @writes ~w(/invoices/import /issue /returns /load-out)
   @reads ~w(/ /stock /boxes /locations /kits /invoices /issues /reports/audit)
 
   describe "a viewer" do
@@ -26,7 +26,11 @@ defmodule EstoqueOSWeb.AuthorizationTest do
     end
 
     test "may not reach any screen that writes to the ledger", %{conn: conn} do
-      for path <- @writes do
+      # The box count moved onto the box it counts, so its address carries an
+      # id and cannot sit in the list above.
+      box = box_fixture(%{location_id: location_fixture().id})
+
+      for path <- ["/boxes/#{box.id}/count" | @writes] do
         assert {:error, {:redirect, %{to: "/", flash: %{"error" => message}}}} =
                  live(conn, path),
                "viewer reached #{path}"

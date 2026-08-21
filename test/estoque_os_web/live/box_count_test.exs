@@ -1,4 +1,4 @@
-defmodule EstoqueOSWeb.AuditLiveTest do
+defmodule EstoqueOSWeb.BoxCountTest do
   use EstoqueOSWeb.ConnCase, async: true
 
   import Phoenix.LiveViewTest
@@ -6,7 +6,6 @@ defmodule EstoqueOSWeb.AuditLiveTest do
   import EstoqueOS.InventoryFixtures
 
   alias EstoqueOS.Inventory
-  alias EstoqueOS.Inventory.Locations
   alias EstoqueOS.Repo
 
   setup :register_and_log_in_operator
@@ -56,51 +55,43 @@ defmodule EstoqueOSWeb.AuditLiveTest do
     end
   end
 
-  describe "index" do
+  describe "the box list is the queue" do
     test "ranks the boxes and says why", %{conn: conn} do
-      {:ok, _view, html} = live(conn, ~p"/audit")
+      {:ok, _view, html} = live(conn, ~p"/boxes")
 
-      assert html =~ "Mini-auditoria"
       assert html =~ "AUC1"
       assert html =~ "1 item(ns) controlado(s)"
       assert html =~ "nunca contada"
 
-      # The controlled box is listed first.
+      # The controlled box is listed first. There is no second page ranking the
+      # same boxes any more: the list somebody already opens *is* the order.
       assert position(html, "AUC1") < position(html, "AU01")
     end
 
-    test "says so when nothing is boxed yet", %{
+    test "the guided list is gone, and so is its address", %{conn: conn} do
+      # A dead link is worse than a missing one: it looks like a screen that
+      # broke rather than a screen that went.
+      assert conn |> get("/audit") |> Map.fetch!(:status) == 404
+    end
+
+    test "a box with nothing in it sinks to the bottom", %{
       conn: conn,
-      controlled_box: controlled,
-      plain_box: plain
+      warehouse: warehouse
     } do
-      for box <- [controlled, plain] do
-        for row <- Locations.box_contents(box) do
-          {:ok, _} =
-            Inventory.post_transaction(%{
-              type: "manual_out",
-              user_id: actor_id(),
-              entries: [
-                %{
-                  lot_id: row.lot_id,
-                  box_id: box.id,
-                  location_id: row.location_id,
-                  quantity: Decimal.negate(row.quantity)
-                }
-              ]
-            })
-        end
-      end
+      _empty = box_fixture(%{code: "AA00", location_id: warehouse.id})
 
-      {:ok, _view, html} = live(conn, ~p"/audit")
+      {:ok, _view, html} = live(conn, ~p"/boxes")
 
-      assert html =~ "Nenhuma caixa tem estoque ainda"
+      # Alphabetically it would open the list. There is nothing in it to count,
+      # so it is the last thing worth walking to.
+      assert position(html, "AUC1") < position(html, "AA00")
+      assert position(html, "AU01") < position(html, "AA00")
     end
   end
 
   describe "counting a box" do
     test "shows what the ledger presumes", %{conn: conn, plain_box: box} do
-      {:ok, _view, html} = live(conn, ~p"/audit/#{box}")
+      {:ok, _view, html} = live(conn, ~p"/boxes/#{box}/count")
 
       assert html =~ "Contagem da caixa AU01"
       assert html =~ "Eletrodo ECG adulto"
@@ -113,7 +104,7 @@ defmodule EstoqueOSWeb.AuditLiveTest do
       plain_box: box,
       plain_lot: lot
     } do
-      {:ok, view, _html} = live(conn, ~p"/audit/#{box}")
+      {:ok, view, _html} = live(conn, ~p"/boxes/#{box}/count")
 
       # 300 presumed, 287 counted: a divergence, so the flow asks for the
       # recount before it will write anything.
@@ -130,7 +121,7 @@ defmodule EstoqueOSWeb.AuditLiveTest do
     end
 
     test "a blank line is not counted", %{conn: conn, plain_box: box, plain_lot: lot} do
-      {:ok, view, _html} = live(conn, ~p"/audit/#{box}")
+      {:ok, view, _html} = live(conn, ~p"/boxes/#{box}/count")
 
       view |> element("#count-form") |> render_submit(%{"counts" => %{"#{lot.id}" => "   "}})
 
@@ -147,11 +138,11 @@ defmodule EstoqueOSWeb.AuditLiveTest do
       plain_box: box,
       plain_lot: lot
     } do
-      {:ok, view, _html} = live(conn, ~p"/audit/#{box}")
+      {:ok, view, _html} = live(conn, ~p"/boxes/#{box}/count")
       view |> element("#count-form") |> render_submit(%{"counts" => %{"#{lot.id}" => "300"}})
       view |> element("#commit-form") |> render_submit()
 
-      {:ok, _view, html} = live(conn, ~p"/audit")
+      {:ok, _view, html} = live(conn, ~p"/boxes")
 
       # Both boxes are still listed, but only the untouched one is overdue.
       assert position(html, "AUC1") < position(html, "AU01")

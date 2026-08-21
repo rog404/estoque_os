@@ -83,7 +83,7 @@ defmodule EstoqueOSWeb.MoneyVisibilityTest do
     end
 
     test "still does the job: counting, loading out, receiving a return", %{conn: conn} do
-      assert {:ok, _view, _html} = live(conn, ~p"/audit")
+      assert {:ok, _view, _html} = live(conn, ~p"/boxes")
       assert {:ok, _view, _html} = live(conn, ~p"/load-out")
       assert {:ok, _view, _html} = live(conn, ~p"/returns")
       assert {:ok, _view, _html} = live(conn, ~p"/entry")
@@ -129,7 +129,6 @@ defmodule EstoqueOSWeb.MoneyVisibilityTest do
 
     test "writes nothing", %{conn: conn} do
       assert {:error, {:redirect, %{to: "/"}}} = live(conn, ~p"/load-out")
-      assert {:error, {:redirect, %{to: "/"}}} = live(conn, ~p"/audit")
       assert {:error, {:redirect, %{to: "/"}}} = live(conn, ~p"/entry")
     end
   end

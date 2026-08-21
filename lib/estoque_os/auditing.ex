@@ -45,6 +45,25 @@ defmodule EstoqueOS.Auditing do
     |> Enum.take(opts[:limit] || 10)
   end
 
+  @doc """
+  The same ranking, keyed by box, for a screen that already has the boxes.
+
+  The guided list used to be a page of its own, which meant the box list and the
+  counting queue were two places saying different things about the same boxes.
+  There is one list now — the boxes — and this is what puts it in the order
+  somebody should work through: what is controlled, then what is expiring, then
+  what is worth the most, then what has gone longest unlooked-at. A box with no
+  contents is not in here at all; there is nothing in it to count.
+  """
+  def priorities(opts \\ []) do
+    horizon = Date.add(Date.utc_today(), opts[:expiry_days] || 90)
+    costs = Inventory.average_unit_costs()
+
+    contents_by_box()
+    |> Enum.map(&score(&1, horizon, costs))
+    |> Map.new(&{&1.box.id, &1})
+  end
+
   defp contents_by_box do
     StockSnapshot
     |> join(:inner, [s], b in Box, on: b.id == s.box_id)
