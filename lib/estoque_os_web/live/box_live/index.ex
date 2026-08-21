@@ -82,7 +82,9 @@ defmodule EstoqueOSWeb.BoxLive.Index do
           </:empty>
 
           <:col :let={row} label={gettext("Box")} emphasis={:identity}>
-            <.link navigate={~p"/boxes/#{row.box}"} class="link link-hover">{row.box.code}</.link>
+            <.link navigate={~p"/boxes/#{row.box}"} class="link-hover">
+              <.box_code code={row.box.code} />
+            </.link>
           </:col>
 
           <:col :let={row} label={gettext("Location")}>

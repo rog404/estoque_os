@@ -336,7 +336,8 @@ defmodule EstoqueOSWeb.StockLive.Index do
           </:col>
 
           <:col :let={row} label={gettext("Where")} key="box" width="w-[24%]">
-            {row.box || gettext("no box")} · {row.location}
+            <.box_code code={row.box} />
+            <span class="text-base-content/80">{row.location}</span>
             <!-- Deliberately not a badge. This is the one claim the screen exists
                  to make — the number is what we believe, not what somebody
                  counted — and it was a 10px ghost badge once, which is how it
@@ -356,7 +357,7 @@ defmodule EstoqueOSWeb.StockLive.Index do
             group
             width="w-[10%]"
           >
-            {quantity(row.quantity)}
+            <span class="figure">{quantity(row.quantity)}</span>
           </:col>
 
           <!-- `:if` on the slot, not on the cell: an unrendered column never

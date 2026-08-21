@@ -103,7 +103,7 @@ defmodule EstoqueOSWeb.BoxLive.Show do
           <:col :let={row} label={gettext("Lot")}>{row.lot_number || gettext("unknown")}</:col>
           <:col :let={row} label={gettext("Expiry")}>{date(row.expires_on)}</:col>
           <:col :let={row} label={gettext("Quantity")} align={:right} emphasis={:primary}>
-            {quantity(row.quantity)}
+            <span class="figure">{quantity(row.quantity)}</span>
           </:col>
 
           <!-- Re-boxing, per line. Two half-empty boxes become one, or a product
@@ -185,7 +185,7 @@ defmodule EstoqueOSWeb.BoxLive.Show do
           <:col :let={row} label={gettext("Lot")}>{row.lot_number || gettext("unknown")}</:col>
           <:col :let={row} label={gettext("Expiry")}>{date(row.expires_on)}</:col>
           <:col :let={row} label={gettext("Loose")} align={:right} emphasis={:primary}>
-            {quantity(row.quantity)}
+            <span class="figure">{quantity(row.quantity)}</span>
           </:col>
 
           <:col :let={row} label={gettext("Into this box")} field={:block} group>
