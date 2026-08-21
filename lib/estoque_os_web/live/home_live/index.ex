@@ -11,6 +11,7 @@ defmodule EstoqueOSWeb.HomeLive.Index do
 
   alias EstoqueOS.Accounts.Scope
   alias EstoqueOS.Accounts.User
+  alias EstoqueOS.Alerts
   alias EstoqueOS.Inventory.Locations
   alias EstoqueOS.Kits
   alias EstoqueOS.Reports
@@ -35,6 +36,7 @@ defmodule EstoqueOSWeb.HomeLive.Index do
      |> assign(:expiring, Reports.expiring_soon(limit: @preview, segment: segment))
      |> assign(:activity, Reports.recent_activity(limit: @preview, segment: segment))
      |> assign(:may_review?, may_review?(socket))
+     |> assign(:may_acknowledge?, Alerts.may_acknowledge?(socket.assigns.current_scope))
      # No screen goes deeper into shortages, so this one carries its own weight
      # rather than teasing five rows and stopping.
      |> assign(:below_minimum, Reports.below_minimum(limit: @shortage_limit, segment: segment))
@@ -164,9 +166,26 @@ defmodule EstoqueOSWeb.HomeLive.Index do
             <span :if={is_nil(row.invoice) and is_nil(row.box_id)}>
               {gettext("Loose stock")} · {Enum.join(row.products, ", ")}
             </span>
-            <span class="opacity-80">
-              {datetime(row.transaction.occurred_at)}
-              <span :if={row.transaction.user}>· {row.transaction.user.email}</span>
+            <span class="opacity-80 flex items-center gap-2">
+              <span>
+                {datetime(row.transaction.occurred_at)}
+                <span :if={row.transaction.user}>· {row.transaction.user.email}</span>
+              </span>
+              <!-- "Olhei e está tudo bem." A divergence that is simply the
+                   answer — the box really did have 27 — has to be closable, or
+                   this list only grows and stops being read, which costs the
+                   alarms that mattered. It is not an erasure: the reason stays
+                   on the movement and the acknowledgement is recorded beside it
+                   with a name and a date. -->
+              <button
+                :if={@may_acknowledge?}
+                type="button"
+                phx-click="acknowledge_count"
+                phx-value-id={row.transaction.id}
+                class="btn btn-xs btn-soft shrink-0"
+              >
+                {gettext("Noted")}
+              </button>
             </span>
           </li>
         </ul>
@@ -368,6 +387,23 @@ defmodule EstoqueOSWeb.HomeLive.Index do
   end
 
   # Zero kits is the whole problem; one is a trip that cannot go wrong anywhere.
+  @impl true
+  def handle_event("acknowledge_count", %{"id" => id}, socket) do
+    case Alerts.acknowledge_count(id, socket.assigns.current_scope) do
+      {:ok, _transaction} ->
+        {:noreply,
+         socket
+         |> assign(:to_review, Reports.counts_needing_review(limit: @preview))
+         |> put_flash(:info, gettext("Noted. The count stays on record."))}
+
+      # `Alerts` decides, not this screen: the button is only rendered for the
+      # roles that may close one, and a button nobody rendered has never been
+      # what stops anything.
+      {:error, _reason} ->
+        {:noreply, put_flash(socket, :error, gettext("You don't have permission to do that."))}
+    end
+  end
+
   defp coverage_class(possible) do
     cond do
       Decimal.compare(possible, 0) != :gt -> "text-error"

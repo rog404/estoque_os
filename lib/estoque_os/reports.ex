@@ -219,7 +219,13 @@ defmodule EstoqueOS.Reports do
   # an invoice whose `rastro` group the supplier left out. The overview counts
   # them; this is where the count leads, because a warning that only states a
   # number leaves the manager to find the rows by hand.
-  defp maybe_only_review(query, true), do: where(query, [_s, l], l.needs_review)
+  # The open ones. A lot somebody has already accepted is still flagged — the
+  # goods really did arrive without a number — but it is no longer something
+  # anybody has to do, and a list that keeps showing resolved work stops being
+  # read.
+  defp maybe_only_review(query, true),
+    do: where(query, [_s, l], l.needs_review and is_nil(l.review_acknowledged_at))
+
   defp maybe_only_review(query, _), do: query
 
   defp below_minimum?(%{min_stock_override: nil}, _totals), do: false
@@ -458,7 +464,7 @@ defmodule EstoqueOS.Reports do
           from(l in Lot,
             join: p in Product,
             on: p.id == l.product_id,
-            where: l.needs_review
+            where: l.needs_review and is_nil(l.review_acknowledged_at)
           )
           |> segment_scope(segment),
           :count
@@ -624,7 +630,7 @@ defmodule EstoqueOS.Reports do
     entries = from(e in TransactionEntry, order_by: [asc: e.id], preload: [:box, lot: :product])
 
     Transaction
-    |> where([t], not is_nil(t.review_reason))
+    |> where([t], not is_nil(t.review_reason) and is_nil(t.review_acknowledged_at))
     |> order_by([t], desc: t.occurred_at, desc: t.id)
     |> limit(^(opts[:limit] || 5))
     # The invoice comes along because half of these are now receiving
