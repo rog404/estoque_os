@@ -12,7 +12,7 @@ defmodule EstoqueOS.Reports do
   alias EstoqueOS.Catalog.{Product, ProductGroup, ProductIdentifier, UnitConversion}
   alias EstoqueOS.Inventory
   alias EstoqueOS.Inventory.{Box, Location, Lot, StockSnapshot, Transaction, TransactionEntry}
-  alias EstoqueOS.Invoices.Invoice
+  alias EstoqueOS.Invoices.{Invoice, InvoiceItem}
   alias EstoqueOS.Repo
   alias EstoqueOS.Reports.StockWorkbook
 
@@ -517,7 +517,7 @@ defmodule EstoqueOS.Reports do
         |> Enum.map(& &1.total)
         |> Enum.reject(&is_nil/1)
         |> Enum.reduce(Decimal.new(0), &Decimal.add/2),
-      invoices_pending: Repo.aggregate(from(i in Invoice, where: i.status != "posted"), :count),
+      invoices_pending: pending_invoices(segment),
       lots_needing_review:
         Repo.aggregate(
           from(l in Lot,
@@ -529,6 +529,33 @@ defmodule EstoqueOS.Reports do
           :count
         )
     }
+  end
+
+  # A note belongs to whichever stock its items land in, and a note can carry
+  # both. Counted through the items so the marketing overview does not raise a
+  # number about a delivery of gauze — an unattended item, still without a
+  # product, has no segment yet and stays in the whole-operation count only.
+  defp pending_invoices(nil) do
+    Repo.aggregate(from(i in Invoice, where: i.status != "posted"), :count)
+  end
+
+  defp pending_invoices(segment) do
+    Repo.aggregate(
+      from(i in Invoice,
+        as: :invoice,
+        where:
+          i.status != "posted" and
+            exists(
+              from(item in InvoiceItem,
+                join: p in Product,
+                on: p.id == item.product_id,
+                where: parent_as(:invoice).id == item.invoice_id and p.segment == ^segment,
+                select: 1
+              )
+            )
+      ),
+      :count
+    )
   end
 
   # For the queries that reach `products` under another name than the stock
@@ -812,6 +839,90 @@ defmodule EstoqueOS.Reports do
       unpriced: rows |> Enum.map(& &1.unpriced) |> Enum.sum()
     }
   end
+
+  @doc """
+  How the sold stock is moving: what leaves most, what runs out first, and what
+  is not leaving at all.
+
+  Written for whoever looks after the marketing material, whose question is not
+  "will the mission be short" but "what do I have made next". Three answers out
+  of one pass over the same sales rows, because they are three readings of the
+  same fact:
+
+    * `best_sellers` — what left most, counted in units rather than in money.
+      Each shirt size is its own product, so this list is also the answer to
+      which size sells.
+    * `cover` — how many days the shelf lasts at the pace of the period. The
+      number that says when to order, rather than after it is already zero.
+    * `idle` — what is on the shelf and did not sell one unit. What not to have
+      printed again.
+
+  Products that never moved at all are not idle stock: something bought and
+  never sold once is a different conversation from something that stopped
+  selling, and the shelf is what this report is about — so `idle` only counts
+  what is actually there.
+  """
+  def sales_pace(from, to, opts \\ []) do
+    rows = sales(from, to, opts)
+    sold = Map.new(rows, &{&1.product_id, &1})
+    days = max(Date.diff(to, from), 1)
+    limit = opts[:limit] || 5
+
+    on_hand =
+      opts[:segment]
+      |> product_balances()
+      |> Enum.reject(&(Decimal.compare(&1.quantity, 0) != :gt))
+
+    %{
+      totals: sales_totals(rows),
+      days: days,
+      best_sellers: rows |> Enum.sort_by(& &1.quantity, &desc/2) |> Enum.take(limit),
+      cover:
+        on_hand
+        |> Enum.filter(&Map.has_key?(sold, &1.product_id))
+        |> Enum.map(&days_of_cover(&1, sold[&1.product_id], days))
+        |> Enum.sort_by(& &1.days)
+        |> Enum.take(limit),
+      idle:
+        on_hand
+        |> Enum.reject(&Map.has_key?(sold, &1.product_id))
+        |> Enum.sort_by(& &1.quantity, &desc/2)
+        |> Enum.take(limit)
+    }
+  end
+
+  # Rounded down, because a shelf that lasts eleven and a half days lasts
+  # eleven: the half day is the one somebody would have counted on.
+  defp days_of_cover(row, sale, days) do
+    per_day = Decimal.div(sale.quantity, days)
+
+    Map.merge(row, %{
+      sold: sale.quantity,
+      days:
+        row.quantity |> Decimal.div(per_day) |> Decimal.round(0, :floor) |> Decimal.to_integer()
+    })
+  end
+
+  # What is on the shelf right now, per product, for one stock. The snapshot
+  # table is the maintained cache of the ledger, which is what every other
+  # balance on the dashboard reads too.
+  defp product_balances(segment) do
+    StockSnapshot
+    |> join(:inner, [s], l in Lot, on: l.id == s.lot_id)
+    |> join(:inner, [s, l], p in Product, on: p.id == l.product_id)
+    |> where([s, l, p], p.active)
+    |> segment_scope(segment)
+    |> group_by([s, l, p], [p.id, p.name, p.stock_unit])
+    |> select([s, l, p], %{
+      product_id: p.id,
+      product: p.name,
+      unit: p.stock_unit,
+      quantity: sum(s.quantity)
+    })
+    |> Repo.all()
+  end
+
+  defp desc(a, b), do: Decimal.compare(a, b) != :lt
 
   defp merge_sale_rows([first | _rest] = rows) do
     %{
