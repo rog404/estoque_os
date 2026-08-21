@@ -209,6 +209,7 @@ defmodule EstoqueOSWeb.Router do
       ] do
       live "/invoices", InvoiceLive.Index, :index
       live "/invoices/:id", InvoiceLive.Show, :show
+      live "/reports/sales", SalesReportLive.Index, :index
     end
   end
 

@@ -47,6 +47,7 @@ defmodule EstoqueOSWeb.IssueLive.Index do
      |> assign(:box_options, [])
      |> assign(:picks, nil)
      |> assign(:quantity, "")
+     |> assign(:sale_unit_price, "")
      |> assign(:destination, nil)
      |> assign(:basket, [])
      |> load_here()}
@@ -112,15 +113,22 @@ defmodule EstoqueOSWeb.IssueLive.Index do
   # The basket keeps the name so the list reads without a lookup, and the id so
   # the ledger has something to post against. `box_code` is display only —
   # `box_id` is what actually pins the pick when it is set.
-  defp basket_line(product, quantity, box_id, box_code) do
+  defp basket_line(product, quantity, box_id, box_code, opts) do
     %{
       product_id: product.id,
       product: product.name,
       quantity: quantity,
       box_id: box_id,
-      box_code: box_code
+      box_code: box_code,
+      sale_unit_price: opts[:sale_unit_price]
     }
   end
+
+  # The stock that is sold. Marketing material leaves with a price on it;
+  # surgical supply is consumed or donated, and asking its price on the way out
+  # would be asking a question the operation does not have an answer to.
+  defp sellable?(%{segment: "marketing"}), do: true
+  defp sellable?(_product), do: false
 
   # Nothing to choose between when the product is all in one place — showing a
   # single-option picker would be a decision with no second option.
@@ -170,6 +178,7 @@ defmodule EstoqueOSWeb.IssueLive.Index do
     |> assign(:box_options, Inventory.box_quantities(product.id, socket.assigns.location_id))
     |> assign(:picks, nil)
     |> assign(:quantity, "")
+    |> assign(:sale_unit_price, "")
   end
 
   defp compute_picks(socket, params) do
@@ -453,6 +462,28 @@ defmodule EstoqueOSWeb.IssueLive.Index do
                 phx-mounted={JS.focus()}
               />
             </label>
+            <!-- Only for the stock that is sold. It sits beside the quantity
+                 because a price belongs to the line, not to the write-off: two
+                 shirts at 18,50 and a mug at 12,90 leave on one movement, and a
+                 single price at the bottom could not describe it.
+
+                 `value` from the server for the same reason the quantity has
+                 one — `phx-change` repaints this form on every keystroke, and a
+                 field rendered without a value comes back empty under the
+                 person typing into it. -->
+            <label :if={sellable?(@product)} class="fieldset">
+              <span class="label">{gettext("Sale price (unit)")}</span>
+              <input
+                type="text"
+                name="sale_unit_price"
+                value={@sale_unit_price}
+                inputmode="decimal"
+                data-numeric
+                phx-debounce="300"
+                class="input input-bordered w-28 text-right"
+                aria-label={gettext("Unit sale price")}
+              />
+            </label>
             <.button variant="primary">{gettext("Add to the write-off")}</.button>
             <button type="button" phx-click="clear_product" class="btn btn-ghost">
               {gettext("Cancel")}
@@ -608,6 +639,7 @@ defmodule EstoqueOSWeb.IssueLive.Index do
     {:noreply,
      socket
      |> assign(:quantity, params["quantity"])
+     |> assign(:sale_unit_price, params["sale_unit_price"] || "")
      |> assign(:picks, compute_picks(socket, params))}
   end
 
@@ -632,12 +664,18 @@ defmodule EstoqueOSWeb.IssueLive.Index do
            socket
            |> assign(
              :basket,
-             socket.assigns.basket ++ [basket_line(product, amount, box_id, box_code)]
+             socket.assigns.basket ++
+               [
+                 basket_line(product, amount, box_id, box_code,
+                   sale_unit_price: to_decimal(params["sale_unit_price"])
+                 )
+               ]
            )
            |> assign(:product, nil)
            |> assign(:box_options, [])
            |> assign(:picks, nil)
            |> assign(:quantity, "")
+           |> assign(:sale_unit_price, "")
            |> assign(:query, "")
            |> assign(:products, [])}
         end
@@ -651,6 +689,7 @@ defmodule EstoqueOSWeb.IssueLive.Index do
      |> assign(:box_options, [])
      |> assign(:picks, nil)
      |> assign(:quantity, "")
+     |> assign(:sale_unit_price, "")
      |> assign(:query, "")
      |> assign(:products, [])}
   end
@@ -682,6 +721,7 @@ defmodule EstoqueOSWeb.IssueLive.Index do
          |> assign(:box_options, [])
          |> assign(:picks, nil)
          |> assign(:quantity, "")
+         |> assign(:sale_unit_price, "")
          |> assign(:destination, nil)
          |> assign(:query, "")
          # The shelf just changed, and this screen is now showing it.
@@ -689,6 +729,14 @@ defmodule EstoqueOSWeb.IssueLive.Index do
 
       {:error, :nothing_to_issue} ->
         {:noreply, put_flash(socket, :error, gettext("Add something to the list first."))}
+
+      {:error, :missing_sale_price} ->
+        {:noreply,
+         put_flash(
+           socket,
+           :error,
+           gettext("A sale needs the sale price on every line. Remove the line and add it again.")
+         )}
 
       {:error, {:insufficient_stock, %{missing: missing}}} ->
         {:noreply,

@@ -12,13 +12,16 @@ defmodule EstoqueOSWeb.MarketingStockTest do
 
   use EstoqueOSWeb.ConnCase, async: true
 
+  import Ecto.Query, only: [from: 2]
   import Phoenix.LiveViewTest
   import EstoqueOS.CatalogFixtures
   import EstoqueOS.InventoryFixtures
 
   alias EstoqueOS.Inventory
   alias EstoqueOS.Inventory.Locations
+  alias EstoqueOS.Inventory.{Transaction, TransactionEntry}
   alias EstoqueOS.Invoices.Invoice
+  alias EstoqueOS.Repo
 
   setup do
     warehouse = location_fixture(%{name: "Estoque Principal", kind: "warehouse"})
@@ -207,6 +210,71 @@ defmodule EstoqueOSWeb.MarketingStockTest do
       {:ok, _view, html} = live(conn, ~p"/stock")
 
       assert html =~ "Custo unitário"
+    end
+  end
+
+  describe "selling" do
+    setup %{conn: conn}, do: register_and_log_in_as(%{conn: conn}, "marketing")
+
+    defp sell(conn, product, quantity, price) do
+      {:ok, view, _html} = live(conn, ~p"/issue")
+
+      view |> element("#search-form") |> render_change(%{"query" => product.name})
+      view |> element("button", product.name) |> render_click()
+
+      view
+      |> element("#issue-form")
+      |> render_submit(%{"quantity" => quantity, "sale_unit_price" => price})
+
+      view |> element("#basket-form") |> render_submit(%{"destination" => "sale"})
+    end
+
+    test "the line asks for a price, and the ledger keeps it", %{conn: conn, shirt: shirt} do
+      {:ok, view, _html} = live(conn, ~p"/issue")
+
+      view |> element("#search-form") |> render_change(%{"query" => shirt.name})
+      html = view |> element("button", shirt.name) |> render_click()
+
+      assert html =~ "Preço de venda"
+
+      sell(conn, shirt, "3", "39,90")
+
+      entries =
+        Repo.all(
+          from e in TransactionEntry,
+            join: t in assoc(e, :transaction),
+            where: t.destination == "sale"
+        )
+
+      assert [entry] = entries
+      assert Decimal.equal?(entry.sale_unit_price, Decimal.new("39.90"))
+      # The cost the goods came in at is untouched: two numbers, two questions.
+      assert Decimal.equal?(entry.quantity, Decimal.new(-3))
+    end
+
+    test "a sale with no price is refused, not posted blank", %{conn: conn, shirt: shirt} do
+      {:ok, view, _html} = live(conn, ~p"/issue")
+
+      view |> element("#search-form") |> render_change(%{"query" => shirt.name})
+      view |> element("button", shirt.name) |> render_click()
+      view |> element("#issue-form") |> render_submit(%{"quantity" => "2"})
+
+      html = view |> element("#basket-form") |> render_submit(%{"destination" => "sale"})
+
+      # The goods are gone either way once posted, and the price is not
+      # recoverable afterwards.
+      assert html =~ "preço de venda"
+      assert Repo.aggregate(from(t in Transaction, where: t.destination == "sale"), :count) == 0
+    end
+
+    test "the report adds up what was sold", %{conn: conn, shirt: shirt} do
+      sell(conn, shirt, "4", "25,00")
+
+      {:ok, _view, html} = live(conn, ~p"/reports/sales")
+
+      assert html =~ shirt.name
+      # 4 × 25,00
+      assert html =~ "100,00"
     end
   end
 

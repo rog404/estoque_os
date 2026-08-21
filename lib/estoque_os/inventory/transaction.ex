@@ -26,7 +26,11 @@ defmodule EstoqueOS.Inventory.Transaction do
   # away. It exists for the same reason as the rest — it was being recorded as a
   # donation with an explanatory note, which makes "how much did we throw out"
   # a question only a human reading notes can answer.
-  @destinations ~w(pacu operating_room donation pre_and_post triage disposal)
+  # `sale` is the marketing stock's ordinary exit: goods leave with a price on
+  # them. It is a `manual_out` like the rest — what makes it a sale is where it
+  # went and the `sale_unit_price` on its entries, not a transaction type of its
+  # own, because everything else about it is a write-off.
+  @destinations ~w(pacu operating_room donation pre_and_post triage disposal sale)
 
   @types_requiring_both_locations ~w(transfer load_out)
 
