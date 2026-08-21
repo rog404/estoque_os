@@ -625,7 +625,7 @@ msgstr "emitida em %{date}"
 msgid "not informed"
 msgstr "não informado"
 
-#: lib/estoque_os_web/components/core_components.ex:697
+#: lib/estoque_os_web/components/core_components.ex:703
 #, elixir-autogen, elixir-format
 msgid "%{counted} line(s) read, %{adjusted} position(s) adjusted."
 msgstr "%{counted} linha(s) lida(s), %{adjusted} posição(ões) ajustada(s)."
@@ -656,7 +656,7 @@ msgstr "Caixa"
 msgid "Expiry"
 msgstr "Validade"
 
-#: lib/estoque_os_web/components/core_components.ex:679
+#: lib/estoque_os_web/components/core_components.ex:685
 #, elixir-autogen, elixir-format
 msgid "Import count"
 msgstr "Importar contagem"
@@ -672,7 +672,7 @@ msgstr "Importar contagem"
 msgid "Location"
 msgstr "Local"
 
-#: lib/estoque_os_web/components/core_components.ex:704
+#: lib/estoque_os_web/components/core_components.ex:710
 #, elixir-autogen, elixir-format
 msgid "Nothing was imported. Fix these lines:"
 msgstr "Nada foi importado. Corrija estas linhas:"
@@ -697,7 +697,7 @@ msgstr "Escolha uma planilha primeiro."
 msgid "Quantity"
 msgstr "Quantidade"
 
-#: lib/estoque_os_web/components/core_components.ex:677
+#: lib/estoque_os_web/components/core_components.ex:683
 #, elixir-autogen, elixir-format
 msgid "Reading the spreadsheet..."
 msgstr "Lendo a planilha..."
@@ -740,7 +740,7 @@ msgstr "Não foi possível ler a planilha."
 msgid "The spreadsheet is missing these columns: %{columns}"
 msgstr "Faltam estas colunas na planilha: %{columns}"
 
-#: lib/estoque_os_web/components/core_components.ex:682
+#: lib/estoque_os_web/components/core_components.ex:688
 #, elixir-autogen, elixir-format
 msgid "The spreadsheet states what is physically there; only the difference is posted."
 msgstr "A planilha diz o que existe fisicamente; só a diferença é lançada."
@@ -756,7 +756,7 @@ msgstr "Custo unitário"
 msgid "controlled"
 msgstr "controlado"
 
-#: lib/estoque_os_web/components/core_components.ex:707
+#: lib/estoque_os_web/components/core_components.ex:713
 #, elixir-autogen, elixir-format
 msgid "line %{line}: %{message}"
 msgstr "linha %{line}: %{message}"
@@ -1463,7 +1463,7 @@ msgstr "Nenhuma caixa tem estoque ainda."
 msgid "Record count"
 msgstr "Registrar contagem"
 
-#: lib/estoque_os_web/components/core_components.ex:641
+#: lib/estoque_os_web/components/core_components.ex:647
 #: lib/estoque_os_web/live/entry_live/new.ex:471
 #, elixir-autogen, elixir-format
 msgid "Recording..."
@@ -2090,7 +2090,7 @@ msgstr "%{value} ÷ %{factor}"
 msgid "Boxes travel whole and are not recounted."
 msgstr "As caixas viajam inteiras e não são recontadas."
 
-#: lib/estoque_os_web/components/core_components.ex:635
+#: lib/estoque_os_web/components/core_components.ex:641
 #: lib/estoque_os_web/live/invoice_live/show.ex:524
 #: lib/estoque_os_web/live/issue_live/index.ex:489
 #: lib/estoque_os_web/live/kit_live/show.ex:408
@@ -2099,8 +2099,8 @@ msgstr "As caixas viajam inteiras e não são recontadas."
 msgid "Cancel"
 msgstr "Cancelar"
 
-#: lib/estoque_os_web/components/core_components.ex:649
-#: lib/estoque_os_web/components/core_components.ex:649
+#: lib/estoque_os_web/components/core_components.ex:655
+#: lib/estoque_os_web/components/core_components.ex:655
 #: lib/estoque_os_web/live/receipt_live/show.ex:591
 #: lib/estoque_os_web/live/receipt_live/show.ex:591
 #, elixir-autogen, elixir-format
@@ -2127,7 +2127,7 @@ msgstr "Enviar esta carga?"
 msgid "Whatever did not come back is written off as used during the mission, unless you unchecked that."
 msgstr "O que não voltou é baixado como consumido na missão, a menos que você tenha desmarcado."
 
-#: lib/estoque_os_web/components/core_components.ex:672
+#: lib/estoque_os_web/components/core_components.ex:678
 #, elixir-autogen, elixir-format
 msgid "Export stock"
 msgstr "Exportar estoque"

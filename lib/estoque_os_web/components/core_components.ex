@@ -505,15 +505,21 @@ defmodule EstoqueOSWeb.CoreComponents do
          four screens where a form is wrapped in this gate, the form sat welded
          to the table under it. Reported on Caixas, and it was never about
          Caixas.
-         A fieldset with no border, padding or margin lays out exactly like the
-         div it replaces, and still disables everything inside it in one
-         attribute — which is the whole reason it is a fieldset. -->
+         A fieldset with no border or padding lays out exactly like the div it
+         replaces, and still disables everything inside it in one attribute —
+         which is the whole reason it is a fieldset.
+
+         The block margins are left alone deliberately. `m-0` here was the same
+         bug wearing a second hat: Tailwind writes `space-y` inside `:where()`,
+         which has no specificity, so a plain `m-0` on the child silently wins
+         and the gap disappears again. Only the inline margin a fieldset gets
+         from the browser is zeroed. -->
     <fieldset
       :if={@may}
       disabled={not @allowed}
       title={@reason}
       aria-disabled={not @allowed}
-      class="min-w-0 border-0 p-0 m-0"
+      class="min-w-0 border-0 p-0 mx-0"
     >
       {render_slot(@inner_block)}
     </fieldset>
