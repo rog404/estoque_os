@@ -189,21 +189,62 @@ defmodule EstoqueOS.Inventory.Locations do
   Configured with `config :estoque_os, :default_location_name`; falls back to
   the first active warehouse so a fresh install still works.
   """
-  def default_location do
+  def default_location(segment \\ nil) do
+    for_segment(segment) || configured_location() || first_warehouse()
+  end
+
+  # The place the operation says goods of this stock arrive at. Marketing
+  # material comes into the office and surgical supplies into the warehouse, and
+  # before this every screen preselected the same one for both — which is the
+  # location the marketing coordinator had to correct on every single entry.
+  defp for_segment(nil), do: nil
+
+  defp for_segment(segment) do
+    Location
+    |> where([l], l.active == true and l.default_for_segment == ^segment)
+    |> Repo.one()
+  end
+
+  defp configured_location do
     name = Application.get_env(:estoque_os, :default_location_name)
 
-    by_name =
-      name &&
-        Location
-        |> where([l], l.active == true and fragment("lower(?)", l.name) == ^String.downcase(name))
-        |> Repo.one()
-
-    by_name ||
+    name &&
       Location
-      |> where([l], l.active == true and l.kind == "warehouse")
-      |> order_by([l], asc: l.id)
-      |> limit(1)
+      |> where([l], l.active == true and fragment("lower(?)", l.name) == ^String.downcase(name))
       |> Repo.one()
+  end
+
+  defp first_warehouse do
+    Location
+    |> where([l], l.active == true and l.kind == "warehouse")
+    |> order_by([l], asc: l.id)
+    |> limit(1)
+    |> Repo.one()
+  end
+
+  @doc """
+  Makes a place the default entry point for one stock, or takes the mark off.
+
+  One per stock: setting a new one clears whichever place held it, because two
+  places both claiming to be where marketing material arrives is a question the
+  screens would end up answering by row id.
+  """
+  def set_default_for_segment(%Location{} = location, segment) do
+    Repo.transaction(fn ->
+      if segment do
+        Location
+        |> where([l], l.default_for_segment == ^segment and l.id != ^location.id)
+        |> Repo.update_all(set: [default_for_segment: nil, updated_at: DateTime.utc_now(:second)])
+      end
+
+      location
+      |> Location.changeset(%{default_for_segment: segment})
+      |> Repo.update()
+      |> case do
+        {:ok, updated} -> updated
+        {:error, changeset} -> Repo.rollback(changeset)
+      end
+    end)
   end
 
   def get_location!(id), do: Repo.get!(Location, id)

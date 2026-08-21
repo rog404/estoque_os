@@ -5,7 +5,10 @@ defmodule EstoqueOSWeb.InvoiceLive.Import do
 
   use EstoqueOSWeb, :live_view
 
+  alias EstoqueOS.Accounts.Scope
+  alias EstoqueOS.Catalog.Product
   alias EstoqueOS.Invoices
+  alias EstoqueOSWeb.StockLive
 
   @max_upload_size 8_000_000
 
@@ -15,7 +18,7 @@ defmodule EstoqueOSWeb.InvoiceLive.Import do
   Validating an upload parses a file and writes nothing; `import` posts the
   invoice and its stock.
   """
-  def viewer_events, do: ~w(validate cancel)
+  def viewer_events, do: ~w(validate cancel segment)
 
   @impl true
   def mount(_params, _session, socket) do
@@ -23,6 +26,11 @@ defmodule EstoqueOSWeb.InvoiceLive.Import do
      socket
      |> assign(:page_title, gettext("Import invoice"))
      |> assign(:error, nil)
+     # Which stock this delivery is for. It starts on the one the person works
+     # in — marketing imports marketing — and stays a choice, because a
+     # coordinator does receive the other side's delivery now and then and
+     # re-importing under the right stock is not a thing anybody can do twice.
+     |> assign(:segment, Scope.segment(socket.assigns.current_scope) || "medical")
      |> assign(:max_upload_size, @max_upload_size)
      |> allow_upload(:xml,
        accept: ~w(.xml text/xml application/xml),
@@ -62,6 +70,35 @@ defmodule EstoqueOSWeb.InvoiceLive.Import do
             {gettext("Post to stock")}
           </li>
         </ol>
+
+        <!-- Decided here rather than inferred from the lines afterwards. It is
+             what a product created from this invoice is filed under, and it is
+             what makes the invoice belong to the person who just uploaded it —
+             at this moment not one line has a product yet, so "which stock is
+             this" has no other answer to read. -->
+        <fieldset class="rounded-lg border border-base-300 p-4">
+          <legend class="px-2 text-sm font-medium">{gettext("Stock")}</legend>
+
+          <div role="tablist" class="tabs tabs-box w-fit">
+            <button
+              :for={segment <- Product.segments()}
+              type="button"
+              role="tab"
+              phx-click="segment"
+              phx-value-segment={segment}
+              aria-selected={to_string(@segment == segment)}
+              class={["tab", @segment == segment && "tab-active"]}
+            >
+              {StockLive.Index.segment_label(segment)}
+            </button>
+          </div>
+
+          <p class="mt-2 text-sm text-base-content/70">
+            {gettext(
+              "Where the goods on this invoice belong, and the stock any new product created from it is filed under."
+            )}
+          </p>
+        </fieldset>
 
         <form id="upload-form" phx-submit="import" phx-change="validate">
           <label
@@ -133,6 +170,10 @@ defmodule EstoqueOSWeb.InvoiceLive.Import do
   @impl true
   def handle_event("validate", _params, socket), do: {:noreply, assign(socket, :error, nil)}
 
+  def handle_event("segment", %{"segment" => segment}, socket) do
+    {:noreply, assign(socket, :segment, segment(socket, segment))}
+  end
+
   def handle_event("cancel", %{"ref" => ref}, socket) do
     {:noreply, cancel_upload(socket, :xml, ref)}
   end
@@ -141,7 +182,13 @@ defmodule EstoqueOSWeb.InvoiceLive.Import do
     user_id = socket.assigns.current_scope.user.id
 
     case consume_uploaded_entries(socket, :xml, fn %{path: path}, _entry ->
-           {:ok, path |> File.read!() |> Invoices.import_document(user_id: user_id)}
+           {:ok,
+            path
+            |> File.read!()
+            |> Invoices.import_document(
+              user_id: user_id,
+              segment: socket.assigns.segment
+            )}
          end) do
       [{:ok, invoice}] ->
         {:noreply,
@@ -178,6 +225,12 @@ defmodule EstoqueOSWeb.InvoiceLive.Import do
   # error the screen could have prevented.
   defp ready?(upload) do
     upload.entries != [] and Enum.all?(upload.entries, & &1.valid?)
+  end
+
+  # The role still wins: a marketing user asking for the surgical stock gets
+  # their own back, the same rule every other screen applies.
+  defp segment(socket, asked) do
+    Scope.segment(socket.assigns.current_scope, asked) || "medical"
   end
 
   defp megabytes(bytes) do

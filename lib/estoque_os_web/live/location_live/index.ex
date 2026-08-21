@@ -6,8 +6,10 @@ defmodule EstoqueOSWeb.LocationLive.Index do
 
   use EstoqueOSWeb, :live_view
 
+  alias EstoqueOS.Catalog.Product
   alias EstoqueOS.Inventory.Location
   alias EstoqueOS.Inventory.Locations
+  alias EstoqueOSWeb.StockLive
 
   @impl true
   def mount(_params, _session, socket) do
@@ -188,6 +190,36 @@ defmodule EstoqueOSWeb.LocationLive.Index do
 
           <:col :let={location} label={gettext("Kind")}>{kind_label(location.kind)}</:col>
 
+          <!-- Which stock arrives here by default. Surgical supplies come into
+               the warehouse and marketing material into the office, and every
+               screen that preselects a place reads this — so setting it once
+               here is what stops one of the two coordinators correcting the
+               location on every single entry. -->
+          <:col :let={location} label={gettext("Entry point for")}>
+            <.write_gate may={@role_may_write?} allowed={@writable?} reason={@write_block}>
+              <form id={"default-#{location.id}"} phx-change="set_default">
+                <input type="hidden" name="location_id" value={location.id} />
+                <select
+                  name="segment"
+                  class="select select-sm select-bordered"
+                  disabled={not location.active}
+                  aria-label={gettext("Entry point for %{name}", name: location.name)}
+                >
+                  <option value="" selected={is_nil(location.default_for_segment)}>
+                    {gettext("no stock")}
+                  </option>
+                  <option
+                    :for={segment <- Product.segments()}
+                    value={segment}
+                    selected={location.default_for_segment == segment}
+                  >
+                    {StockLive.Index.segment_label(segment)}
+                  </option>
+                </select>
+              </form>
+            </.write_gate>
+          </:col>
+
           <:col :let={location} label={gettext("Boxes")} align={:right} emphasis={:primary}>
             {overview(assigns, location).boxes}
           </:col>
@@ -270,6 +302,20 @@ defmodule EstoqueOSWeb.LocationLive.Index do
     """
   end
 
+  defp blank_to_nil(""), do: nil
+  defp blank_to_nil(value), do: value
+
+  defp default_message(%{default_for_segment: nil} = location) do
+    gettext("%{name} is no longer an entry point.", name: location.name)
+  end
+
+  defp default_message(location) do
+    gettext("%{stock} now arrives at %{name}.",
+      stock: StockLive.Index.segment_label(location.default_for_segment),
+      name: location.name
+    )
+  end
+
   defp kind_label("warehouse"), do: gettext("warehouse")
   defp kind_label("mission_site"), do: gettext("mission site")
   defp kind_label("transit"), do: gettext("in transit")
@@ -278,6 +324,23 @@ defmodule EstoqueOSWeb.LocationLive.Index do
   @impl true
   def handle_event("search", params, socket) do
     {:noreply, socket |> assign(:search, params["search"] || "") |> load_locations()}
+  end
+
+  # One place per stock, so this both sets the new one and clears whoever held
+  # it — decided in the context, where the uniqueness lives.
+  def handle_event("set_default", %{"location_id" => id, "segment" => segment}, socket) do
+    location = Locations.get_location!(id)
+
+    case Locations.set_default_for_segment(location, blank_to_nil(segment)) do
+      {:ok, updated} ->
+        {:noreply,
+         socket
+         |> put_flash(:info, default_message(updated))
+         |> load_locations()}
+
+      {:error, _reason} ->
+        {:noreply, put_flash(socket, :error, gettext("That entry point could not be set."))}
+    end
   end
 
   def handle_event("create", %{"name" => name, "kind" => kind}, socket) do

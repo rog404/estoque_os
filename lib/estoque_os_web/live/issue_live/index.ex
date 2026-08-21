@@ -33,7 +33,8 @@ defmodule EstoqueOSWeb.IssueLive.Index do
   @impl true
   def mount(_params, _session, socket) do
     locations = Locations.list_locations()
-    location = Locations.default_location() || List.first(locations)
+    segment = Scope.segment(socket.assigns.current_scope)
+    location = Locations.default_location(segment) || List.first(locations)
 
     {:ok,
      socket

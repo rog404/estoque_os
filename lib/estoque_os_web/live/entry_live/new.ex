@@ -69,10 +69,29 @@ defmodule EstoqueOSWeb.EntryLive.New do
   """
   @impl true
   def handle_params(params, _uri, socket) do
+    segment = segment(socket, params["segment"])
+
     {:noreply,
      socket
-     |> assign(:segment, segment(socket, params["segment"]))
-     |> assign(:locked_segment, Scope.segment(socket.assigns.current_scope))}
+     |> assign(:segment, segment)
+     |> assign(:locked_segment, Scope.segment(socket.assigns.current_scope))
+     |> preselect_location(segment)}
+  end
+
+  # Goods for the two stocks come in through different doors — surgical
+  # supplies at the warehouse, marketing material at the office — so the place
+  # follows the stock rather than a single default that was right for one of
+  # them and corrected by hand on every entry by the other.
+  #
+  # Only on the way in. Once the screen is open the location is the operator's
+  # to change, and a default that moved it back under them would be worse than
+  # the wrong default.
+  defp preselect_location(socket, segment) do
+    location = Locations.default_location(segment) || List.first(socket.assigns.locations)
+
+    socket
+    |> assign(:location_id, location && location.id)
+    |> assign(:boxes, boxes_for(location))
   end
 
   defp segment(socket, asked), do: Scope.segment(socket.assigns.current_scope, asked)

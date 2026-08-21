@@ -166,7 +166,8 @@ defmodule EstoqueOSWeb.ViewerWriteGuardTest do
       # event on the screen itself.
       "box_live/index" => ~w(create move),
       "box_live/show" => ~w(move verify rebox stow confirm_new_box cancel_new_box),
-      "location_live/index" => ~w(create edit cancel_rename rename deactivate reactivate),
+      "location_live/index" =>
+        ~w(create edit cancel_rename rename deactivate reactivate set_default),
       "kit_live/index" => ~w(create),
       "kit_live/show" =>
         ~w(assemble add_item update_item remove_item confirm_new_box cancel_new_box),
