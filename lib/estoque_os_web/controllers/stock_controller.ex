@@ -22,7 +22,15 @@ defmodule EstoqueOSWeb.StockController do
     # their job — so what leaves is the sheet they have always had on paper.
     money? = EstoqueOSWeb.UserAuth.sees_money?(conn.assigns[:current_scope])
 
-    case Reports.export_stock(location_id: location_id, money: money?) do
+    # The same narrowing the stock screen applies, and read from the same place:
+    # a role confined to one stock must not be able to walk out of it by asking
+    # for the file instead of the page. `on_mount` never runs for a controller,
+    # which is exactly how a hole like this gets left.
+    segment =
+      EstoqueOS.Accounts.Scope.segment(conn.assigns[:current_scope]) ||
+        segment_param(params["segment"])
+
+    case Reports.export_stock(location_id: location_id, segment: segment, money: money?) do
       {:ok, binary} ->
         conn
         |> put_resp_content_type(
@@ -35,6 +43,10 @@ defmodule EstoqueOSWeb.StockController do
         |> put_flash(:error, gettext("The spreadsheet could not be generated."))
         |> redirect(to: ~p"/stock")
     end
+  end
+
+  defp segment_param(value) do
+    if value in EstoqueOS.Catalog.Product.segments(), do: value
   end
 
   defp filename do

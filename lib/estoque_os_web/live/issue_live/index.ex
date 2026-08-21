@@ -11,7 +11,9 @@ defmodule EstoqueOSWeb.IssueLive.Index do
 
   import EstoqueOS.Coercion, only: [to_decimal: 1, to_id: 1]
 
+  alias EstoqueOS.Accounts.Scope
   alias EstoqueOS.{Catalog, Inventory, Outbound}
+  alias EstoqueOS.Catalog.Product
   alias EstoqueOS.Inventory.Locations
   alias EstoqueOS.Inventory.Transaction
 
@@ -49,7 +51,9 @@ defmodule EstoqueOSWeb.IssueLive.Index do
   # An id that does not resolve is not worth a page about an error — the screen
   # is perfectly usable without it, so it opens as it always does.
   @impl true
-  def handle_params(%{"product" => product_id}, _uri, socket) do
+  def handle_params(%{"product" => product_id} = params, _uri, socket) do
+    socket = assign_segment(socket, params)
+
     case Integer.parse(product_id) do
       {id, ""} ->
         case Catalog.fetch_product(id) do
@@ -62,12 +66,37 @@ defmodule EstoqueOSWeb.IssueLive.Index do
     end
   end
 
-  def handle_params(_params, _uri, socket), do: {:noreply, socket}
+  def handle_params(params, _uri, socket), do: {:noreply, assign_segment(socket, params)}
+
+  # Which stock this screen is about. The marketing menu asks for one in the
+  # address; the marketing role has one whatever the address says. Everything
+  # that lists a product here — the search, the scanner, "what is here" — passes
+  # it down, so the narrowing is a `where` in a query rather than a template
+  # that renders fewer rows.
+  defp assign_segment(socket, params) do
+    scope_segment = Scope.segment(socket.assigns.current_scope)
+    asked = params["segment"]
+
+    segment =
+      case scope_segment do
+        nil -> if asked in Product.segments(), do: asked
+        forced -> forced
+      end
+
+    socket |> assign(:segment, segment) |> load_here()
+  end
 
   defp load_here(socket) do
     case socket.assigns.location_id do
-      nil -> assign(socket, :here, [])
-      location_id -> assign(socket, :here, Inventory.products_at(location_id))
+      nil ->
+        assign(socket, :here, [])
+
+      location_id ->
+        assign(
+          socket,
+          :here,
+          Inventory.products_at(location_id, segment: socket.assigns[:segment])
+        )
     end
   end
 
@@ -515,7 +544,7 @@ defmodule EstoqueOSWeb.IssueLive.Index do
   def handle_event("search", %{"query" => query} = params, socket) do
     location_id = String.to_integer(params["location_id"] || "#{socket.assigns.location_id}")
 
-    products = Catalog.search_products(query, limit: 8)
+    products = Catalog.search_products(query, limit: 8, segment: socket.assigns.segment)
 
     {:noreply,
      socket
@@ -526,9 +555,14 @@ defmodule EstoqueOSWeb.IssueLive.Index do
   end
 
   def handle_event("scan", %{"query" => query}, socket) do
-    case Catalog.find_by_code(query) do
+    case Catalog.find_by_code(query, segment: socket.assigns.segment) do
       nil ->
-        {:noreply, assign(socket, :products, Catalog.search_products(query, limit: 8))}
+        {:noreply,
+         assign(
+           socket,
+           :products,
+           Catalog.search_products(query, limit: 8, segment: socket.assigns.segment)
+         )}
 
       product ->
         {:noreply,
@@ -542,10 +576,14 @@ defmodule EstoqueOSWeb.IssueLive.Index do
   def handle_event("pick", %{"product" => product_id}, socket) do
     product = Catalog.get_product!(String.to_integer(product_id))
 
-    {:noreply,
-     socket
-     |> assign(:products, [])
-     |> pick_product(product)}
+    if socket.assigns.segment && product.segment != socket.assigns.segment do
+      {:noreply, put_flash(socket, :error, gettext("That product is not in this stock."))}
+    else
+      {:noreply,
+       socket
+       |> assign(:products, [])
+       |> pick_product(product)}
+    end
   end
 
   # Only to reveal the CNPJ field when the destination is a donation; the rest of

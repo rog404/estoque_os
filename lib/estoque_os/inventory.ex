@@ -295,13 +295,14 @@ defmodule EstoqueOS.Inventory do
   correction, and either way it is not something anyone can pick up and carry
   away.
   """
-  def products_at(location_id) do
+  def products_at(location_id, opts \\ []) do
     boxes = boxes_by_product_at(location_id)
 
     TransactionEntry
     |> join(:inner, [e], l in Lot, on: l.id == e.lot_id)
     |> join(:inner, [e, l], p in Product, on: p.id == l.product_id)
     |> where([e], e.location_id == ^location_id)
+    |> maybe_segment(opts[:segment])
     |> group_by([e, l, p], [p.id, p.name, p.stock_unit, p.controlled])
     |> having([e], sum(e.quantity) > 0)
     |> order_by([e, l, p], asc: p.name)
@@ -323,6 +324,13 @@ defmodule EstoqueOS.Inventory do
   # decides whether a *box* still holds any of a product is a different grouping
   # from the one that totals the product across the location, and doing both at
   # once means one of them is wrong.
+  # Which stock the caller may see, passed down from the scope. A screen that
+  # lists "what is here" has to answer it per role, or the marketing person is
+  # offered a surgical product to write off.
+  defp maybe_segment(query, nil), do: query
+  defp maybe_segment(query, ""), do: query
+  defp maybe_segment(query, segment), do: where(query, [_e, _l, p], p.segment == ^segment)
+
   defp boxes_by_product_at(location_id) do
     TransactionEntry
     |> join(:inner, [e], l in Lot, on: l.id == e.lot_id)

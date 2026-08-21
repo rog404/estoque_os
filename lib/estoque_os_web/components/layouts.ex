@@ -42,9 +42,10 @@ defmodule EstoqueOSWeb.Layouts do
     # twenty-six screens that would each have to remember to pass it.
     assigns =
       assigns
-      |> assign(:section, active_section(assigns[:current_path]))
-      |> assign(:sees_money?, EstoqueOSWeb.UserAuth.sees_money?(assigns[:current_scope]))
       |> assign(:groups, visible_groups(assigns[:current_scope]))
+      |> assign(:sees_money?, EstoqueOSWeb.UserAuth.sees_money?(assigns[:current_scope]))
+
+    assigns = assign(assigns, :section, active_section(assigns[:current_path], assigns.groups))
 
     ~H"""
     <div data-section={@section}>
@@ -72,11 +73,11 @@ defmodule EstoqueOSWeb.Layouts do
                section colour would be the only clue and a colour alone is not a
                name. -->
           <span
-            :if={@section && section_label(@current_path)}
+            :if={@section && section_label(@current_path, @groups)}
             class="lg:hidden ml-3 hidden sm:inline-flex items-center gap-1.5 text-sm opacity-80 min-w-0"
           >
             <span class="section-mark h-3.5 w-0.5 rounded-full" aria-hidden="true" />
-            <span class="truncate">{section_label(@current_path)}</span>
+            <span class="truncate">{section_label(@current_path, @groups)}</span>
           </span>
         </div>
 
@@ -85,7 +86,12 @@ defmodule EstoqueOSWeb.Layouts do
           class="hidden lg:flex items-center gap-1"
           aria-label={gettext("Main")}
         >
-          <.nav_group :for={group <- @groups} group={group} current_path={@current_path} />
+          <.nav_group
+            :for={group <- @groups}
+            group={group}
+            groups={@groups}
+            current_path={@current_path}
+          />
         </nav>
 
         <div class="flex-none flex items-center gap-1">
@@ -146,7 +152,7 @@ defmodule EstoqueOSWeb.Layouts do
                    after the click, so it does not need explaining here. -->
               <ul :if={admin?(@current_scope)} class="menu w-full">
                 <li class="menu-title">{gettext("View as")}</li>
-                <li :for={role <- ~w(manager logistics auditor)}>
+                <li :for={role <- ~w(manager marketing logistics auditor)}>
                   <.link href={~p"/users/view-as?role=#{role}"} method="post">
                     {EstoqueOSWeb.ViewAsController.label(role)}
                   </.link>
@@ -238,13 +244,14 @@ defmodule EstoqueOSWeb.Layouts do
 
   attr :group, :map, required: true
   attr :current_path, :string, default: nil
+  attr :groups, :list, required: true
 
   defp nav_group(assigns) do
     ~H"""
     <details class="dropdown" data-section={@group.section}>
       <summary class={[
         "btn btn-ghost gap-1.5",
-        group_active?(@current_path, @group) && "btn-active"
+        group_active?(@current_path, @group, @groups) && "btn-active"
       ]}>
         <.icon name={@group.icon} class="size-5" />
         {@group.label}
@@ -305,7 +312,7 @@ defmodule EstoqueOSWeb.Layouts do
   end
 
   defp live_session_of(path) do
-    case Phoenix.Router.route_info(EstoqueOSWeb.Router, "GET", path, "") do
+    case Phoenix.Router.route_info(EstoqueOSWeb.Router, "GET", without_query(path), "") do
       %{phoenix_live_view: {_view, _action, _opts, %{name: name}}} -> name
       _ -> nil
     end
@@ -394,24 +401,78 @@ defmodule EstoqueOSWeb.Layouts do
         label: gettext("Stock"),
         icon: "hero-archive-box",
         items: [
+          # Not `:everyone`: the marketing role reaches the same screen through
+          # its own group, already narrowed to its stock. Offering it here as
+          # well would give that role two entries to the same page, one of them
+          # labelled as though it were the whole warehouse.
           %{
             label: gettext("Stock"),
             path: ~p"/stock",
             icon: "hero-squares-2x2",
-            roles: :everyone
+            roles: ~w(admin manager logistics auditor)
           },
-          %{label: gettext("Boxes"), path: ~p"/boxes", icon: "hero-cube", roles: :everyone},
+          # `:everyone` used to mean everyone, and then a role arrived that has
+          # one stock and no boxes, kits or missions in it. These now name the
+          # four roles the surgical operation is made of — the same list the
+          # `:surgical_read` live_session carries, and `nav_roles_test.exs`
+          # walks every entry with every role to hold the two together.
+          %{
+            label: gettext("Boxes"),
+            path: ~p"/boxes",
+            icon: "hero-cube",
+            roles: ~w(admin manager logistics auditor)
+          },
           %{
             label: gettext("Locations"),
             path: ~p"/locations",
             icon: "hero-map-pin",
-            roles: :everyone
+            roles: ~w(admin manager logistics auditor)
           },
           %{
             label: gettext("Kits"),
             path: ~p"/kits",
             icon: "hero-rectangle-stack",
-            roles: :everyone
+            roles: ~w(admin manager logistics auditor)
+          }
+        ]
+      },
+      # The other stock. Its own group rather than entries sprinkled through the
+      # surgical ones, because it is a different operation with a different
+      # person in charge: material that is *sold*, with a price on the way out
+      # and nothing to do with a mission.
+      #
+      # The paths carry `?segment=marketing`, which is what makes them distinct
+      # entries rather than duplicates of the surgical ones — and for the
+      # marketing role the screens ignore it and use the role anyway, so a
+      # tampered address changes nothing.
+      %{
+        section: "marketing",
+        label: gettext("Marketing"),
+        icon: "hero-megaphone",
+        items: [
+          %{
+            label: gettext("Marketing stock"),
+            path: ~p"/stock?segment=marketing",
+            icon: "hero-squares-2x2",
+            roles: ~w(admin manager marketing)
+          },
+          %{
+            label: gettext("Entry"),
+            path: ~p"/entry?segment=marketing",
+            icon: "hero-inbox-arrow-down",
+            roles: ~w(admin manager marketing)
+          },
+          %{
+            label: gettext("Sell or write off"),
+            path: ~p"/issue?segment=marketing",
+            icon: "hero-arrow-up-tray",
+            roles: ~w(admin manager marketing)
+          },
+          %{
+            label: gettext("What went out"),
+            path: ~p"/issues?segment=marketing",
+            icon: "hero-clipboard-document-list",
+            roles: ~w(admin manager marketing)
           }
         ]
       },
@@ -424,15 +485,20 @@ defmodule EstoqueOSWeb.Layouts do
             label: gettext("Audit report"),
             path: ~p"/reports/audit",
             icon: "hero-clipboard-document-list",
-            roles: :everyone
+            roles: ~w(admin manager logistics auditor)
           },
           %{
             label: gettext("Manual issues"),
             path: ~p"/issues",
             icon: "hero-arrow-up-tray",
-            roles: :everyone
+            roles: ~w(admin manager logistics auditor)
           },
-          %{label: gettext("Missions"), path: ~p"/missions", icon: "hero-map", roles: :everyone}
+          %{
+            label: gettext("Missions"),
+            path: ~p"/missions",
+            icon: "hero-map",
+            roles: ~w(admin manager logistics auditor)
+          }
         ]
       }
     ]
@@ -467,12 +533,16 @@ defmodule EstoqueOSWeb.Layouts do
   """
   def may_access?(scope, path) do
     role = Scope.effective_role(scope)
+    wanted = without_query(path)
 
-    case Enum.find(all_items(), &(&1.path == path)) do
-      nil -> false
-      item -> allowed?(item, role)
-    end
+    Enum.any?(all_items(), &(without_query(&1.path) == wanted and allowed?(&1, role)))
   end
+
+  # A menu path may carry a query string — the marketing entries are the same
+  # screens narrowed to one stock — and none of the questions asked about a
+  # path here are about its query: which role may open it, which section it
+  # belongs to, which `live_session` it mounts in.
+  defp without_query(path), do: path |> to_string() |> String.split("?") |> hd()
 
   defp allowed?(_item, nil), do: false
   defp allowed?(%{roles: :everyone}, _role), do: true
@@ -493,20 +563,24 @@ defmodule EstoqueOSWeb.Layouts do
   nothing. A page with no section still renders; it simply keeps the default
   blue rather than borrowing a colour it has no claim to.
   """
-  def active_section(nil), do: nil
+  def active_section(current_path, groups \\ nav_groups())
 
-  def active_section(current_path) do
-    case matching_group(current_path) do
+  def active_section(nil, _groups), do: nil
+
+  def active_section(current_path, groups) do
+    case matching_group(current_path, groups) do
       nil -> nil
       group -> group.section
     end
   end
 
   @doc "The section's own name, for the eyebrow above a page title."
-  def section_label(nil), do: nil
+  def section_label(current_path, groups \\ nav_groups())
 
-  def section_label(current_path) do
-    case matching_group(current_path) do
+  def section_label(nil, _groups), do: nil
+
+  def section_label(current_path, groups) do
+    case matching_group(current_path, groups) do
       nil -> nil
       group -> group.label
     end
@@ -514,10 +588,14 @@ defmodule EstoqueOSWeb.Layouts do
 
   # Longest prefix wins, so "/invoices/import" is claimed by the entry for
   # "/invoices/import" rather than by "/invoices".
-  defp matching_group(current_path) do
-    nav_groups()
+  #
+  # Asked against the groups this *role* can see, not against all of them.
+  # `/stock` belongs to two entries — the surgical stock and the marketing one
+  # — and which section it lights up is a question about who is looking.
+  defp matching_group(current_path, groups) do
+    groups
     |> Enum.flat_map(fn group ->
-      Enum.map(group.items, &{String.length(&1.path), &1.path, group})
+      Enum.map(group.items, &{String.length(&1.path), without_query(&1.path), group})
     end)
     |> Enum.filter(fn {_len, path, _group} -> prefix?(current_path, path) end)
     |> Enum.max_by(fn {len, _path, _group} -> len end, fn -> nil end)
@@ -539,16 +617,16 @@ defmodule EstoqueOSWeb.Layouts do
   # marked. It asks `matching_group/1` rather than testing its own items,
   # because "/stock/spreadsheet" sits under Entradas while "/stock" sits under
   # Estoque — testing item by item would light both.
-  defp group_active?(nil, _group), do: false
+  defp group_active?(nil, _group, _groups), do: false
 
-  defp group_active?(current_path, group) do
-    matching_group(current_path) == group
+  defp group_active?(current_path, group, groups) do
+    matching_group(current_path, groups) == group
   end
 
   # "/invoices" must light up on "/invoices/42" but not on "/invoices/import",
   # which belongs to its own entry.
   defp nav_active?(nil, _path), do: false
-  defp nav_active?(current_path, path), do: current_path == path
+  defp nav_active?(current_path, path), do: current_path == without_query(path)
 
   defp nav_item_class(current_path, path) do
     if nav_active?(current_path, path), do: "menu-active font-medium", else: nil

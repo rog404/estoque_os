@@ -23,19 +23,41 @@ defmodule EstoqueOSWeb.HomeLive.Index do
 
   @impl true
   def mount(_params, _session, socket) do
+    # Which stock this overview is about. `nil` for everyone who has both, and
+    # then every panel below is the whole operation as it always was.
+    segment = Scope.segment(socket.assigns.current_scope)
+
     {:ok,
      socket
      |> assign(:page_title, gettext("Overview"))
-     |> assign(:summary, Reports.summary())
-     |> assign(:expiring, Reports.expiring_soon(limit: @preview))
-     |> assign(:stale_boxes, Reports.stale_boxes(limit: @preview))
-     |> assign(:activity, Reports.recent_activity(limit: @preview))
-     |> assign(:to_review, Reports.counts_needing_review(limit: @preview))
+     |> assign(:segment, segment)
+     |> assign(:summary, Reports.summary(segment: segment))
+     |> assign(:expiring, Reports.expiring_soon(limit: @preview, segment: segment))
+     |> assign(:activity, Reports.recent_activity(limit: @preview, segment: segment))
      |> assign(:may_review?, may_review?(socket))
      # No screen goes deeper into shortages, so this one carries its own weight
      # rather than teasing five rows and stopping.
-     |> assign(:below_minimum, Reports.below_minimum(limit: @shortage_limit))
-     |> assign_readiness()}
+     |> assign(:below_minimum, Reports.below_minimum(limit: @shortage_limit, segment: segment))
+     |> assign_surgical_panels(segment)}
+  end
+
+  # Boxes, disputed counts and kit readiness are the surgical operation asking
+  # itself questions. A box is shared by both stocks and a count is about a box,
+  # so there is no honest way to narrow them to one segment — and a marketing
+  # user has nothing to do with any of it. Empty rather than filtered, and the
+  # panels do not render at all.
+  defp assign_surgical_panels(socket, "marketing") do
+    socket
+    |> assign(:stale_boxes, [])
+    |> assign(:to_review, [])
+    |> assign(:readiness, [])
+  end
+
+  defp assign_surgical_panels(socket, _segment) do
+    socket
+    |> assign(:stale_boxes, Reports.stale_boxes(limit: @preview))
+    |> assign(:to_review, Reports.counts_needing_review(limit: @preview))
+    |> assign_readiness()
   end
 
   # Whose problem a disputed count is. Admin and manager: the two roles that
@@ -186,7 +208,7 @@ defmodule EstoqueOSWeb.HomeLive.Index do
         <!-- The question before a trip is not "how much gauze is there" but "can
              we build the kits". A warehouse can look full and still not complete
              one Kit Paciente because a single cannula ran out. -->
-        <.panel title={gettext("Ready for the next mission")}>
+        <.panel :if={@segment != "marketing"} title={gettext("Ready for the next mission")}>
           <p :if={@readiness == []} class="text-sm opacity-70">
             {gettext("No kit registered yet.")}
           </p>
@@ -245,7 +267,12 @@ defmodule EstoqueOSWeb.HomeLive.Index do
           </ul>
         </.panel>
 
-        <.panel title={gettext("Boxes to recount")}>
+        <!-- Both hidden rather than empty for the marketing role: a box belongs
+             to no segment and a disputed count is about a box, so there is no
+             version of these panels that is *theirs*. Empty, this panel would
+             read as "nothing to recount", which is a different statement and an
+             untrue one. -->
+        <.panel :if={@segment != "marketing"} title={gettext("Boxes to recount")}>
           <p :if={@stale_boxes == []} class="text-sm opacity-70">
             {gettext("No box is waiting on a count.")}
           </p>

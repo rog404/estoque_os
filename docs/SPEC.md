@@ -21,7 +21,8 @@ Initial deployment: Brazil. Design must not block future international use
   documents: Portuguese (data or .po files). Never hardcode Portuguese in code.
 - Mobile-friendly UI (used on notebooks and phones inside warehouses/hospitals).
 - ~2 concurrent users. Simple email+password auth (phx.gen.auth) with roles:
-  `admin`, `operator`, `viewer`.
+  `admin`, `manager`, `marketing`, `logistics`, `auditor` (see §4.6.1 for what
+  `marketing` may see).
 - Online-first. NO offline sync in MVP. The escape hatch for bad connectivity
   is Excel export/import (see §7).
 - Brazil-specific NF-e import lives in `Invoices.Importers.NFe` behind a
@@ -159,6 +160,28 @@ Initial deployment: Brazil. Design must not block future international use
 - From the moment a kit is assembled, writing it off is writing off a
   product: the same "Dar baixa" (issue) and FEFO picking that handle any
   other product handle a kit, with no kit-specific code in that path.
+
+### 4.6.1 Two stocks in one ledger (decided 2026-08-20)
+
+The ONG also holds **marketing material** — shirts, caps, mugs, tote bags — which
+it *sells* rather than consumes on a mission. It is not a separate system: same
+ledger, same lots, same boxes, same warehouse, same NF-e import.
+
+- `products.segment` is `medical` (the default) or `marketing`. A column on the
+  product, not a location: the question is what a thing *is*, and a marketing
+  item stored in the same warehouse is still marketing.
+- Role `marketing` (see §2): writes and sees money, both only inside its own
+  segment. It sells what it holds, so a price is the point rather than a leak.
+- The confinement is a `where` in every query that lists a product, taken from
+  the scope and never from the page — a filter nobody rendered a control for
+  still holds when an event arrives over the socket. Screens whose whole subject
+  is surgical (boxes, kits, missions, counts, load-out, invoices) are refused at
+  the router instead of filtered.
+- Everyone who holds both stocks gets a **filter** on the stock screen, and the
+  marketing menu links to the same screens already narrowed.
+- Selling: a `manual_out` to the `sale` destination, carrying a **sale price per
+  line** beside the unit cost the ledger already keeps. Cost stays cost; what it
+  went out for is a different number and both are worth having.
 
 ### 4.7 Entries without invoice (donations in)
 

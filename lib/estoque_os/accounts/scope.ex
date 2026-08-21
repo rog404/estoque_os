@@ -66,6 +66,16 @@ defmodule EstoqueOS.Accounts.Scope do
   def effective_role(%__MODULE__{user: %User{role: role}}), do: role
   def effective_role(_scope), do: nil
 
+  @doc """
+  The stock this scope may see, or `nil` for all of it.
+
+  Read from the *effective* role, so an admin standing in the marketing role's
+  shoes sees the marketing stock and only that — which is the entire point of
+  being able to stand in it.
+  """
+  def segment(%__MODULE__{} = scope), do: scope |> effective_role() |> User.segment()
+  def segment(_scope), do: nil
+
   @doc "Whether this scope is standing in somebody else's shoes."
   def viewing_as?(%__MODULE__{view_as: role}) when is_binary(role), do: true
   def viewing_as?(_scope), do: false

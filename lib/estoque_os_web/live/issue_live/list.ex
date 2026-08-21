@@ -26,6 +26,8 @@ defmodule EstoqueOSWeb.IssueLive.List do
   # write-offs each had their own, which is how a new destination gets a label
   # on one screen and its raw key on the other.
   import EstoqueOSWeb.Movement, only: [destination_label: 1]
+  alias EstoqueOS.Accounts.Scope
+  alias EstoqueOS.Catalog.Product
   alias EstoqueOS.Reports
   alias EstoqueOSWeb.UserAuth
 
@@ -38,7 +40,8 @@ defmodule EstoqueOSWeb.IssueLive.List do
      |> assign(:page_title, gettext("Manual issues"))
      |> assign(:from, Date.add(today, -90))
      |> assign(:to, today)
-     |> assign(:destination, "")}
+     |> assign(:destination, "")
+     |> assign(:segment, nil)}
   end
 
   @impl true
@@ -46,16 +49,31 @@ defmodule EstoqueOSWeb.IssueLive.List do
     {:noreply,
      socket
      |> assign(:destination, params["destination"] || "")
+     |> assign(:segment, segment(socket, params["segment"]))
      |> load_issues()}
   end
 
+  # A movement belongs to a segment through what it moved. The marketing role
+  # gets theirs whatever the address says; anyone else may ask for one.
+  defp segment(socket, asked) do
+    case Scope.segment(socket.assigns.current_scope) do
+      nil -> if asked in Product.segments(), do: asked
+      forced -> forced
+    end
+  end
+
   defp load_issues(socket) do
-    %{from: from, to: to, destination: destination} = socket.assigns
+    %{from: from, to: to, destination: destination, segment: segment} = socket.assigns
 
     assign(
       socket,
       :rows,
-      Reports.transaction_log(from, to, type: "manual_out", destination: destination, limit: 200)
+      Reports.transaction_log(from, to,
+        type: "manual_out",
+        destination: destination,
+        segment: segment,
+        limit: 200
+      )
     )
   end
 
@@ -193,6 +211,7 @@ defmodule EstoqueOSWeb.IssueLive.List do
      |> assign(:from, parse_date(params["from"], socket.assigns.from))
      |> assign(:to, parse_date(params["to"], socket.assigns.to))
      |> assign(:destination, params["destination"] || "")
+     |> assign(:segment, segment(socket, params["segment"] || socket.assigns.segment))
      |> load_issues()}
   end
 

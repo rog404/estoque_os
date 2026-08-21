@@ -37,6 +37,25 @@ defmodule EstoqueOS.DemoDataTest do
     assert {:error, :already_loaded} = DemoData.run()
   end
 
+  # The second stock exists in the demo, or nobody demonstrating the marketing
+  # role has anything to look at — and the role's whole screen is a filter on
+  # this segment.
+  test "loads a marketing stock alongside the surgical one", %{summary: summary} do
+    assert summary.marketing_products > 0
+
+    marketing = EstoqueOS.Catalog.list_products(segment: "marketing", limit: 100)
+    assert length(marketing) == summary.marketing_products
+
+    # In stock, not just in the catalog.
+    rows = EstoqueOS.Reports.stock_rows(segment: "marketing")
+    assert rows != []
+    assert Enum.all?(rows, &(&1.quantity |> Decimal.compare(0) == :gt))
+
+    # And the surgical stock is not counted into it.
+    surgical = EstoqueOS.Reports.stock_rows(segment: "medical")
+    assert length(surgical) > length(rows)
+  end
+
   describe "the account" do
     # One, and only one. Creating the rest is the administrator's first job on a
     # fresh install and a flow worth walking rather than seeding around.

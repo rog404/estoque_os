@@ -25,7 +25,7 @@ defmodule EstoqueOSWeb.NavRolesTest do
   # listed again here: an entry added to the nav without a thought about roles
   # should fail this file, and it cannot do that if the list is a copy.
   defp menu_paths do
-    ~w(admin manager logistics auditor)
+    ~w(admin manager marketing logistics auditor)
     |> Enum.flat_map(fn role ->
       %Scope{user: %User{role: role}}
       |> Layouts.visible_groups()
@@ -37,7 +37,7 @@ defmodule EstoqueOSWeb.NavRolesTest do
 
   defp scope_for(role), do: %Scope{user: %User{role: role}}
 
-  for role <- ~w(admin manager logistics auditor) do
+  for role <- ~w(admin manager marketing logistics auditor) do
     @role role
 
     test "the menu matches what the router allows for #{role}", %{conn: conn} do

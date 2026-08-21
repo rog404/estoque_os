@@ -19,6 +19,8 @@ defmodule EstoqueOSWeb.StockLive.Index do
 
   import EstoqueOS.Coercion
 
+  alias EstoqueOS.Accounts.Scope
+  alias EstoqueOS.Catalog.Product
   alias EstoqueOS.Inventory.Locations
   alias EstoqueOS.Reports
   alias EstoqueOSWeb.UserAuth
@@ -37,6 +39,10 @@ defmodule EstoqueOSWeb.StockLive.Index do
      |> assign(:only_expiring, false)
      |> assign(:only_controlled, false)
      |> assign(:only_needs_review, false)
+     |> assign(:segment, nil)
+     # A locked segment is not a filter the page offers: it is the only stock
+     # this role has, so it neither shows as an active filter nor clears.
+     |> assign(:segment_locked?, false)
      |> assign(:sort, %{key: "product", dir: :asc})
      |> assign(:page, 1)
      |> assign(:locations, Locations.list_locations())
@@ -62,6 +68,8 @@ defmodule EstoqueOSWeb.StockLive.Index do
      |> assign(:only_expiring, checked?(params["expiring"]))
      |> assign(:only_controlled, checked?(params["controlled"]))
      |> assign(:only_needs_review, checked?(params["review"]))
+     |> assign(:segment, segment(socket, params["segment"]))
+     |> assign(:segment_locked?, locked?(socket))
      |> load_rows()}
   end
 
@@ -73,6 +81,7 @@ defmodule EstoqueOSWeb.StockLive.Index do
         only_expiring: socket.assigns.only_expiring,
         only_controlled: socket.assigns.only_controlled,
         only_needs_review: socket.assigns.only_needs_review,
+        segment: socket.assigns.segment,
         sort: socket.assigns.sort,
         page: socket.assigns.page
       )
@@ -93,6 +102,7 @@ defmodule EstoqueOSWeb.StockLive.Index do
   defp active_filters(assigns) do
     [
       assigns.location_id != nil,
+      assigns.segment != nil and not assigns.segment_locked?,
       assigns.only_expiring,
       assigns.only_controlled,
       assigns.only_needs_review
@@ -102,7 +112,8 @@ defmodule EstoqueOSWeb.StockLive.Index do
 
   defp filtering?(assigns) do
     assigns.search != "" or assigns.location_id != nil or assigns.only_expiring or
-      assigns.only_controlled or assigns.only_needs_review
+      assigns.only_controlled or assigns.only_needs_review or
+      (assigns.segment != nil and not assigns.segment_locked?)
   end
 
   # Both totals skip nils rather than treating them as zero: a donation with no
@@ -182,6 +193,23 @@ defmodule EstoqueOSWeb.StockLive.Index do
                     selected={location.id == @location_id}
                   >
                     {location.name}
+                  </option>
+                </select>
+              </label>
+
+              <!-- Not rendered for a role that has only one stock. The gate is
+                   `segment/2`, which ignores whatever arrives; this is only
+                   about not offering a choice that does not exist. -->
+              <label :if={not @segment_locked?} class="fieldset w-full">
+                <span class="label">{gettext("Stock")}</span>
+                <select name="segment" class="select w-full">
+                  <option value="">{gettext("Every stock")}</option>
+                  <option
+                    :for={segment <- Product.segments()}
+                    value={segment}
+                    selected={segment == @segment}
+                  >
+                    {segment_label(segment)}
                   </option>
                 </select>
               </label>
@@ -283,7 +311,11 @@ defmodule EstoqueOSWeb.StockLive.Index do
           </:col>
 
           <:col :let={row} label={gettext("Lot")} key="lot" group width="w-[10%]">
-            {row.lot_number || gettext("unknown")}
+            <!-- "desconhecido" is a complaint, and it is only true of goods that
+                 should have carried a lot number. A t-shirt has none to read, so
+                 for those the cell says nothing rather than accusing somebody of
+                 not having looked. -->
+            {row.lot_number || blank_lot(row)}
           </:col>
 
           <:col :let={row} label={gettext("Expiry")} key="expires_on" width="w-[13%]">
@@ -406,6 +438,8 @@ defmodule EstoqueOSWeb.StockLive.Index do
      |> assign(:only_expiring, checked?(params["only_expiring"]))
      |> assign(:only_controlled, checked?(params["only_controlled"]))
      |> assign(:only_needs_review, checked?(params["only_needs_review"]))
+     |> assign(:segment, segment(socket, params["segment"]))
+     |> assign(:segment_locked?, locked?(socket))
      |> assign(:page, 1)
      |> load_rows()}
   end
@@ -429,11 +463,17 @@ defmodule EstoqueOSWeb.StockLive.Index do
      |> assign(:only_expiring, false)
      |> assign(:only_controlled, false)
      |> assign(:only_needs_review, false)
+     # Not cleared: a marketing user has no other stock to clear it back to.
+     |> assign(:segment, segment(socket, nil))
      |> assign(:sort, %{key: "product", dir: :asc})
      |> assign(:page, 1)
      |> load_rows()}
   end
 
+  # What the page may ask for, and the role always wins. A marketing user's
+  # segment is not a filter they chose and can drop — it is the only stock they
+  # have — so a `segment=` in the address or in a form they hand-crafted is
+  # ignored rather than obeyed.
   def handle_event("validate", _params, socket), do: {:noreply, socket}
 
   # This screen is readable by anyone signed in, so the gate on the route is the
@@ -479,6 +519,25 @@ defmodule EstoqueOSWeb.StockLive.Index do
 
       [] ->
         {:noreply, put_flash(socket, :error, gettext("Pick a spreadsheet first."))}
+    end
+  end
+
+  # The two stocks, in the words the operation uses. `Movement` holds the
+  # movement labels for the same reason: a name that lives next to the data it
+  # names is a name two screens can disagree about.
+  def segment_label("medical"), do: gettext("Surgical")
+  def segment_label("marketing"), do: gettext("Marketing")
+  def segment_label(nil), do: nil
+
+  defp blank_lot(%{lot_expected: false}), do: "—"
+  defp blank_lot(_row), do: gettext("unknown")
+
+  defp locked?(socket), do: Scope.segment(socket.assigns.current_scope) != nil
+
+  defp segment(socket, asked) do
+    case Scope.segment(socket.assigns.current_scope) do
+      nil -> if asked in Product.segments(), do: asked
+      forced -> forced
     end
   end
 

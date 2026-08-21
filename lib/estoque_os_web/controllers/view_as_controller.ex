@@ -66,6 +66,7 @@ defmodule EstoqueOSWeb.ViewAsController do
   whoever holds it today.
   """
   def label("manager"), do: gettext("stock manager")
+  def label("marketing"), do: gettext("marketing manager")
   def label("logistics"), do: gettext("logistics operator")
   def label("auditor"), do: gettext("auditor")
   def label("admin"), do: gettext("administrator")
