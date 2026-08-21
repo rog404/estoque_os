@@ -9,7 +9,19 @@ defmodule EstoqueOSWeb.UserLive.Settings do
   """
   def viewer_events, do: ~w(validate_email update_email validate_password update_password)
 
-  on_mount {EstoqueOSWeb.UserAuth, :require_sudo_mode}
+  # No `:require_sudo_mode` on the screen, deliberately, and this is a bug fix
+  # rather than a relaxation.
+  #
+  # It was gated at ten minutes, so ten minutes after signing in, clicking
+  # "Configurações" answered with the login page. Reported as a bug, and read as
+  # one: you were still signed in everywhere else, so the app looked like it had
+  # forgotten you at random. Nothing on this screen is secret — it is your own
+  # address and two empty forms.
+  #
+  # What *is* sensitive is submitting one, and that is still checked, at the
+  # twenty minutes the account code has always used. The difference is that a
+  # lapsed window now disables the button and says why, which is the pattern
+  # every other guarded control in this app already follows.
 
   alias EstoqueOS.Accounts
 
@@ -45,7 +57,12 @@ defmodule EstoqueOSWeb.UserLive.Settings do
           spellcheck="false"
           required
         />
-        <.button variant="primary" phx-disable-with={gettext("Changing...")}>
+        <.button
+          variant="primary"
+          disabled={not @confirmed_recently?}
+          title={sudo_block(assigns)}
+          phx-disable-with={gettext("Changing...")}
+        >
           {gettext("Change Email")}
         </.button>
       </.form>
@@ -83,10 +100,25 @@ defmodule EstoqueOSWeb.UserLive.Settings do
           autocomplete="new-password"
           spellcheck="false"
         />
-        <.button variant="primary" phx-disable-with={gettext("Saving...")}>
+        <.button
+          variant="primary"
+          disabled={not @confirmed_recently?}
+          title={sudo_block(assigns)}
+          phx-disable-with={gettext("Saving...")}
+        >
           {gettext("Save Password")}
         </.button>
       </.form>
+
+      <!-- Said once, above the forms it applies to, rather than discovered by
+           pressing a dead button. There is no mailer here — accounts are handed
+           out by an administrator — so "sign in again" is the whole of the
+           remedy and the message says exactly that. -->
+      <p :if={not @confirmed_recently?} class="alert alert-warning mt-6">
+        {gettext(
+          "For your own security, changing your email or password needs a fresh sign-in. Log out and in again, and come back here."
+        )}
+      </p>
     </Layouts.app>
     """
   end
@@ -118,6 +150,11 @@ defmodule EstoqueOSWeb.UserLive.Settings do
       |> assign(:email_form, to_form(email_changeset))
       |> assign(:password_form, to_form(password_changeset))
       |> assign(:trigger_submit, false)
+      # Twenty minutes, the window the account code has always used for a
+      # sensitive change. Read once on mount and again when a submission is
+      # refused, which is the only moment it can have lapsed while somebody was
+      # looking at the screen.
+      |> assign(:confirmed_recently?, Accounts.sudo_mode?(user))
 
     {:ok, socket}
   end
@@ -151,30 +188,25 @@ defmodule EstoqueOSWeb.UserLive.Settings do
   def handle_event("update_email", params, socket) do
     %{"user" => user_params} = params
     user = socket.assigns.current_scope.user
-    true = Accounts.sudo_mode?(user)
+
+    # `true = Accounts.sudo_mode?(user)` was here, and it was the second half of
+    # the same bug: the window could lapse between opening the screen and
+    # pressing the button, and then this raised a MatchError. A crashed
+    # LiveView explains nothing to the person who just typed a password.
 
     # The form is not rendered when there is no mailer, but a socket can still
     # be sent the event. Confirming an address by emailing it is the whole
     # mechanism here, so with no mailer there is nothing to fall back to.
-    if Accounts.email_enabled?() do
-      case Accounts.change_user_email(user, user_params) do
-        %{valid?: true} = changeset ->
-          Accounts.deliver_user_update_email_instructions(
-            Ecto.Changeset.apply_action!(changeset, :insert),
-            user.email,
-            &url(~p"/users/settings/confirm-email/#{&1}")
-          )
+    cond do
+      not Accounts.sudo_mode?(user) ->
+        {:noreply,
+         socket |> assign(:confirmed_recently?, false) |> put_flash(:error, sudo_message())}
 
-          info =
-            gettext("A link to confirm your email change has been sent to the new address.")
+      not Accounts.email_enabled?() ->
+        {:noreply, put_flash(socket, :error, email_disabled_message())}
 
-          {:noreply, put_flash(socket, :info, info)}
-
-        changeset ->
-          {:noreply, assign(socket, :email_form, to_form(changeset, action: :insert))}
-      end
-    else
-      {:noreply, put_flash(socket, :error, email_disabled_message())}
+      true ->
+        change_email(socket, user, user_params)
     end
   end
 
@@ -193,8 +225,16 @@ defmodule EstoqueOSWeb.UserLive.Settings do
   def handle_event("update_password", params, socket) do
     %{"user" => user_params} = params
     user = socket.assigns.current_scope.user
-    true = Accounts.sudo_mode?(user)
 
+    if Accounts.sudo_mode?(user) do
+      update_password(socket, user, user_params)
+    else
+      {:noreply,
+       socket |> assign(:confirmed_recently?, false) |> put_flash(:error, sudo_message())}
+    end
+  end
+
+  defp update_password(socket, user, user_params) do
     case Accounts.change_user_password(user, user_params) do
       %{valid?: true} = changeset ->
         {:noreply, assign(socket, trigger_submit: true, password_form: to_form(changeset))}
@@ -202,6 +242,33 @@ defmodule EstoqueOSWeb.UserLive.Settings do
       changeset ->
         {:noreply, assign(socket, password_form: to_form(changeset, action: :insert))}
     end
+  end
+
+  defp change_email(socket, user, user_params) do
+    case Accounts.change_user_email(user, user_params) do
+      %{valid?: true} = changeset ->
+        Accounts.deliver_user_update_email_instructions(
+          Ecto.Changeset.apply_action!(changeset, :insert),
+          user.email,
+          &url(~p"/users/settings/confirm-email/#{&1}")
+        )
+
+        info = gettext("A link to confirm your email change has been sent to the new address.")
+
+        {:noreply, put_flash(socket, :info, info)}
+
+      changeset ->
+        {:noreply, assign(socket, :email_form, to_form(changeset, action: :insert))}
+    end
+  end
+
+  # Why the two buttons are disabled, or nil when they are not — the same shape
+  # `write_block/1` has for every other guarded control in the app.
+  defp sudo_block(%{confirmed_recently?: true}), do: nil
+  defp sudo_block(_assigns), do: sudo_message()
+
+  defp sudo_message do
+    gettext("Log out and in again to change your email or password.")
   end
 
   defp email_disabled_message do
