@@ -163,7 +163,7 @@ defmodule EstoqueOSWeb.ViewerWriteGuardTest do
       # reports, and `search` is a read like the rest of them.
       "stock_live/index" => ~w(),
       "box_live/index" => ~w(create move),
-      "box_live/show" => ~w(move verify rebox confirm_new_box cancel_new_box),
+      "box_live/show" => ~w(move verify rebox stow confirm_new_box cancel_new_box),
       "location_live/index" => ~w(create edit cancel_rename rename deactivate),
       "kit_live/index" => ~w(create),
       "kit_live/show" =>

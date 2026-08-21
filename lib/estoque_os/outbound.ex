@@ -52,24 +52,11 @@ defmodule EstoqueOS.Outbound do
 
   @doc """
   Stock at a location that is in no box, per lot, FEFO first.
+
+  One implementation, in `Locations`, because two screens ask it for opposite
+  reasons: the load-out to refuse it, and the box screen to put an end to it.
   """
-  def loose_stock(location_id) do
-    StockSnapshot
-    |> join(:inner, [s], l in Lot, on: l.id == s.lot_id)
-    |> join(:inner, [s, l], p in Product, on: p.id == l.product_id)
-    |> where([s], s.location_id == ^location_id and is_nil(s.box_id) and s.quantity != 0)
-    |> order_by([s, l, p], asc_nulls_last: l.expires_on, asc: p.name)
-    |> select([s, l, p], %{
-      lot_id: l.id,
-      lot_number: l.lot_number,
-      expires_on: l.expires_on,
-      product_id: p.id,
-      product: p.name,
-      controlled: p.controlled,
-      quantity: s.quantity
-    })
-    |> Repo.all()
-  end
+  defdelegate loose_stock(location_id), to: EstoqueOS.Inventory.Locations
 
   @doc """
   Which lots to take for a quantity of a product, oldest expiry first.

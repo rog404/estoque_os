@@ -294,6 +294,99 @@ defmodule EstoqueOSWeb.BoxLiveTest do
     end
   end
 
+  describe "loose stock" do
+    setup %{warehouse: warehouse} do
+      product = product_fixture(%{name: "Compressa de gaze 7,5x7,5"})
+      lot = lot_fixture(%{product_id: product.id})
+
+      {:ok, _} =
+        Inventory.post_transaction(%{
+          type: "donation_in",
+          user_id: actor_id(),
+          entries: [
+            %{lot_id: lot.id, box_id: nil, location_id: warehouse.id, quantity: Decimal.new(40)}
+          ]
+        })
+
+      %{loose_lot: lot}
+    end
+
+    # The question this answers had no answer: `rebox` needs a box to take the
+    # goods *out* of, and loose stock is exactly the stock with none. Goods that
+    # arrived through a manual entry with the box left blank sat where no
+    # load-out would carry them and no screen would move them.
+    test "is listed on the box screen, waiting for a box", %{conn: conn, box: box} do
+      {:ok, _view, html} = live(conn, ~p"/boxes/#{box.id}")
+
+      assert html =~ "Solto aqui, sem caixa"
+      assert html =~ "Compressa de gaze 7,5x7,5"
+      assert html =~ "Guardar em BL01"
+    end
+
+    test "goes into the box, and the location's balance does not move", %{
+      conn: conn,
+      box: box,
+      warehouse: warehouse,
+      loose_lot: lot
+    } do
+      {:ok, view, _html} = live(conn, ~p"/boxes/#{box.id}")
+
+      at_location = Inventory.balance(lot_id: lot.id, location_id: warehouse.id)
+
+      html =
+        view
+        |> element("#stow-#{lot.id}")
+        |> render_submit(%{"quantity" => "40"})
+
+      assert html =~ "Guardado em BL01"
+
+      # Nothing left the room: only where inside it the goods sit changed.
+      assert Decimal.equal?(
+               Inventory.balance(lot_id: lot.id, location_id: warehouse.id),
+               at_location
+             )
+
+      assert Decimal.equal?(Inventory.balance(lot_id: lot.id, box_id: box.id), Decimal.new(40))
+
+      assert Decimal.equal?(
+               Inventory.balance(lot_id: lot.id, location_id: warehouse.id, box_id: nil),
+               Decimal.new(0)
+             )
+    end
+
+    test "part of it can go, and the rest stays loose", %{conn: conn, box: box, loose_lot: lot} do
+      {:ok, view, _html} = live(conn, ~p"/boxes/#{box.id}")
+
+      view |> element("#stow-#{lot.id}") |> render_submit(%{"quantity" => "15"})
+
+      assert Decimal.equal?(Inventory.balance(lot_id: lot.id, box_id: box.id), Decimal.new(15))
+
+      assert Decimal.equal?(
+               Inventory.balance(lot_id: lot.id, box_id: nil),
+               Decimal.new(25)
+             )
+    end
+
+    test "more than is loose is refused", %{conn: conn, box: box, loose_lot: lot} do
+      {:ok, view, _html} = live(conn, ~p"/boxes/#{box.id}")
+
+      html = view |> element("#stow-#{lot.id}") |> render_submit(%{"quantity" => "999"})
+
+      assert html =~ "40 solto"
+      assert Decimal.equal?(Inventory.balance(lot_id: lot.id, box_id: box.id), Decimal.new(0))
+    end
+
+    # Putting things into a box says nothing about whether the count in it was
+    # right, and stamping it would launder a presumption into a verification.
+    test "does not mark the box as counted", %{conn: conn, box: box, loose_lot: lot} do
+      {:ok, view, _html} = live(conn, ~p"/boxes/#{box.id}")
+
+      view |> element("#stow-#{lot.id}") |> render_submit(%{"quantity" => "40"})
+
+      assert is_nil(Locations.get_box!(box.id).last_verified_at)
+    end
+  end
+
   describe "locations" do
     test "lists the places stock can be, with what they hold", %{conn: conn} do
       {:ok, _view, html} = live(conn, ~p"/locations")
