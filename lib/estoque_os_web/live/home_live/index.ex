@@ -95,7 +95,7 @@ defmodule EstoqueOSWeb.HomeLive.Index do
         <.stat
           label={gettext("In stock")}
           value={quantity(@summary.units)}
-          hint={gettext("units in %{count} position(s)", count: @summary.positions)}
+          hint={gettext("units in %{count} lot(s)", count: @summary.positions)}
         />
         <.stat
           :if={@sees_money?}

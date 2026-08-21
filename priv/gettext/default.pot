@@ -625,11 +625,6 @@ msgstr ""
 msgid "not informed"
 msgstr ""
 
-#: lib/estoque_os_web/components/core_components.ex:703
-#, elixir-autogen, elixir-format
-msgid "%{counted} line(s) read, %{adjusted} position(s) adjusted."
-msgstr ""
-
 #: lib/estoque_os_web/components/ui.ex:710
 #: lib/estoque_os_web/live/audit_report_live/index.ex:206
 #: lib/estoque_os_web/live/box_live/index.ex:84
@@ -997,11 +992,6 @@ msgstr ""
 msgid "never counted"
 msgstr ""
 
-#: lib/estoque_os_web/live/home_live/index.ex:98
-#, elixir-autogen, elixir-format
-msgid "units in %{count} position(s)"
-msgstr ""
-
 #: lib/estoque_os_web/live/home_live/index.ex:117
 #, elixir-autogen, elixir-format
 msgid "waiting for confirmation"
@@ -1361,12 +1351,6 @@ msgstr ""
 msgid "e.g. Missão Tefé"
 msgstr ""
 
-#: lib/estoque_os_web/live/box_live/index.ex:98
-#: lib/estoque_os_web/live/load_out_live/index.ex:195
-#, elixir-autogen, elixir-format
-msgid "in %{count} position(s)"
-msgstr ""
-
 #: lib/estoque_os_web/components/ui.ex:430
 #: lib/estoque_os_web/live/location_live/index.ex:165
 #, elixir-autogen, elixir-format
@@ -1404,11 +1388,6 @@ msgstr ""
 msgid "%{days} days without a count"
 msgstr ""
 
-#: lib/estoque_os_web/live/audit_live/index.ex:44
-#, elixir-autogen, elixir-format
-msgid "%{quantity} units in %{count} position(s)"
-msgstr ""
-
 #: lib/estoque_os_web/components/counting.ex:128
 #, elixir-autogen, elixir-format
 msgid "Blank lines are not counted and keep what the ledger presumed."
@@ -1429,11 +1408,6 @@ msgstr ""
 #: lib/estoque_os_web/live/audit_live/count.ex:93
 #, elixir-autogen, elixir-format
 msgid "Count of box %{code}"
-msgstr ""
-
-#: lib/estoque_os_web/live/audit_live/count.ex:106
-#, elixir-autogen, elixir-format
-msgid "Count recorded: %{adjusted} position(s) corrected out of %{counted} counted."
 msgstr ""
 
 #: lib/estoque_os_web/live/audit_live/index.ex:63
@@ -2066,11 +2040,6 @@ msgstr ""
 msgid "%{boxes} box(es) and %{lines} loose line(s) leave %{from} for %{to}."
 msgstr ""
 
-#: lib/estoque_os_web/live/return_live/index.ex:266
-#, elixir-autogen, elixir-format
-msgid "%{count} position(s) come back to %{to}."
-msgstr ""
-
 #: lib/estoque_os_web/live/invoice_live/show.ex:572
 #, elixir-autogen, elixir-format
 msgid "%{count} unit price(s) look wrong against this product's history."
@@ -2217,11 +2186,6 @@ msgstr ""
 msgid "synonym"
 msgstr ""
 
-#: lib/estoque_os_web/live/stock_live/index.ex:292
-#, elixir-autogen, elixir-format
-msgid "%{count} position(s) match"
-msgstr ""
-
 #: lib/estoque_os_web/live/stock_live/index.ex:271
 #: lib/estoque_os_web/live/stock_live/index.ex:319
 #, elixir-autogen, elixir-format
@@ -2282,11 +2246,6 @@ msgstr ""
 #: lib/estoque_os_web/live/invoice_live/import.ex:52
 #, elixir-autogen, elixir-format
 msgid "Read the XML"
-msgstr ""
-
-#: lib/estoque_os_web/live/audit_report_live/index.ex:195
-#, elixir-autogen, elixir-format
-msgid "%{count} position(s) under Portaria 344."
 msgstr ""
 
 #: lib/estoque_os_web/live/audit_report_live/index.ex:121
@@ -2527,12 +2486,6 @@ msgstr ""
 #: lib/estoque_os_web/live/invoice_live/show.ex:448
 #, elixir-autogen, elixir-format
 msgid "Name for the new catalog product"
-msgstr ""
-
-#: lib/estoque_os_web/live/product_live/show.ex:127
-#: lib/estoque_os_web/live/stock_live/index.ex:304
-#, elixir-autogen, elixir-format
-msgid "Positions"
 msgstr ""
 
 #: lib/estoque_os_web/live/audit_live/count.ex:260
@@ -2853,11 +2806,6 @@ msgstr ""
 msgid "has an expiry date"
 msgstr ""
 
-#: lib/estoque_os_web/live/load_out_live/index.ex:240
-#, elixir-autogen, elixir-format
-msgid "%{count} position(s) are not in a box and cannot travel."
-msgstr ""
-
 #: lib/estoque_os_web/live/load_out_live/index.ex:245
 #, elixir-autogen, elixir-format
 msgid "Box them in the receiving conference first. Anything leaving loose has nothing to identify it at the mission and nothing to bring it back."
@@ -3131,11 +3079,6 @@ msgstr ""
 msgid "%{box} holds %{sector} items"
 msgstr ""
 
-#: lib/estoque_os_web/live/stock_live/index.ex:450
-#, elixir-autogen, elixir-format
-msgid "%{count} position(s) on this page"
-msgstr ""
-
 #: lib/estoque_os_web/live/box_live/index.ex:77
 #, elixir-autogen, elixir-format
 msgid "A box is what travels. Register the ones the logistics operator already uses, with the codes written on them."
@@ -3284,11 +3227,6 @@ msgstr ""
 #: lib/estoque_os_web/live/kit_live/show.ex:471
 #, elixir-autogen, elixir-format
 msgid "Save %{item}"
-msgstr ""
-
-#: lib/estoque_os_web/live/stock_live/index.ex:168
-#, elixir-autogen, elixir-format
-msgid "%{count} position(s)"
 msgstr ""
 
 #: lib/estoque_os_web/components/layouts.ex:124
@@ -3568,11 +3506,6 @@ msgstr ""
 #: lib/estoque_os_web/components/counting.ex:111
 #, elixir-autogen, elixir-format
 msgid "%{count} item(s) did not match. Please count these again."
-msgstr ""
-
-#: lib/estoque_os_web/live/audit_live/count.ex:222
-#, elixir-autogen, elixir-format
-msgid "%{count} position(s) change; the box is marked as counted today."
 msgstr ""
 
 #: lib/estoque_os_web/components/counting.ex:114
@@ -4836,4 +4769,71 @@ msgstr ""
 #: lib/estoque_os_web/live/user_live/settings.ex:271
 #, elixir-autogen, elixir-format
 msgid "Log out and in again to change your email or password."
+msgstr ""
+
+#: lib/estoque_os_web/components/core_components.ex:703
+#, elixir-autogen, elixir-format
+msgid "%{counted} line(s) read, %{adjusted} lot(s) adjusted."
+msgstr ""
+
+#: lib/estoque_os_web/live/load_out_live/index.ex:240
+#, elixir-autogen, elixir-format
+msgid "%{count} lot(s) are not in a box and cannot travel."
+msgstr ""
+
+#: lib/estoque_os_web/live/audit_live/count.ex:222
+#, elixir-autogen, elixir-format
+msgid "%{count} lot(s) change; the box is marked as counted today."
+msgstr ""
+
+#: lib/estoque_os_web/live/return_live/index.ex:266
+#, elixir-autogen, elixir-format
+msgid "%{count} lot(s) come back to %{to}."
+msgstr ""
+
+#: lib/estoque_os_web/live/audit_report_live/index.ex:195
+#, elixir-autogen, elixir-format
+msgid "%{count} lot(s) under Portaria 344."
+msgstr ""
+
+#: lib/estoque_os_web/live/stock_live/index.ex:168
+#, elixir-autogen, elixir-format
+msgid "%{count} stored lot(s)"
+msgstr ""
+
+#: lib/estoque_os_web/live/stock_live/index.ex:292
+#, elixir-autogen, elixir-format
+msgid "%{count} stored lot(s) match"
+msgstr ""
+
+#: lib/estoque_os_web/live/stock_live/index.ex:450
+#, elixir-autogen, elixir-format
+msgid "%{count} stored lot(s) on this page"
+msgstr ""
+
+#: lib/estoque_os_web/live/audit_live/index.ex:44
+#, elixir-autogen, elixir-format
+msgid "%{quantity} units in %{count} lot(s)"
+msgstr ""
+
+#: lib/estoque_os_web/live/audit_live/count.ex:106
+#, elixir-autogen, elixir-format
+msgid "Count recorded: %{adjusted} lot(s) corrected out of %{counted} counted."
+msgstr ""
+
+#: lib/estoque_os_web/live/product_live/show.ex:127
+#: lib/estoque_os_web/live/stock_live/index.ex:304
+#, elixir-autogen, elixir-format
+msgid "Stored lots"
+msgstr ""
+
+#: lib/estoque_os_web/live/box_live/index.ex:98
+#: lib/estoque_os_web/live/load_out_live/index.ex:195
+#, elixir-autogen, elixir-format
+msgid "in %{count} lot(s)"
+msgstr ""
+
+#: lib/estoque_os_web/live/home_live/index.ex:98
+#, elixir-autogen, elixir-format
+msgid "units in %{count} lot(s)"
 msgstr ""

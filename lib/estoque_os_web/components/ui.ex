@@ -800,7 +800,7 @@ defmodule EstoqueOSWeb.UI do
         <:col label={gettext("Quantity")} key="quantity" align={:right} emphasis={:primary} :let={row}>
           {row.quantity}
         </:col>
-        <:foot>{gettext("45 position(s)")}</:foot>
+        <:foot>{gettext("45 lot(s)")}</:foot>
       </.data_table>
   """
   attr :rows, :list, required: true

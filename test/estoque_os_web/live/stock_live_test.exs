@@ -183,7 +183,7 @@ defmodule EstoqueOSWeb.StockLiveTest do
 
     html = view |> element("#spreadsheet-import-form") |> render_submit()
 
-    assert html =~ "1 posição(ões) ajustada(s)"
+    assert html =~ "1 lote(s) ajustado(s)"
     assert Decimal.equal?(Inventory.balance(lot_id: lot.id), Decimal.new(287))
   end
 

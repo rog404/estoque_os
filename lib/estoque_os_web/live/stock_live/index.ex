@@ -165,7 +165,7 @@ defmodule EstoqueOSWeb.StockLive.Index do
       <.header>
         {gettext("Stock")}
         <:subtitle>
-          {gettext("%{count} position(s)", count: @total)}
+          {gettext("%{count} stored lot(s)", count: @total)}
           <span :if={@sees_money?}>
             · <.amount value={money(@total_value)} /> {gettext("on this page")}
           </span>
@@ -289,7 +289,7 @@ defmodule EstoqueOSWeb.StockLive.Index do
           />
 
           <span class="text-sm text-base-content/80">
-            {gettext("%{count} position(s) match", count: @total)}
+            {gettext("%{count} stored lot(s) match", count: @total)}
           </span>
         </div>
       </.toolbar>
@@ -301,7 +301,7 @@ defmodule EstoqueOSWeb.StockLive.Index do
         )}
       </p>
 
-      <.panel title={gettext("Positions")} flush>
+      <.panel title={gettext("Stored lots")} flush>
         <.data_table
           rows={@rows}
           sort={@sort}
@@ -447,7 +447,7 @@ defmodule EstoqueOSWeb.StockLive.Index do
           </:col>
 
           <:foot span={4}>
-            {gettext("%{count} position(s) on this page", count: length(@rows))}
+            {gettext("%{count} stored lot(s) on this page", count: length(@rows))}
           </:foot>
           <:foot align={:right}>{quantity(@total_quantity)}</:foot>
           <:foot :if={@sees_money?} align={:right}></:foot>

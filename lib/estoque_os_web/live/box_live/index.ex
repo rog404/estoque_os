@@ -95,7 +95,7 @@ defmodule EstoqueOSWeb.BoxLive.Index do
           <:col :let={row} label={gettext("Presumed contents")} align={:right} emphasis={:primary}>
             {quantity(row.quantity)}
             <p class="text-sm font-normal text-base-content/80">
-              {gettext("in %{count} position(s)", count: row.positions)}
+              {gettext("in %{count} lot(s)", count: row.positions)}
             </p>
           </:col>
 

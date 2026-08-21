@@ -700,7 +700,7 @@ defmodule EstoqueOSWeb.CoreComponents do
   def spreadsheet_outcome(assigns) do
     ~H"""
     <div :if={@result} class="alert alert-success mt-4">
-      {gettext("%{counted} line(s) read, %{adjusted} position(s) adjusted.",
+      {gettext("%{counted} line(s) read, %{adjusted} lot(s) adjusted.",
         counted: @result.counted,
         adjusted: @result.adjusted
       )}
