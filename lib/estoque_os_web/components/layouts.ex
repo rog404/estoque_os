@@ -339,13 +339,13 @@ defmodule EstoqueOSWeb.Layouts do
             label: gettext("Invoices"),
             path: ~p"/invoices",
             icon: "hero-document-text",
-            roles: ~w(admin manager auditor)
+            roles: ~w(admin manager marketing auditor)
           },
           %{
             label: gettext("Manual entry"),
             path: ~p"/entry",
             icon: "hero-inbox-arrow-down",
-            roles: ~w(admin manager logistics)
+            roles: ~w(admin manager marketing logistics)
           },
           # Not the logistics partner's: a spreadsheet import writes counts for
           # the whole warehouse at once, without a box in anyone's hands.
@@ -380,7 +380,7 @@ defmodule EstoqueOSWeb.Layouts do
             label: gettext("Write off"),
             path: ~p"/issue",
             icon: "hero-arrow-up-tray",
-            roles: ~w(admin manager)
+            roles: ~w(admin manager marketing)
           },
           %{
             label: gettext("Load-out"),
@@ -401,15 +401,16 @@ defmodule EstoqueOSWeb.Layouts do
         label: gettext("Stock"),
         icon: "hero-archive-box",
         items: [
-          # Not `:everyone`: the marketing role reaches the same screen through
-          # its own group, already narrowed to its stock. Offering it here as
-          # well would give that role two entries to the same page, one of them
-          # labelled as though it were the whole warehouse.
+          # `:everyone` again, and the marketing role is the reason it is worth a
+          # comment: this is the same screen for them, narrowed to their stock by
+          # the scope rather than by a second menu entry. A "Marketing" group
+          # duplicating Estoque, Entradas and Dar baixa was three names for
+          # screens the system already had.
           %{
             label: gettext("Stock"),
             path: ~p"/stock",
             icon: "hero-squares-2x2",
-            roles: ~w(admin manager logistics auditor)
+            roles: :everyone
           },
           # `:everyone` used to mean everyone, and then a role arrived that has
           # one stock and no boxes, kits or missions in it. These now name the
@@ -436,46 +437,6 @@ defmodule EstoqueOSWeb.Layouts do
           }
         ]
       },
-      # The other stock. Its own group rather than entries sprinkled through the
-      # surgical ones, because it is a different operation with a different
-      # person in charge: material that is *sold*, with a price on the way out
-      # and nothing to do with a mission.
-      #
-      # The paths carry `?segment=marketing`, which is what makes them distinct
-      # entries rather than duplicates of the surgical ones — and for the
-      # marketing role the screens ignore it and use the role anyway, so a
-      # tampered address changes nothing.
-      %{
-        section: "marketing",
-        label: gettext("Marketing"),
-        icon: "hero-megaphone",
-        items: [
-          %{
-            label: gettext("Marketing stock"),
-            path: ~p"/stock?segment=marketing",
-            icon: "hero-squares-2x2",
-            roles: ~w(admin manager marketing)
-          },
-          %{
-            label: gettext("Entry"),
-            path: ~p"/entry?segment=marketing",
-            icon: "hero-inbox-arrow-down",
-            roles: ~w(admin manager marketing)
-          },
-          %{
-            label: gettext("Sell or write off"),
-            path: ~p"/issue?segment=marketing",
-            icon: "hero-arrow-up-tray",
-            roles: ~w(admin manager marketing)
-          },
-          %{
-            label: gettext("What went out"),
-            path: ~p"/issues?segment=marketing",
-            icon: "hero-clipboard-document-list",
-            roles: ~w(admin manager marketing)
-          }
-        ]
-      },
       %{
         section: "reports",
         label: gettext("Reports"),
@@ -491,7 +452,7 @@ defmodule EstoqueOSWeb.Layouts do
             label: gettext("Manual issues"),
             path: ~p"/issues",
             icon: "hero-arrow-up-tray",
-            roles: ~w(admin manager logistics auditor)
+            roles: :everyone
           },
           %{
             label: gettext("Missions"),

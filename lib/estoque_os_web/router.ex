@@ -157,7 +157,7 @@ defmodule EstoqueOSWeb.Router do
     live_session :money,
       on_mount: [
         {EstoqueOSWeb.UserAuth, :require_authenticated},
-        {EstoqueOSWeb.UserAuth, {:require_role, ~w(admin manager)}},
+        {EstoqueOSWeb.UserAuth, {:require_role, ~w(admin manager marketing)}},
         {EstoqueOSWeb.UserAuth, :current_path},
         {EstoqueOSWeb.UserAuth, :guard_writes},
         {EstoqueOSWeb.UserAuth, :require_password_not_pending}
@@ -202,7 +202,7 @@ defmodule EstoqueOSWeb.Router do
     live_session :money_read,
       on_mount: [
         {EstoqueOSWeb.UserAuth, :require_authenticated},
-        {EstoqueOSWeb.UserAuth, {:require_role, ~w(admin manager auditor)}},
+        {EstoqueOSWeb.UserAuth, {:require_role, ~w(admin manager marketing auditor)}},
         {EstoqueOSWeb.UserAuth, :current_path},
         {EstoqueOSWeb.UserAuth, :guard_writes},
         {EstoqueOSWeb.UserAuth, :require_password_not_pending}

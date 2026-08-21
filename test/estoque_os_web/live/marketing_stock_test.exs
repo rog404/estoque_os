@@ -18,6 +18,7 @@ defmodule EstoqueOSWeb.MarketingStockTest do
 
   alias EstoqueOS.Inventory
   alias EstoqueOS.Inventory.Locations
+  alias EstoqueOS.Invoices.Invoice
 
   setup do
     warehouse = location_fixture(%{name: "Estoque Principal", kind: "warehouse"})
@@ -49,6 +50,34 @@ defmodule EstoqueOSWeb.MarketingStockTest do
   # `refute html =~ "..."` matches markup as happily as text, so anything
   # asserting a product is *absent* strips the tags first.
   defp text(html), do: String.replace(html, ~r{<[^>]*>}s, " ")
+
+  defp invoice_with(product, number) do
+    supplier = supplier_fixture()
+
+    {:ok, invoice} =
+      %Invoice{}
+      |> Invoice.changeset(%{
+        access_key: String.pad_leading(number, 44, "3"),
+        number: number,
+        issued_on: ~D[2026-04-23],
+        raw_xml: "<nfeProc/>",
+        supplier_id: supplier.id,
+        items: [
+          %{
+            item_number: 1,
+            description: product.name,
+            product_id: product.id,
+            commercial_unit: "UN",
+            commercial_quantity: Decimal.new(10),
+            commercial_unit_value: Decimal.new("10.00"),
+            total_value: Decimal.new("100.00")
+          }
+        ]
+      })
+      |> EstoqueOS.Repo.insert()
+
+    invoice
+  end
 
   describe "the marketing role" do
     setup %{conn: conn}, do: register_and_log_in_as(%{conn: conn}, "marketing")
@@ -115,11 +144,35 @@ defmodule EstoqueOSWeb.MarketingStockTest do
       end
     end
 
-    test "cannot open the invoices, the load-out or a count", %{conn: conn} do
-      for path <- ~w(/invoices /conferences /audit /returns /load-out /stock/spreadsheet) do
+    test "cannot open the load-out or a count", %{conn: conn} do
+      for path <- ~w(/conferences /audit /returns /load-out /stock/spreadsheet) do
         assert {:error, {:redirect, %{to: _}}} = live(conn, path),
                "#{path} opened for the marketing role"
       end
+    end
+
+    # An NF-e is a supplier's document, not a stock, so it belongs to whichever
+    # stocks its lines landed in. Marketing buys shirts with a nota like anyone
+    # else; what they may not read is a delivery of gauze, because reading it is
+    # reading the ONG's purchase prices for the surgical supply.
+    test "opens the invoices, and sees only deliveries with its own goods", %{
+      conn: conn,
+      gauze: gauze,
+      shirt: shirt
+    } do
+      surgical = invoice_with(gauze, "111111")
+      theirs = invoice_with(shirt, "222222")
+
+      {:ok, _view, html} = live(conn, ~p"/invoices")
+
+      assert html =~ "222222"
+      refute text(html) =~ "111111"
+
+      {:ok, _view, html} = live(conn, ~p"/invoices/#{theirs.id}")
+      assert html =~ shirt.name
+
+      assert {:error, {:live_redirect, %{to: "/invoices"}}} =
+               live(conn, ~p"/invoices/#{surgical.id}")
     end
 
     test "gets an export of its own stock and no more", %{conn: conn, gauze: gauze} do
