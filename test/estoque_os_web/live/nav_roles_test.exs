@@ -80,7 +80,6 @@ defmodule EstoqueOSWeb.NavRolesTest do
 
     # And their own work is all still there.
     assert html =~ ~s(href="/conferences")
-    assert html =~ ~s(href="/audit")
     assert html =~ ~s(href="/load-out")
     assert html =~ ~s(href="/returns")
   end
@@ -115,7 +114,6 @@ defmodule EstoqueOSWeb.NavRolesTest do
 
     # Nothing that writes.
     refute html =~ ~s(href="/entry")
-    refute html =~ ~s(href="/audit")
     refute html =~ ~s(href="/load-out")
   end
 

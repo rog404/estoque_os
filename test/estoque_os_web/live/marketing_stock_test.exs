@@ -148,7 +148,7 @@ defmodule EstoqueOSWeb.MarketingStockTest do
     end
 
     test "cannot open the load-out or a count", %{conn: conn} do
-      for path <- ~w(/conferences /audit /returns /load-out /reports/data) do
+      for path <- ~w(/conferences /returns /load-out /reports/data) do
         assert {:error, {:redirect, %{to: _}}} = live(conn, path),
                "#{path} opened for the marketing role"
       end

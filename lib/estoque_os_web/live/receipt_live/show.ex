@@ -12,7 +12,7 @@ defmodule EstoqueOSWeb.ReceiptLive.Show do
   to be counted again, up to `Receiving.counts_required/0` times, and only then
   is the number believed. Until this existed the operator could type any
   quantity at all against an invoice that said something else, which is the
-  same hole `AuditLive.Count` was built to close for box counts.
+  same hole `BoxLive.Count` was built to close for box counts.
 
   The screen stays blind throughout. It says *which* line to count again and
   never by how much it was off — told the target, a person counting a hundred
@@ -239,7 +239,7 @@ defmodule EstoqueOSWeb.ReceiptLive.Show do
             </:col>
 
             <!-- Not shown to the person doing the counting. This is the same
-                 rule `AuditLive.Count` was built on, and the conference used to
+                 rule `BoxLive.Count` was built on, and the conference used to
                  contradict it: told what to find, an operator counting a hundred
                  gauzes finds ninety-eight and writes a hundred. The number is
                  there for whoever closes the conference and reads what it

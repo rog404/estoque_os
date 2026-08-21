@@ -1,4 +1,4 @@
-defmodule EstoqueOSWeb.AuditLive.Count do
+defmodule EstoqueOSWeb.BoxLive.Count do
   @moduledoc """
   Counting one box, blind, and then standing behind the number.
 
@@ -26,7 +26,7 @@ defmodule EstoqueOSWeb.AuditLive.Count do
   with a `review_reason` and the manager is shown it on the dashboard. Somebody
   counted the same box twice and the stock was still not what we thought.
 
-  A manager may reveal what the ledger expected — the exception `AuditLive`
+  A manager may reveal what the ledger expected — the exception this screen
   otherwise exists to prevent. It is off by default, it is theirs alone, and
   taking it is written into the transaction's notes, so a count made with the
   answer in view is never later read as a blind one.
@@ -89,7 +89,7 @@ defmodule EstoqueOSWeb.AuditLive.Count do
   def render(assigns) do
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope} current_path={assigns[:current_path]}>
-      <.header back_to={~p"/audit"} back_label={gettext("Count boxes")}>
+      <.header back_to={~p"/boxes/#{@box}"} back_label={gettext("Box %{code}", code: @box.code)}>
         {gettext("Count of box %{code}", code: @box.code)}
         <:subtitle>
           {@box.location.name} · {verified_label(@box)}

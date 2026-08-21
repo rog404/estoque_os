@@ -102,8 +102,7 @@ defmodule EstoqueOSWeb.Router do
         {EstoqueOSWeb.UserAuth, :require_password_not_pending}
       ] do
       live "/conferences", ConferenceLive.Index, :index
-      live "/audit", AuditLive.Index, :index
-      live "/audit/:id", AuditLive.Count, :count
+      live "/boxes/:id/count", BoxLive.Count, :count
       live "/returns", ReturnLive.Index, :index
       live "/load-out", LoadOutLive.Index, :index
     end

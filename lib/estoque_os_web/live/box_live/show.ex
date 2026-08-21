@@ -52,7 +52,7 @@ defmodule EstoqueOSWeb.BoxLive.Show do
                  this screen only offered the second. Somebody standing in front
                  of the box is already here; the blind count is a route away and
                  was reachable only from the mini-audit list. -->
-            <.link navigate={~p"/audit/#{@box.id}"} class="btn btn-primary btn-sm">
+            <.link navigate={~p"/boxes/#{@box}/count"} class="btn btn-primary btn-sm">
               {gettext("Count this box")}
             </.link>
             <button phx-click="verify" class="btn btn-outline btn-sm">

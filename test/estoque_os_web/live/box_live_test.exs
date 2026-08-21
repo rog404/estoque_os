@@ -141,7 +141,7 @@ defmodule EstoqueOSWeb.BoxLiveTest do
     test "leads to the blind count of this box", %{conn: conn, box: box} do
       {:ok, _view, html} = live(conn, ~p"/boxes/#{box}")
 
-      assert html =~ ~s(href="/audit/#{box.id}")
+      assert html =~ ~s(href="/boxes/#{box.id}/count")
     end
 
     test "moves the box from its own page", %{conn: conn, box: box, annex: annex} do

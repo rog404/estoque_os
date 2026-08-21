@@ -22,7 +22,7 @@ defmodule EstoqueOSWeb.NavigationTest do
 
     # Every destination is still reachable, one level down.
     for path <- ~w(/invoices /stock /boxes /locations /kits
-                   /load-out /issue /returns /audit /reports/audit /issues) do
+                   /load-out /issue /returns /reports/audit /issues) do
       assert html =~ "href=\"#{path}\""
     end
   end
