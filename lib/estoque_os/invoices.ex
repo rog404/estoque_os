@@ -59,6 +59,7 @@ defmodule EstoqueOS.Invoices do
         total: parsed.total,
         raw_xml: parsed.raw_xml,
         status: "parsed",
+        segment: opts[:segment] || "medical",
         supplier_id: supplier.id,
         imported_by_id: opts[:user_id],
         items: Enum.map(parsed.items, &line_attrs(&1, supplier.id))
@@ -179,12 +180,19 @@ defmodule EstoqueOS.Invoices do
   @doc """
   Whether a scope confined to one stock may open this invoice at all.
 
-  An NF-e is a supplier's document, not a stock, so it belongs to whichever
-  stocks its lines landed in. A delivery of shirts is marketing's; a delivery of
-  gauze is not theirs to read, because reading it is reading the ONG's purchase
-  prices for the surgical supply.
+  Two ways in, because a delivery belongs to a stock in two different senses.
+  The invoice *was imported for* a stock — that is the answer while its lines
+  are still unresolved, and it is the one that was missing: a marketing user
+  uploaded an XML, no line had a product yet, and the screen told them the
+  document they had just created was not theirs.
+
+  And a delivery *landed in* a stock, which is what makes a mixed one readable
+  by both. A box of shirts on an otherwise surgical invoice is marketing's line
+  to confirm, and hiding the whole document would send them back to typing it.
   """
   def visible?(%Invoice{} = invoice, nil), do: is_struct(invoice, Invoice)
+
+  def visible?(%Invoice{segment: segment} = _invoice, segment), do: true
 
   def visible?(%Invoice{} = invoice, segment) do
     Repo.exists?(
@@ -203,6 +211,9 @@ defmodule EstoqueOS.Invoices do
   defp maybe_segment(query, ""), do: query
 
   defp maybe_segment(query, segment) do
+    # Imported for this stock, or holding a line that landed in it. The first
+    # half is what shows a marketing user the invoice they uploaded five
+    # seconds ago; the second is what keeps a mixed delivery on both lists.
     of_segment =
       from i in InvoiceItem,
         join: p in Product,
@@ -210,7 +221,7 @@ defmodule EstoqueOS.Invoices do
         where: p.segment == ^segment,
         select: i.invoice_id
 
-    where(query, [i], i.id in subquery(of_segment))
+    where(query, [i], i.segment == ^segment or i.id in subquery(of_segment))
   end
 
   @doc """
@@ -221,10 +232,21 @@ defmodule EstoqueOS.Invoices do
   """
   def get_invoice!(id, segment) when is_binary(segment) do
     invoice = get_invoice!(id)
-    %{invoice | items: Enum.filter(invoice.items, &(&1.product && &1.product.segment == segment))}
+
+    %{invoice | items: Enum.filter(invoice.items, &item_of_segment?(&1, invoice, segment))}
   end
 
   def get_invoice!(id, nil), do: get_invoice!(id)
+
+  # A resolved line belongs to its product's stock. An unresolved one belongs to
+  # nobody yet, so it belongs to whoever the delivery was imported for — which
+  # is what makes the marketing coordinator able to resolve the lines on the
+  # invoice they just uploaded.
+  defp item_of_segment?(%InvoiceItem{product: %Product{segment: segment}}, _invoice, segment),
+    do: true
+
+  defp item_of_segment?(%InvoiceItem{product: nil}, %Invoice{segment: segment}, segment), do: true
+  defp item_of_segment?(_item, _invoice, _segment), do: false
 
   @doc "Lines a human still has to resolve before the invoice can be posted."
   def unresolved_items(%Invoice{} = invoice) do

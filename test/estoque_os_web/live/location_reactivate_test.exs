@@ -50,7 +50,9 @@ defmodule EstoqueOSWeb.LocationReactivateTest do
 
     {:ok, view, html} = live(conn, ~p"/locations")
 
-    assert text(html) =~ "Desativados"
+    # One list. The retired place keeps its row and says so on it.
+    assert text(html) =~ "Missão Tefé"
+    assert text(html) =~ "desativado"
 
     back =
       view
@@ -62,12 +64,52 @@ defmodule EstoqueOSWeb.LocationReactivateTest do
     assert Enum.any?(Locations.list_locations(), &(&1.id == site.id))
   end
 
-  # Nothing to bring back, nothing to say: an empty panel titled "Desativados"
-  # is a heading about the absence of a thing.
-  test "the panel is absent while nothing is retired", %{conn: conn} do
+  # A row offers one way out, never both: a place that is working can be
+  # retired, a retired one can come back.
+  test "a working location is not offered the way back", %{conn: conn, warehouse: warehouse} do
     {:ok, _view, html} = live(conn, ~p"/locations")
 
-    refute text(html) =~ "Desativados"
+    refute html =~ ~s{phx-value-id="#{warehouse.id}" phx-click="reactivate"}
+    refute text(html) =~ "desativado"
+  end
+
+  test "the list narrows by name and by kind", %{conn: conn} do
+    location_fixture(%{name: "Missão Tefé", kind: "mission_site"})
+
+    {:ok, view, _html} = live(conn, ~p"/locations")
+
+    by_name = view |> form("#location-search", %{"search" => "tefe"}) |> render_change()
+
+    assert text(by_name) =~ "Missão Tefé"
+    refute text(by_name) =~ "Estoque Principal"
+
+    by_kind = view |> form("#location-search", %{"search" => "deposito"}) |> render_change()
+
+    assert text(by_kind) =~ "Estoque Principal"
+    refute text(by_kind) =~ "Missão Tefé"
+  end
+
+  test "a search that matches nothing says so", %{conn: conn} do
+    {:ok, view, _html} = live(conn, ~p"/locations")
+
+    empty = view |> form("#location-search", %{"search" => "zzzz"}) |> render_change()
+
+    assert text(empty) =~ "Nenhum local corresponde"
+    refute text(empty) =~ "Nenhum local cadastrado"
+  end
+
+  # The retired ones are history; the working list is what the screen is for.
+  test "retired places sort below the working ones", %{conn: conn} do
+    site = location_fixture(%{name: "Alfa", kind: "warehouse"})
+    {:ok, _} = Locations.deactivate_location(site)
+
+    {:ok, _view, html} = live(conn, ~p"/locations")
+
+    page = text(html)
+    working = page |> String.split("Estoque Principal") |> hd() |> String.length()
+    retired = page |> String.split("Alfa") |> hd() |> String.length()
+
+    assert working < retired
   end
 
   test "stock lying loose on the floor blocks the retirement", %{conn: conn, warehouse: warehouse} do

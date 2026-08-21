@@ -9,7 +9,7 @@ defmodule EstoqueOS.Invoices.Invoice do
   import Ecto.Changeset
 
   alias EstoqueOS.Accounts.User
-  alias EstoqueOS.Catalog.Supplier
+  alias EstoqueOS.Catalog.{Product, Supplier}
   alias EstoqueOS.Invoices.{InvoiceEvent, InvoiceItem}
 
   @statuses ~w(parsed matched posted cancelled)
@@ -25,6 +25,11 @@ defmodule EstoqueOS.Invoices.Invoice do
     field :total, :decimal
     field :raw_xml, :string
     field :status, :string, default: "parsed"
+    # Which stock this delivery is for. Decided by whoever imports it — the
+    # marketing coordinator's default is marketing and the supplies
+    # coordinator's is surgical — rather than inferred from where the lines
+    # land, because at import time no line has landed anywhere yet.
+    field :segment, :string, default: "medical"
     field :posted_at, :utc_datetime
 
     belongs_to :supplier, Supplier
@@ -49,9 +54,11 @@ defmodule EstoqueOS.Invoices.Invoice do
       :status,
       :posted_at,
       :supplier_id,
-      :imported_by_id
+      :imported_by_id,
+      :segment
     ])
     |> validate_required([:access_key, :number, :issued_on, :raw_xml, :status, :supplier_id])
+    |> validate_inclusion(:segment, Product.segments())
     |> validate_format(:access_key, ~r/^\d{44}$/)
     |> validate_inclusion(:status, @statuses)
     |> cast_assoc(:items, with: &InvoiceItem.changeset/2)
@@ -60,5 +67,6 @@ defmodule EstoqueOS.Invoices.Invoice do
     |> unique_constraint(:access_key)
     |> check_constraint(:access_key, name: :invoices_access_key_must_have_44_digits)
     |> check_constraint(:status, name: :invoices_status_must_be_known)
+    |> check_constraint(:segment, name: :invoices_segment_must_be_known)
   end
 end

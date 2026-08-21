@@ -50,7 +50,7 @@ defmodule EstoqueOSWeb.InvoiceLive.Show do
      socket
      |> assign(:page_title, gettext("Invoice %{number}", number: invoice.number))
      |> assign(:locations, Locations.list_locations())
-     |> assign(:location_id, default_location_id())
+     |> assign(:location_id, default_location_id(invoice))
      |> assign(:candidates, %{})
      # What the operator typed into each line's one field, what they picked out
      # of the list, and the lines where they chose to create instead. Together
@@ -74,8 +74,10 @@ defmodule EstoqueOSWeb.InvoiceLive.Show do
      |> assign_receipts(invoice)}
   end
 
-  defp default_location_id do
-    case Locations.default_location() do
+  # The door this delivery comes in through, which is the invoice's stock and
+  # not the reader's: shirts arrive at the office whoever is confirming them.
+  defp default_location_id(invoice) do
+    case Locations.default_location(invoice.segment) do
       nil -> nil
       location -> location.id
     end
@@ -882,7 +884,10 @@ defmodule EstoqueOSWeb.InvoiceLive.Show do
   # A product invented while resolving a line is filed under the stock the
   # person resolving it works in. Without this, marketing imports its own XML,
   # creates its own products, and none of them are theirs.
-  defp new_product_segment(socket), do: socket.assigns.segment || "medical"
+  # The stock the invoice was imported for, not the reader's. A coordinator who
+  # holds both stocks resolving a marketing delivery must not create shirts in
+  # the surgical catalog because that is where their own default points.
+  defp new_product_segment(socket), do: socket.assigns.invoice.segment
 
   defp resolution_attrs(item, %{"product_id" => "__new__"} = params, segment) do
     name =
