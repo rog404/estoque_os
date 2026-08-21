@@ -484,13 +484,25 @@ defmodule EstoqueOSWeb.UserAuth do
   def sees_money?(_scope), do: false
 
   @doc """
-  Plug for controller routes that write or export. `on_mount` never runs for a
-  controller, so the two `get` routes need their own gate.
+  Plug for the routes that write, and for the export.
+
+  It asks `role_may_write?/1` and not `operator?/1`, which is the difference
+  between *may this role write here* and *may this session press the button*.
+  An admin standing in another role's shoes is the second question answered no
+  while the first is yes, and refusing them at the door made "ver como" almost
+  useless: the overview opened and every screen the borrowed role actually
+  works in answered "você não tem permissão", which reads as a broken app
+  rather than as a role.
+
+  Nothing is loosened by this. Every `live_session` behind this pipeline mounts
+  `:guard_writes`, which refuses any event a screen has not declared as a read,
+  and `operator?/1` — still false the whole time — is what the contexts and the
+  buttons ask.
   """
   def require_operator(conn, _opts) do
     case conn.assigns[:current_scope] do
       %Scope{user: %Accounts.User{}} = scope ->
-        if operator?(scope), do: conn, else: refuse(conn)
+        if role_may_write?(scope), do: conn, else: refuse(conn)
 
       _ ->
         refuse(conn)

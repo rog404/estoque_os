@@ -12,6 +12,13 @@ defmodule EstoqueOSWeb.StockLive.Spreadsheet do
 
   alias EstoqueOS.Reports
 
+  @doc """
+  Events a viewer may send. Everything else on this screen is refused.
+
+  Validating an upload reads the file; `import` posts the count.
+  """
+  def viewer_events, do: ~w(validate)
+
   @impl true
   def mount(_params, _session, socket) do
     {:ok,
