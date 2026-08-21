@@ -661,8 +661,7 @@ msgstr ""
 #: lib/estoque_os_web/live/box_live/index.ex:168
 #: lib/estoque_os_web/live/kit_live/index.ex:58
 #: lib/estoque_os_web/live/kit_live/show.ex:155
-#: lib/estoque_os_web/live/location_live/index.ex:102
-#: lib/estoque_os_web/live/location_live/index.ex:191
+#: lib/estoque_os_web/live/location_live/index.ex:159
 #: lib/estoque_os_web/live/stock_live/index.ex:230
 #, elixir-autogen, elixir-format
 msgid "Location"
@@ -897,7 +896,7 @@ msgid "Kit consumed"
 msgstr ""
 
 #: lib/estoque_os_web/live/home_live/index.ex:576
-#: lib/estoque_os_web/live/location_live/index.ex:132
+#: lib/estoque_os_web/live/location_live/index.ex:195
 #, elixir-autogen, elixir-format
 msgid "Known value"
 msgstr ""
@@ -1221,7 +1220,7 @@ msgstr ""
 #: lib/estoque_os_web/live/box_live/show.ex:44
 #: lib/estoque_os_web/live/kit_live/show.ex:254
 #: lib/estoque_os_web/live/load_out_live/index.ex:180
-#: lib/estoque_os_web/live/location_live/index.ex:128
+#: lib/estoque_os_web/live/location_live/index.ex:191
 #, elixir-autogen, elixir-format
 msgid "Boxes"
 msgstr ""
@@ -1231,13 +1230,13 @@ msgstr ""
 msgid "Create box"
 msgstr ""
 
-#: lib/estoque_os_web/live/location_live/index.ex:89
+#: lib/estoque_os_web/live/location_live/index.ex:123
 #, elixir-autogen, elixir-format
 msgid "Create location"
 msgstr ""
 
 #: lib/estoque_os_web/live/box_live/index.ex:118
-#: lib/estoque_os_web/live/location_live/index.ex:89
+#: lib/estoque_os_web/live/location_live/index.ex:123
 #, elixir-autogen, elixir-format
 msgid "Creating..."
 msgstr ""
@@ -1247,15 +1246,14 @@ msgstr ""
 msgid "Give the box a code that is not in use yet."
 msgstr ""
 
-#: lib/estoque_os_web/live/location_live/index.ex:231
-#: lib/estoque_os_web/live/location_live/index.ex:255
+#: lib/estoque_os_web/live/location_live/index.ex:293
+#: lib/estoque_os_web/live/location_live/index.ex:317
 #, elixir-autogen, elixir-format
 msgid "Give the location a name that is not in use yet."
 msgstr ""
 
-#: lib/estoque_os_web/live/location_live/index.ex:84
-#: lib/estoque_os_web/live/location_live/index.ex:126
-#: lib/estoque_os_web/live/location_live/index.ex:195
+#: lib/estoque_os_web/live/location_live/index.ex:118
+#: lib/estoque_os_web/live/location_live/index.ex:189
 #, elixir-autogen, elixir-format
 msgid "Kind"
 msgstr ""
@@ -1265,20 +1263,20 @@ msgstr ""
 msgid "Last count"
 msgstr ""
 
-#: lib/estoque_os_web/live/location_live/index.ex:226
+#: lib/estoque_os_web/live/location_live/index.ex:288
 #, elixir-autogen, elixir-format
 msgid "Location %{name} created."
 msgstr ""
 
-#: lib/estoque_os_web/live/location_live/index.ex:80
+#: lib/estoque_os_web/live/location_live/index.ex:114
 #, elixir-autogen, elixir-format
 msgid "Location name"
 msgstr ""
 
 #: lib/estoque_os_web/components/layouts.ex:441
 #: lib/estoque_os_web/live/location_live/index.ex:16
-#: lib/estoque_os_web/live/location_live/index.ex:61
-#: lib/estoque_os_web/live/location_live/index.ex:93
+#: lib/estoque_os_web/live/location_live/index.ex:95
+#: lib/estoque_os_web/live/location_live/index.ex:142
 #, elixir-autogen, elixir-format
 msgid "Locations"
 msgstr ""
@@ -1311,7 +1309,7 @@ msgstr ""
 msgid "New box"
 msgstr ""
 
-#: lib/estoque_os_web/live/location_live/index.ex:74
+#: lib/estoque_os_web/live/location_live/index.ex:108
 #, elixir-autogen, elixir-format
 msgid "New location"
 msgstr ""
@@ -1344,34 +1342,34 @@ msgstr ""
 msgid "This box is empty."
 msgstr ""
 
-#: lib/estoque_os_web/live/location_live/index.ex:63
+#: lib/estoque_os_web/live/location_live/index.ex:97
 #, elixir-autogen, elixir-format
 msgid "Warehouses, mission sites, and stock that is on its way."
 msgstr ""
 
-#: lib/estoque_os_web/live/location_live/index.ex:78
+#: lib/estoque_os_web/live/location_live/index.ex:112
 #, elixir-autogen, elixir-format
 msgid "e.g. Missão Tefé"
 msgstr ""
 
 #: lib/estoque_os_web/components/ui.ex:430
-#: lib/estoque_os_web/live/location_live/index.ex:217
+#: lib/estoque_os_web/live/location_live/index.ex:275
 #, elixir-autogen, elixir-format
 msgid "in transit"
 msgstr ""
 
-#: lib/estoque_os_web/live/location_live/index.ex:216
+#: lib/estoque_os_web/live/location_live/index.ex:274
 #, elixir-autogen, elixir-format
 msgid "mission site"
 msgstr ""
 
-#: lib/estoque_os_web/live/location_live/index.ex:218
+#: lib/estoque_os_web/live/location_live/index.ex:276
 #: lib/estoque_os_web/movement.ex:73
 #, elixir-autogen, elixir-format
 msgid "other"
 msgstr ""
 
-#: lib/estoque_os_web/live/location_live/index.ex:215
+#: lib/estoque_os_web/live/location_live/index.ex:273
 #, elixir-autogen, elixir-format
 msgid "warehouse"
 msgstr ""
@@ -1999,6 +1997,7 @@ msgstr ""
 
 #: lib/estoque_os_web/components/ui.ex:592
 #: lib/estoque_os_web/live/box_live/index.ex:125
+#: lib/estoque_os_web/live/location_live/index.ex:130
 #: lib/estoque_os_web/live/stock_live/index.ex:189
 #, elixir-autogen, elixir-format
 msgid "Search"
@@ -2047,7 +2046,7 @@ msgstr ""
 #: lib/estoque_os_web/live/invoice_live/show.ex:524
 #: lib/estoque_os_web/live/issue_live/index.ex:481
 #: lib/estoque_os_web/live/kit_live/show.ex:408
-#: lib/estoque_os_web/live/location_live/index.ex:120
+#: lib/estoque_os_web/live/location_live/index.ex:177
 #, elixir-autogen, elixir-format
 msgid "Cancel"
 msgstr ""
@@ -2114,7 +2113,7 @@ msgstr ""
 msgid "No controlled substance in stock."
 msgstr ""
 
-#: lib/estoque_os_web/live/location_live/index.ex:97
+#: lib/estoque_os_web/live/location_live/index.ex:154
 #, elixir-autogen, elixir-format
 msgid "No location registered yet."
 msgstr ""
@@ -2280,7 +2279,7 @@ msgstr ""
 msgid "See the full movement log"
 msgstr ""
 
-#: lib/estoque_os_web/live/location_live/index.ex:270
+#: lib/estoque_os_web/live/location_live/index.ex:332
 #, elixir-autogen, elixir-format
 msgid "%{name} was deactivated."
 msgstr ""
@@ -2289,50 +2288,49 @@ msgstr ""
 #: lib/estoque_os_web/live/issue_live/index.ex:300
 #: lib/estoque_os_web/live/issue_live/index.ex:541
 #: lib/estoque_os_web/live/kit_live/show.ex:454
-#: lib/estoque_os_web/live/location_live/index.ex:136
-#: lib/estoque_os_web/live/location_live/index.ex:197
+#: lib/estoque_os_web/live/location_live/index.ex:199
 #, elixir-autogen, elixir-format
 msgid "Actions"
 msgstr ""
 
-#: lib/estoque_os_web/live/location_live/index.ex:158
-#: lib/estoque_os_web/live/location_live/index.ex:160
+#: lib/estoque_os_web/live/location_live/index.ex:227
+#: lib/estoque_os_web/live/location_live/index.ex:229
 #, elixir-autogen, elixir-format
 msgid "Deactivate"
 msgstr ""
 
-#: lib/estoque_os_web/live/location_live/index.ex:159
+#: lib/estoque_os_web/live/location_live/index.ex:228
 #, elixir-autogen, elixir-format
 msgid "Deactivate %{name}?"
 msgstr ""
 
-#: lib/estoque_os_web/live/location_live/index.ex:166
+#: lib/estoque_os_web/live/location_live/index.ex:235
 #, elixir-autogen, elixir-format
 msgid "It disappears from every picker. Movements already recorded keep naming it, so the history stays readable."
 msgstr ""
 
-#: lib/estoque_os_web/live/location_live/index.ex:50
+#: lib/estoque_os_web/live/location_live/index.ex:84
 #, elixir-autogen, elixir-format
 msgid "Move or deactivate its boxes first."
 msgstr ""
 
-#: lib/estoque_os_web/live/location_live/index.ex:115
+#: lib/estoque_os_web/live/location_live/index.ex:172
 #, elixir-autogen, elixir-format
 msgid "New name for %{name}"
 msgstr ""
 
-#: lib/estoque_os_web/live/location_live/index.ex:250
+#: lib/estoque_os_web/live/location_live/index.ex:312
 #, elixir-autogen, elixir-format
 msgid "Now called %{name}."
 msgstr ""
 
-#: lib/estoque_os_web/live/location_live/index.ex:145
+#: lib/estoque_os_web/live/location_live/index.ex:208
 #, elixir-autogen, elixir-format
 msgid "Rename"
 msgstr ""
 
 #: lib/estoque_os_web/live/kit_live/show.ex:470
-#: lib/estoque_os_web/live/location_live/index.ex:118
+#: lib/estoque_os_web/live/location_live/index.ex:175
 #: lib/estoque_os_web/live/product_live/show.ex:247
 #, elixir-autogen, elixir-format
 msgid "Save"
@@ -3103,7 +3101,7 @@ msgstr ""
 msgid "The XML the supplier sends carries the lots, the pack sizes and the prices. Importing it is what replaces the week of typing."
 msgstr ""
 
-#: lib/estoque_os_web/live/location_live/index.ex:98
+#: lib/estoque_os_web/live/location_live/index.ex:155
 #, elixir-autogen, elixir-format
 msgid "The warehouse, and each mission the stock travels to."
 msgstr ""
@@ -3198,7 +3196,7 @@ msgstr ""
 msgid "Type what is written on the box. If the catalog does not have it yet, you can create it from here — donations often arrive as something new."
 msgstr ""
 
-#: lib/estoque_os_web/live/location_live/index.ex:144
+#: lib/estoque_os_web/live/location_live/index.ex:207
 #, elixir-autogen, elixir-format
 msgid "Rename %{name}"
 msgstr ""
@@ -3592,7 +3590,7 @@ msgstr ""
 msgid "Box %{box}"
 msgstr ""
 
-#: lib/estoque_os/inventory/locations.ex:406
+#: lib/estoque_os/inventory/locations.ex:407
 #, elixir-autogen, elixir-format
 msgid "%{from} → %{to}"
 msgstr ""
@@ -4610,7 +4608,7 @@ msgstr ""
 msgid "There is only %{available} loose here."
 msgstr ""
 
-#: lib/estoque_os/inventory/locations.ex:344
+#: lib/estoque_os/inventory/locations.ex:345
 #, elixir-autogen, elixir-format
 msgid "loose → %{box}"
 msgstr ""
@@ -5033,32 +5031,47 @@ msgstr ""
 msgid "Search by the code written on the box, or by where it is standing."
 msgstr ""
 
-#: lib/estoque_os_web/live/location_live/index.ex:293
+#: lib/estoque_os_web/live/location_live/index.ex:355
 #, elixir-autogen, elixir-format
 msgid "%{name} is back in use."
 msgstr ""
 
-#: lib/estoque_os_web/live/location_live/index.ex:278
+#: lib/estoque_os_web/live/location_live/index.ex:340
 #, elixir-autogen, elixir-format
 msgid "%{name} still holds stock. Empty it first."
 msgstr ""
 
-#: lib/estoque_os_web/live/location_live/index.ex:189
-#, elixir-autogen, elixir-format
-msgid "Deactivated"
-msgstr ""
-
-#: lib/estoque_os_web/live/location_live/index.ex:51
+#: lib/estoque_os_web/live/location_live/index.ex:85
 #, elixir-autogen, elixir-format
 msgid "It still holds loose stock."
 msgstr ""
 
-#: lib/estoque_os_web/live/location_live/index.ex:205
+#: lib/estoque_os_web/live/location_live/index.ex:253
 #, elixir-autogen, elixir-format
 msgid "Reactivate"
 msgstr ""
 
-#: lib/estoque_os_web/live/location_live/index.ex:283
+#: lib/estoque_os_web/live/location_live/index.ex:345
 #, elixir-autogen, elixir-format
 msgid "That location could not be deactivated."
+msgstr ""
+
+#: lib/estoque_os_web/live/location_live/index.ex:135
+#, elixir-autogen, elixir-format
+msgid "Location name or kind"
+msgstr ""
+
+#: lib/estoque_os_web/live/location_live/index.ex:149
+#, elixir-autogen, elixir-format
+msgid "No location matches that."
+msgstr ""
+
+#: lib/estoque_os_web/live/location_live/index.ex:150
+#, elixir-autogen, elixir-format
+msgid "Search by the name, or by the kind of place it is."
+msgstr ""
+
+#: lib/estoque_os_web/live/location_live/index.ex:185
+#, elixir-autogen, elixir-format
+msgid "deactivated"
 msgstr ""

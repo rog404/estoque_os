@@ -32,16 +32,17 @@ defmodule EstoqueOS.Inventory.Locations do
   end
 
   @doc """
-  The retired ones, for the screen that can bring one back.
+  Every place the operation has ever had, retired ones included, for the screen
+  that manages them.
 
   A separate function rather than an option on `list_locations/0`: every caller
   of that one is filling a picker, and a picker must never offer a place that
-  was deliberately taken out of the operation.
+  was deliberately taken out of the operation. Active first, because the retired
+  ones are history and the working list is what the screen is for.
   """
-  def list_inactive_locations do
+  def list_all_locations do
     Location
-    |> where([l], l.active == false)
-    |> order_by([l], asc: l.kind, asc: l.name)
+    |> order_by([l], desc: l.active, asc: l.kind, asc: l.name)
     |> Repo.all()
   end
 
