@@ -53,7 +53,9 @@ defmodule EstoqueOSWeb.HomeDrillTest do
       |> render_click()
       |> follow_redirect(conn)
 
-    assert stock_html =~ ~r/name="only_expiring"[^>]*checked/
+    # The situation filter is a row of chips, so the link arriving filtered
+    # shows as the matching chip already ticked.
+    assert stock_html =~ ~r/name="situation\[\]"[^>]*value="expiring"[^>]*checked/
   end
 
   # Shortages are the one listing with nowhere deeper to go, so this card

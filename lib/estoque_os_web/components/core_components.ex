@@ -497,12 +497,29 @@ defmodule EstoqueOSWeb.CoreComponents do
 
   def write_gate(assigns) do
     ~H"""
+    <!-- `min-w-0` and a plain block, not `display: contents`.
+         `contents` was the obvious choice and it cost every screen its
+         spacing: the page lays its sections out with `space-y-6`, which puts a
+         margin on each DOM child after the first — and a margin on a box that
+         `contents` has removed from the layout does nothing at all. So on the
+         four screens where a form is wrapped in this gate, the form sat welded
+         to the table under it. Reported on Caixas, and it was never about
+         Caixas.
+         A fieldset with no border or padding lays out exactly like the div it
+         replaces, and still disables everything inside it in one attribute —
+         which is the whole reason it is a fieldset.
+
+         The block margins are left alone deliberately. `m-0` here was the same
+         bug wearing a second hat: Tailwind writes `space-y` inside `:where()`,
+         which has no specificity, so a plain `m-0` on the child silently wins
+         and the gap disappears again. Only the inline margin a fieldset gets
+         from the browser is zeroed. -->
     <fieldset
       :if={@may}
       disabled={not @allowed}
       title={@reason}
       aria-disabled={not @allowed}
-      class="contents"
+      class="min-w-0 border-0 p-0 mx-0"
     >
       {render_slot(@inner_block)}
     </fieldset>
@@ -683,7 +700,7 @@ defmodule EstoqueOSWeb.CoreComponents do
   def spreadsheet_outcome(assigns) do
     ~H"""
     <div :if={@result} class="alert alert-success mt-4">
-      {gettext("%{counted} line(s) read, %{adjusted} position(s) adjusted.",
+      {gettext("%{counted} line(s) read, %{adjusted} lot(s) adjusted.",
         counted: @result.counted,
         adjusted: @result.adjusted
       )}

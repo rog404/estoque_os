@@ -263,7 +263,7 @@ defmodule EstoqueOSWeb.ReturnLive.Index do
           >
             <:consequence>
               <p>
-                {gettext("%{count} position(s) come back to %{to}.",
+                {gettext("%{count} lot(s) come back to %{to}.",
                   count: length(@lines),
                   to: location_name(@locations, @destination_id)
                 )}

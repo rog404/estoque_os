@@ -41,7 +41,7 @@ defmodule EstoqueOSWeb.AuditLive.Index do
                   <span class="font-normal opacity-70">· {suggestion.box.location.name}</span>
                 </p>
                 <p class="text-sm opacity-70">
-                  {gettext("%{quantity} units in %{count} position(s)",
+                  {gettext("%{quantity} units in %{count} lot(s)",
                     quantity: quantity(suggestion.quantity),
                     count: suggestion.positions
                   )}

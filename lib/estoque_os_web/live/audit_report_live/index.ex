@@ -192,7 +192,7 @@ defmodule EstoqueOSWeb.AuditReportLive.Index do
 
       <.panel
         title={gettext("Controlled substances in stock")}
-        note={gettext("%{count} position(s) under Portaria 344.", count: length(@controlled))}
+        note={gettext("%{count} lot(s) under Portaria 344.", count: length(@controlled))}
       >
         <.data_table rows={@controlled}>
           <:empty>

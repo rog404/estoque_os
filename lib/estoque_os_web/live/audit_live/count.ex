@@ -103,7 +103,7 @@ defmodule EstoqueOSWeb.AuditLive.Count do
       </.header>
 
       <div :if={@result} class="alert alert-success mt-4">
-        {gettext("Count recorded: %{adjusted} position(s) corrected out of %{counted} counted.",
+        {gettext("Count recorded: %{adjusted} lot(s) corrected out of %{counted} counted.",
           adjusted: @result.adjusted,
           counted: @result.counted
         )}
@@ -219,7 +219,7 @@ defmodule EstoqueOSWeb.AuditLive.Count do
           >
             <:consequence>
               <p>
-                {gettext("%{count} position(s) change; the box is marked as counted today.",
+                {gettext("%{count} lot(s) change; the box is marked as counted today.",
                   count: length(@preview)
                 )}
               </p>

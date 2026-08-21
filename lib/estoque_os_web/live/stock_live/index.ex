@@ -19,7 +19,7 @@ defmodule EstoqueOSWeb.StockLive.Index do
   Reporting only. The spreadsheet import posts adjustments and stays with
   operators, as does the upload validation that feeds it.
   """
-  def viewer_events, do: ~w(search filter page sort clear_filters)
+  def viewer_events, do: ~w(search filter page sort clear_filters drop_filter)
 
   import EstoqueOS.Coercion
 
@@ -37,9 +37,7 @@ defmodule EstoqueOSWeb.StockLive.Index do
      |> assign(:page_title, gettext("Stock"))
      |> assign(:search, "")
      |> assign(:location_ids, [])
-     |> assign(:only_expiring, false)
-     |> assign(:only_controlled, false)
-     |> assign(:only_needs_review, false)
+     |> assign(:situations, [])
      |> assign(:segment, nil)
      # A locked segment is not a filter the page offers: it is the only stock
      # this role has, so it neither shows as an active filter nor clears.
@@ -61,9 +59,11 @@ defmodule EstoqueOSWeb.StockLive.Index do
      socket
      |> assign(:search, params["search"] || "")
      |> assign(:location_ids, parse_ids(params["location_id"] || params["location_ids"]))
-     |> assign(:only_expiring, checked?(params["expiring"]))
-     |> assign(:only_controlled, checked?(params["controlled"]))
-     |> assign(:only_needs_review, checked?(params["review"]))
+     # The address still speaks the old language, one word per situation, so
+     # every link the app already sends here keeps working: the overview's
+     # "expiring soon" is `/stock?expiring=on` and now so is its "below the
+     # minimum".
+     |> assign(:situations, situations_from(params))
      |> assign(:segment, segment(socket, params["segment"]))
      |> assign(:segment_locked?, locked?(socket))
      |> load_rows()}
@@ -74,9 +74,7 @@ defmodule EstoqueOSWeb.StockLive.Index do
       Reports.stock_page(
         search: socket.assigns.search,
         location_ids: socket.assigns.location_ids,
-        only_expiring: socket.assigns.only_expiring,
-        only_controlled: socket.assigns.only_controlled,
-        only_needs_review: socket.assigns.only_needs_review,
+        situations: socket.assigns.situations,
         segment: socket.assigns.segment,
         sort: socket.assigns.sort,
         page: socket.assigns.page
@@ -99,16 +97,47 @@ defmodule EstoqueOSWeb.StockLive.Index do
     [
       assigns.location_ids != [],
       assigns.segment != nil and not assigns.segment_locked?,
-      assigns.only_expiring,
-      assigns.only_controlled,
-      assigns.only_needs_review
+      assigns.situations != []
     ]
     |> Enum.count(& &1)
   end
 
+  # One colour per kind of filter, in one place, so the chips inside the panel
+  # and the chips outside it cannot drift apart. The kind is what the colour
+  # says — not the urgency of the value, which the row itself already says.
+  defp filter_tone("location"), do: "info"
+  defp filter_tone("situation"), do: "warning"
+  # Green, not the accent: the accent is an orange at hue 38 and the situation
+  # amber is at 68, which is the same colour to anybody not holding a swatch.
+  defp filter_tone("segment"), do: "success"
+  defp filter_tone(_kind), do: "primary"
+
+  # The filters that are on, in one list the row of chips can render: the kind
+  # is what dropping it has to undo, the value is which one of that kind, and
+  # the label is the word the operator picked it by.
+  defp applied_filters(assigns) do
+    locations =
+      for id <- assigns.location_ids,
+          location = Enum.find(assigns.locations, &(&1.id == id)),
+          do: {"location", id, location.name}
+
+    situations =
+      for value <- assigns.situations,
+          {^value, label} <- situations(),
+          do: {"situation", value, label}
+
+    segment =
+      if assigns.segment && not assigns.segment_locked?,
+        do: [{"segment", assigns.segment, segment_label(assigns.segment)}],
+        else: []
+
+    search = if assigns.search != "", do: [{"search", "", assigns.search}], else: []
+
+    search ++ locations ++ situations ++ segment
+  end
+
   defp filtering?(assigns) do
-    assigns.search != "" or assigns.location_ids != [] or assigns.only_expiring or
-      assigns.only_controlled or assigns.only_needs_review or
+    assigns.search != "" or assigns.location_ids != [] or assigns.situations != [] or
       (assigns.segment != nil and not assigns.segment_locked?)
   end
 
@@ -136,7 +165,7 @@ defmodule EstoqueOSWeb.StockLive.Index do
       <.header>
         {gettext("Stock")}
         <:subtitle>
-          {gettext("%{count} position(s)", count: @total)}
+          {gettext("%{count} stored lot(s)", count: @total)}
           <span :if={@sees_money?}>
             · <.amount value={money(@total_value)} /> {gettext("on this page")}
           </span>
@@ -171,58 +200,64 @@ defmodule EstoqueOSWeb.StockLive.Index do
 
         <form id="filter-form" phx-submit="filter">
           <details class="dropdown dropdown-end">
-            <summary class="btn">
+            <!-- The icon alone. A word beside a control that is unmistakably a
+                 filter was a label on a label, and this bar is shared with the
+                 search box, which is what the width is for. The count stays: a
+                 narrowed list must never look like the whole stock. -->
+            <summary
+              class="btn btn-square relative"
+              aria-label={gettext("Filters")}
+              title={gettext("Filters")}
+            >
               <.icon name="hero-adjustments-horizontal" class="size-5" />
-              {gettext("Filters")}
-              <span :if={active_filters(assigns) > 0} class="badge badge-primary badge-sm">
+              <!-- Off the corner rather than beside the icon: inside a square
+                   button the count squeezed the icon it belongs to. -->
+              <span
+                :if={active_filters(assigns) > 0}
+                class="badge badge-primary badge-xs absolute -top-1.5 -right-1.5"
+              >
                 {active_filters(assigns)}
               </span>
             </summary>
 
-            <div class="dropdown-content z-50 mt-2 w-72 rounded-box bg-base-100 shadow-lg border border-base-300 p-4 space-y-2">
-              <!-- Checkboxes and not a `select multiple`: this panel is opened
-                   one-handed on a phone, where a multi-select is a scrolling
-                   list you have to hold a modifier key to use. Nothing ticked
-                   means everywhere, which is what an empty filter should
-                   mean. -->
-              <fieldset class="w-full">
-                <legend class="label">{gettext("Location")}</legend>
-                <.check
-                  :for={location <- @locations}
-                  name="location_id[]"
-                  value={location.id}
-                  label={location.name}
-                  checked={location.id in @location_ids}
-                />
-              </fieldset>
+            <div class="dropdown-content z-50 mt-2 w-80 max-w-[calc(100vw-2rem)] rounded-box bg-base-100 shadow-lg border border-base-300 p-4 space-y-2">
+              <!-- One control per kind of answer, and the colour is the kind:
+                   places are one tone, situations another, the stock a third.
+                   Nothing ticked means everywhere, which is what an empty
+                   filter should mean. -->
+              <.filter_chips
+                name="location_id[]"
+                label={gettext("Location")}
+                tone={filter_tone("location")}
+                searchable_from={8}
+                options={Enum.map(@locations, &{&1.id, &1.name})}
+                selected={Enum.map(@location_ids, &to_string/1)}
+              />
 
               <!-- Not rendered for a role that has only one stock. The gate is
                    `segment/2`, which ignores whatever arrives; this is only
                    about not offering a choice that does not exist. -->
-              <label :if={not @segment_locked?} class="fieldset w-full">
-                <span class="label">{gettext("Stock")}</span>
-                <select name="segment" class="select w-full">
-                  <option value="">{gettext("Every stock")}</option>
-                  <option
-                    :for={segment <- Product.segments()}
-                    value={segment}
-                    selected={segment == @segment}
-                  >
-                    {segment_label(segment)}
-                  </option>
-                </select>
-              </label>
-
-              <.check name="only_expiring" label={gettext("Expiring")} checked={@only_expiring} />
-              <.check
-                name="only_controlled"
-                label={gettext("Controlled")}
-                checked={@only_controlled}
+              <.filter_chips
+                :if={not @segment_locked?}
+                name="segment"
+                label={gettext("Stock")}
+                tone={filter_tone("segment")}
+                options={Enum.map(Product.segments(), &{&1, segment_label(&1)})}
+                selected={List.wrap(@segment)}
               />
-              <.check
-                name="only_needs_review"
-                label={gettext("Missing lot data")}
-                checked={@only_needs_review}
+
+              <!-- The group grew two entries when it stopped being three loose
+                   checkboxes. Already-expired is now its own answer: the
+                   expiring window is ninety days, so it swallowed the thing
+                   somebody actually came looking for. And below-the-minimum,
+                   which the overview could name and this screen could not
+                   filter by. -->
+              <.filter_chips
+                name="situation[]"
+                label={gettext("Situation")}
+                tone={filter_tone("situation")}
+                options={situations()}
+                selected={@situations}
               />
 
               <.button variant="primary" class="btn-block">{gettext("Apply filters")}</.button>
@@ -239,9 +274,24 @@ defmodule EstoqueOSWeb.StockLive.Index do
           </details>
         </form>
 
-        <p :if={filtering?(assigns)} class="text-sm text-base-content/80 basis-full">
-          {gettext("%{count} position(s) match", count: @total)}
-        </p>
+        <!-- What is on, as labels, outside the panel that set them. A count of
+             active filters on a closed button says how many; it never says
+             which, and "which" is the question somebody asks when the list is
+             shorter than they expected. Each one drops on its own. -->
+        <div :if={filtering?(assigns)} class="flex flex-wrap items-center gap-1.5 basis-full">
+          <.filter_pill
+            :for={{kind, value, label} <- applied_filters(assigns)}
+            label={label}
+            tone={filter_tone(kind)}
+            phx-click="drop_filter"
+            phx-value-kind={kind}
+            phx-value-value={value}
+          />
+
+          <span class="text-sm text-base-content/80">
+            {gettext("%{count} stored lot(s) match", count: @total)}
+          </span>
+        </div>
       </.toolbar>
 
       <p :if={@capped} class="alert alert-warning">
@@ -251,7 +301,7 @@ defmodule EstoqueOSWeb.StockLive.Index do
         )}
       </p>
 
-      <.panel title={gettext("Positions")} flush>
+      <.panel title={gettext("Stored lots")} flush>
         <.data_table
           rows={@rows}
           sort={@sort}
@@ -291,25 +341,32 @@ defmodule EstoqueOSWeb.StockLive.Index do
             </.empty>
           </:empty>
 
+          <!-- The widest column, because it holds the longest strings on the
+               screen: a real catalog name is "Compressa de gaze 7,5x7,5 estéril
+               13 fios". It was sharing the width evenly with a lot number and a
+               date, so the name broke over three lines — two of them the name
+               and a third for the unit, which had a paragraph of its own for a
+               word. The unit rides at the end of the name now, so the cell is
+               two lines at worst. -->
           <:col
             :let={row}
             label={gettext("Product")}
             key="product"
             emphasis={:identity}
+            width="w-[30%]"
           >
             <.link navigate={~p"/products/#{row.product_id}"} class="link link-hover">
               {row.product}
             </.link>
-            <.status :if={row.controlled} kind={:controlled} class="align-middle" />
-            <p class="text-sm text-base-content/80">
+            <span class="text-sm text-base-content/60 whitespace-nowrap">
               {row.product_stock_unit}
               <span :if={row.packagings != []}>
                 · {packaging_label(row.packagings)}
               </span>
-            </p>
+            </span>
           </:col>
 
-          <:col :let={row} label={gettext("Lot")} key="lot" group width="w-[10%]">
+          <:col :let={row} label={gettext("Lot")} key="lot" group width="w-[9%]">
             <!-- "desconhecido" is a complaint, and it is only true of goods that
                  should have carried a lot number. A t-shirt has none to read, so
                  for those the cell says nothing rather than accusing somebody of
@@ -317,7 +374,7 @@ defmodule EstoqueOSWeb.StockLive.Index do
             {row.lot_number || blank_lot(row)}
           </:col>
 
-          <:col :let={row} label={gettext("Expiry")} key="expires_on" width="w-[13%]">
+          <:col :let={row} label={gettext("Expiry")} key="expires_on" width="w-[11%]">
             <span class={expiry_class(row)}>{date(row.expires_on)}</span>
           </:col>
 
@@ -327,25 +384,35 @@ defmodule EstoqueOSWeb.StockLive.Index do
                Ranked and capped at two. Every row could wear five, and a row
                wearing five says nothing at all — what the eye needs is the
                worst thing that is true about it. Expired outranks expiring
-               outranks running low; how it arrived comes last, because it is
-               background and never urgent. -->
-          <:col :let={row} label={gettext("Flags")} width="w-[13%]">
+               outranks controlled outranks running low; how it arrived comes
+               last, because it is background and never urgent.
+
+               Controlled sits above the shortage because this column is the
+               only place the row says it: the badge under the product name said
+               the same word twice on the same line, and it went. -->
+          <:col :let={row} label={gettext("Flags")} width="w-[11%]">
             <div class="flex flex-wrap gap-1">
               <.status :for={kind <- flags(row)} kind={kind} />
             </div>
           </:col>
 
-          <:col :let={row} label={gettext("Where")} key="box" width="w-[24%]">
+          <:col :let={row} label={gettext("Where")} key="box" width="w-[18%]">
             <.box_code code={row.box} />
-            <span class="text-base-content/80">{row.location}</span>
-            <!-- Deliberately not a badge. This is the one claim the screen exists
-                 to make — the number is what we believe, not what somebody
-                 counted — and it was a 10px ghost badge once, which is how it
-                 became the least visible thing on the page. Words, in the flow of
-                 the cell. There is a test holding this. -->
-            <p :if={presumed?(row)} class="text-sm text-base-content/80">
-              {presumed_label(row)}
-            </p>
+            <!-- The mark belongs to the box, so it sits on the box: this is a
+                 claim about whether the number in *that* box was ever counted.
+                 It was two lines of prose under the cell — honest, and it made
+                 every row of a long list a paragraph. An icon on the label it
+                 qualifies, with the sentence on hover and in the accessible
+                 name, says the same thing in the space of a character. -->
+            <span
+              :if={presumed?(row)}
+              class="tooltip align-middle text-warning"
+              data-tip={presumed_label(row)}
+            >
+              <.icon name="hero-question-mark-circle" class="size-4" />
+              <span class="sr-only">{presumed_label(row)}</span>
+            </span>
+            <span class="block text-sm text-base-content/60">{row.location}</span>
           </:col>
 
           <:col
@@ -380,7 +447,7 @@ defmodule EstoqueOSWeb.StockLive.Index do
           </:col>
 
           <:foot span={4}>
-            {gettext("%{count} position(s) on this page", count: length(@rows))}
+            {gettext("%{count} stored lot(s) on this page", count: length(@rows))}
           </:foot>
           <:foot align={:right}>{quantity(@total_quantity)}</:foot>
           <:foot :if={@sees_money?} align={:right}></:foot>
@@ -442,9 +509,7 @@ defmodule EstoqueOSWeb.StockLive.Index do
     {:noreply,
      socket
      |> assign(:location_ids, parse_ids(params["location_id"]))
-     |> assign(:only_expiring, checked?(params["only_expiring"]))
-     |> assign(:only_controlled, checked?(params["only_controlled"]))
-     |> assign(:only_needs_review, checked?(params["only_needs_review"]))
+     |> assign(:situations, List.wrap(params["situation"]))
      |> assign(:segment, segment(socket, params["segment"]))
      |> assign(:segment_locked?, locked?(socket))
      |> assign(:page, 1)
@@ -462,14 +527,22 @@ defmodule EstoqueOSWeb.StockLive.Index do
     {:noreply, socket |> assign(:sort, sort) |> assign(:page, 1) |> load_rows()}
   end
 
+  # One filter off, the rest as they were. Re-opening the panel to untick a
+  # chip and pressing Apply again is three taps for what the chip says in one.
+  def handle_event("drop_filter", %{"kind" => kind, "value" => value}, socket) do
+    {:noreply,
+     socket
+     |> drop_filter(kind, value)
+     |> assign(:page, 1)
+     |> load_rows()}
+  end
+
   def handle_event("clear_filters", _params, socket) do
     {:noreply,
      socket
      |> assign(:search, "")
      |> assign(:location_ids, [])
-     |> assign(:only_expiring, false)
-     |> assign(:only_controlled, false)
-     |> assign(:only_needs_review, false)
+     |> assign(:situations, [])
      # Not cleared: a marketing user has no other stock to clear it back to.
      |> assign(:segment, segment(socket, nil))
      |> assign(:sort, %{key: "product", dir: :asc})
@@ -481,6 +554,41 @@ defmodule EstoqueOSWeb.StockLive.Index do
   # segment is not a filter they chose and can drop — it is the only stock they
   # have — so a `segment=` in the address or in a form they hand-crafted is
   # ignored rather than obeyed.
+  defp drop_filter(socket, "search", _value), do: assign(socket, :search, "")
+
+  defp drop_filter(socket, "location", value) do
+    update(socket, :location_ids, &List.delete(&1, to_id(value)))
+  end
+
+  defp drop_filter(socket, "situation", value) do
+    update(socket, :situations, &List.delete(&1, value))
+  end
+
+  # The role always wins here too: a marketing user cannot drop the only stock
+  # they have, and `segment/2` is what says so.
+  defp drop_filter(socket, "segment", _value), do: assign(socket, :segment, segment(socket, nil))
+
+  defp drop_filter(socket, _kind, _value), do: socket
+
+  # The situations a row can be filtered by, in the order somebody looks for
+  # them: what is already lost, what is about to be, what the law watches, what
+  # a mission will be short of, and what arrived without its paperwork.
+  defp situations do
+    [
+      {"expired", gettext("Expired")},
+      {"expiring", gettext("Expiring")},
+      {"controlled", gettext("Controlled")},
+      {"below_minimum", gettext("Below the minimum")},
+      {"review", gettext("Missing lot data")}
+    ]
+  end
+
+  # The address keeps the old spelling — `?expiring=on`, `?review=on` — because
+  # links already point here with it, from the overview and from the bell.
+  defp situations_from(params) do
+    Enum.filter(~w(expired expiring controlled below_minimum review), &checked?(params[&1]))
+  end
+
   defp blank_lot(%{lot_expected: false}), do: "—"
   defp blank_lot(_row), do: gettext("unknown")
 
@@ -495,7 +603,8 @@ defmodule EstoqueOSWeb.StockLive.Index do
 
   # The role always wins: a marketing user's segment is not a filter they chose
   # and can drop, it is the only stock they have. `Scope.segment/2` is the one
-  # copy of that rule.
+  # copy of that rule, and it also answers the chips: ticking both stocks sends
+  # a list, which is not a segment, which is every stock.
   defp segment(socket, asked), do: Scope.segment(socket.assigns.current_scope, asked)
 
   defp flip(:asc), do: :desc
@@ -555,8 +664,11 @@ defmodule EstoqueOSWeb.StockLive.Index do
     [
       row.expired && :expired,
       row.expiring && not row.expired && :expiring,
-      row.below_minimum && :below_minimum,
+      # Above the shortage on purpose: with the cap at two, "controlled" is the
+      # one that must not be the flag that gets dropped. It used to also sit
+      # under the product name, which said the same thing twice on the same row.
       row.controlled && :controlled,
+      row.below_minimum && :below_minimum,
       is_nil(row.unit_cost) && :donation,
       not is_nil(row.unit_cost) && :bought
     ]

@@ -192,7 +192,7 @@ defmodule EstoqueOSWeb.LoadOutLive.Index do
                 <:col :let={row} label={gettext("Presumed contents")} align={:right}>
                   {quantity(row.quantity)}
                   <span class="text-xs opacity-60">
-                    {gettext("in %{count} position(s)", count: row.positions)}
+                    {gettext("in %{count} lot(s)", count: row.positions)}
                   </span>
                 </:col>
               </.data_table>
@@ -237,7 +237,7 @@ defmodule EstoqueOSWeb.LoadOutLive.Index do
         class="alert alert-warning flex-col items-start gap-2 mt-6"
       >
         <h2 class="font-semibold">
-          {gettext("%{count} position(s) are not in a box and cannot travel.",
+          {gettext("%{count} lot(s) are not in a box and cannot travel.",
             count: length(@plan.loose)
           )}
         </h2>

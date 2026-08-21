@@ -124,7 +124,7 @@ defmodule EstoqueOSWeb.ProductLive.Show do
 
       <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-6">
         <.stat label={gettext("On hand")} value={quantity(on_hand(@history))} dense />
-        <.stat label={gettext("Positions")} value={length(@history.positions)} dense />
+        <.stat label={gettext("Stored lots")} value={length(@history.positions)} dense />
         <!-- The one figure on this screen that is a decision rather than a
              measurement, so it is the one that can be typed into. Everything
              else here is the ledger reporting itself. -->

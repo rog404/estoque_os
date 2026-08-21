@@ -544,6 +544,119 @@ defmodule EstoqueOSWeb.UI do
   end
 
   @doc """
+  One filter that takes several answers at once, as chips you tick.
+
+  The native `<select multiple>` was the first attempt and it is the wrong
+  control here: it wants a modifier key held down, which the phone this is used
+  from does not have, and it shows what is chosen only by highlighting a row
+  inside a scrolling box.
+
+  The tone is per *kind* of filter, not per value: places are one colour,
+  situations another, and the stock a third — so a row of applied chips says
+  what kind of answer each one is before it is read. Pass the same tone to the
+  group and to the chips that echo it elsewhere on the page.
+
+  The chips sit in a grid, not in a wrapping row. Wrapped, a chip changes width
+  when it is ticked and every chip after it slides to a new place — so the one
+  the finger was already over is no longer the one under it. In a grid the cells
+  are fixed and a chip can only change colour where it stands.
+
+  Long lists stay usable rather than becoming a wall: the group scrolls at about
+  five rows, and above `searchable_from` options it grows a box that narrows the
+  chips as you type. The narrowing is done in the browser — a form that
+  round-trips on every keystroke is exactly the field that empties itself, which
+  is a mistake this codebase has already paid for once.
+  """
+  attr :name, :string, required: true, doc: ~s(the form field, e.g. `location_id[]`)
+  attr :label, :string, required: true
+  attr :options, :list, required: true, doc: "`{value, label}` pairs"
+  attr :selected, :list, default: [], doc: "the values that are on, as strings"
+  attr :tone, :string, default: "primary", values: ~w(primary info accent warning success)
+
+  attr :searchable_from, :integer,
+    default: 10,
+    doc: "how many options it takes before the group offers a search box"
+
+  def filter_chips(assigns) do
+    ~H"""
+    <fieldset class={["fieldset w-full filter-chips", "tone-#{@tone}"]}>
+      <legend class="label">{@label}</legend>
+
+      <label :if={length(@options) >= @searchable_from} class="input input-sm w-full mb-2">
+        <.icon name="hero-magnifying-glass" class="size-4 opacity-50" />
+        <input
+          type="text"
+          id={"chip-search-#{chip_id(@name)}"}
+          phx-hook=".ChipSearch"
+          class="grow"
+          placeholder={gettext("Search")}
+          aria-label={gettext("Search %{group}", group: @label)}
+          autocomplete="off"
+        />
+      </label>
+
+      <div class="chip-group">
+        <label :for={{value, label} <- @options} class="chip-check" data-label={label} title={label}>
+          <input
+            type="checkbox"
+            name={@name}
+            value={value}
+            checked={to_string(value) in @selected}
+            class="sr-only"
+          />
+          <span>{label}</span>
+        </label>
+      </div>
+    </fieldset>
+
+    <script :type={Phoenix.LiveView.ColocatedHook} name=".ChipSearch">
+      // Narrows the chips beside it, in the browser and nowhere else. A chip
+      // that is ticked never hides: what is filtering the list must not vanish
+      // because somebody typed a word that does not match it.
+      export default {
+        mounted() {
+          const group = this.el.closest(".filter-chips").querySelector(".chip-group")
+
+          this.el.addEventListener("input", () => {
+            const term = this.el.value.trim().toLowerCase()
+
+            group.querySelectorAll(".chip-check").forEach((chip) => {
+              const checked = chip.querySelector("input").checked
+              const matches = chip.dataset.label.toLowerCase().includes(term)
+              chip.hidden = !checked && !matches
+            })
+          })
+        }
+      }
+    </script>
+    """
+  end
+
+  defp chip_id(name), do: String.replace(name, ~r/[^a-zA-Z0-9_-]/, "")
+
+  @doc """
+  A chip that says a filter is on, with the × that takes it off.
+
+  The same object as `filter_chips/1`, after the fact and outside the panel that
+  set it: a count of active filters on a closed button says how many, never
+  which, and "which" is what somebody asks when the list is shorter than they
+  expected.
+  """
+  attr :tone, :string, default: "primary", values: ~w(primary info accent warning success)
+  attr :label, :string, required: true
+  attr :rest, :global, include: ~w(phx-click phx-value-kind phx-value-value)
+
+  def filter_pill(assigns) do
+    ~H"""
+    <button type="button" class={["chip-drop", "tone-#{@tone}"]} {@rest}>
+      <span>{@label}</span>
+      <.icon name="hero-x-mark" class="size-3.5" />
+      <span class="sr-only">{gettext("Remove filter")}</span>
+    </button>
+    """
+  end
+
+  @doc """
   Which box the goods go into — typed, not hunted for in a dropdown.
 
   Four screens used to render a bare `select` over every box at the location.
@@ -687,7 +800,7 @@ defmodule EstoqueOSWeb.UI do
         <:col label={gettext("Quantity")} key="quantity" align={:right} emphasis={:primary} :let={row}>
           {row.quantity}
         </:col>
-        <:foot>{gettext("45 position(s)")}</:foot>
+        <:foot>{gettext("45 lot(s)")}</:foot>
       </.data_table>
   """
   attr :rows, :list, required: true

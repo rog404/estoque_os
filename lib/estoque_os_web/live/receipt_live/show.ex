@@ -214,8 +214,20 @@ defmodule EstoqueOSWeb.ReceiptLive.Show do
       <div class="mt-4">
         <.panel id="receipt-lines" title={gettext("Lines to conference")} flush>
           <.data_table rows={@receipt.lines} row_id={&"line-#{&1.id}"}>
-            <:col :let={line} label={gettext("Invoice line")} emphasis={:identity}>
-              <div class="md:max-w-md">
+            <!-- The widest column on the screen, and it was one of the
+                 narrowest: an NF-e line description is the longest string in
+                 this whole system — "COMPRESSA GAZE 7,5X7,5CM 13F 9 FIOS PCT
+                 C/10 UNID" — and it was capped at `max-w-md` while a quantity
+                 field beside it had the same room. Capping it made every line
+                 four rows tall, which is what the person reading the DANFE
+                 beside the screen has to scan. -->
+            <:col
+              :let={line}
+              label={gettext("Invoice line")}
+              emphasis={:identity}
+              width="w-[38%]"
+            >
+              <div>
                 <p class="font-medium">{line.invoice_item.description}</p>
                 <p class="text-xs opacity-60">
                   {product_name(line)}

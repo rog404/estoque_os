@@ -123,7 +123,7 @@ defmodule EstoqueOSWeb.AuditLiveTest do
       html = view |> element("#commit-form") |> render_submit()
 
       assert html =~ "sinalizada para o gestor"
-      assert html =~ "1 posição(ões) corrigida(s)"
+      assert html =~ "1 lote(s) corrigido(s)"
 
       assert Decimal.equal?(Inventory.balance(box_id: box.id), Decimal.new(287))
       assert Repo.reload!(box).last_verified_at
@@ -136,7 +136,7 @@ defmodule EstoqueOSWeb.AuditLiveTest do
 
       html = view |> element("#commit-form") |> render_submit()
 
-      assert html =~ "0 posição(ões) corrigida(s) de 0 contada(s)"
+      assert html =~ "0 lote(s) corrigido(s) de 0 contado(s)"
       assert Decimal.equal?(Inventory.balance(box_id: box.id), Decimal.new(300))
       # The box is still stamped as looked at.
       assert Repo.reload!(box).last_verified_at
