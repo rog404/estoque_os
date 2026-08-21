@@ -139,7 +139,7 @@ defmodule EstoqueOSWeb.BoxLive.Index do
             </div>
           </:col>
 
-          <:col :let={row} label={gettext("Count")}>
+          <:col :let={row} label={gettext("Counting")}>
             <.write_gate may={@role_may_write?} allowed={@writable?} reason={@write_block}>
               <.link navigate={~p"/boxes/#{row.box}/count"} class="btn btn-sm">
                 {gettext("Count")}

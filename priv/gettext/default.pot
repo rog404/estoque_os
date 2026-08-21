@@ -4811,8 +4811,12 @@ msgstr ""
 msgid "units in %{count} lot(s)"
 msgstr ""
 
-#: lib/estoque_os_web/live/box_live/index.ex:142
 #: lib/estoque_os_web/live/box_live/index.ex:145
 #, elixir-autogen, elixir-format
 msgid "Count"
+msgstr ""
+
+#: lib/estoque_os_web/live/box_live/index.ex:142
+#, elixir-autogen, elixir-format
+msgid "Counting"
 msgstr ""
