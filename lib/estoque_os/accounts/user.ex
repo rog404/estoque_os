@@ -62,6 +62,16 @@ defmodule EstoqueOS.Accounts.User do
   def roles_that_plan, do: ~w(admin manager)
 
   @doc """
+  Roles that handle the boxes: putting stock into one, moving one, counting one.
+
+  Marketing writes to the ledger and is not here. The boxes are the surgical
+  operation's — they travel to missions, and every screen about them is closed
+  to marketing already. This is that same rule, said where a screen shared with
+  marketing (a product's own page) needs to ask it.
+  """
+  def roles_that_box, do: ~w(admin manager logistics)
+
+  @doc """
   Roles allowed to see what anything cost.
 
   Marketing is here and logistics is not, which looks inconsistent until you
