@@ -348,4 +348,107 @@ defmodule EstoqueOSWeb.TransitTest do
       assert {:error, :not_in_transit} = Outbound.arrive_shipment(landed, user_id: actor_id())
     end
   end
+
+  describe "receiving by load" do
+    setup %{conn: conn, box: box, lot: lot, mission: mission, warehouse: warehouse} do
+      # A second box, so the warehouse still has something to send after the
+      # first load leaves, and somewhere for the return to land.
+      home = box_fixture(%{code: "TR09", location_id: warehouse.id})
+
+      {:ok, _} =
+        Inventory.post_transaction(%{
+          type: "purchase_in",
+          user_id: actor_id(),
+          entries: [
+            %{
+              lot_id: lot.id,
+              box_id: home.id,
+              location_id: warehouse.id,
+              quantity: Decimal.new(50)
+            }
+          ]
+        })
+
+      {:ok, view, _html} = live(conn, ~p"/load-out")
+
+      send_load(view, %{
+        "box_ids" => ["#{box.id}"],
+        "source_id" => "#{warehouse.id}",
+        "destination_id" => "#{mission.id}",
+        "carrier" => "STRALOG",
+        "waybill" => "CTE-99182"
+      })
+
+      [%{shipment: sent}] = Outbound.open_shipments()
+      {:ok, %{shipment: landed}} = Outbound.arrive_shipment(sent, user_id: actor_id())
+
+      %{shipment: landed, home: home}
+    end
+
+    # A load received as a loose return stays "still out there" for ever, and
+    # the transit report is only as honest as its closing.
+    test "choosing the load fills the route and closes the shipment", %{
+      conn: conn,
+      lot: lot,
+      shipment: shipment,
+      warehouse: warehouse
+    } do
+      {:ok, view, _html} = live(conn, ~p"/returns")
+
+      routed =
+        view
+        |> element("#route-form")
+        |> render_change(%{"shipment_id" => "#{shipment.id}"})
+
+      assert routed =~ "Missão Tefé"
+
+      [line] = Outbound.plan_return(shipment.to_location_id)
+
+      html =
+        view
+        |> element("#return-form")
+        |> render_submit(%{
+          "lines" => %{
+            "0" => %{
+              "lot_id" => "#{line.lot_id}",
+              "from_box_id" => "#{line.box_id}",
+              "expected" => "300",
+              "quantity" => "300",
+              "to_box_code" => "TR09"
+            }
+          }
+        })
+
+      assert html =~ "Retorno recebido"
+      assert Outbound.open_shipments() == []
+      assert Repo.reload!(shipment).received_at
+      assert Decimal.equal?(Inventory.balance(lot_id: lot.id, location_id: warehouse.id), 350)
+    end
+
+    test "a load still on the road is not offered here", %{
+      conn: conn,
+      home: home,
+      mission: mission,
+      shipment: landed,
+      warehouse: warehouse
+    } do
+      {:ok, loader, _html} = live(conn, ~p"/load-out")
+
+      send_load(loader, %{
+        "box_ids" => ["#{home.id}"],
+        "source_id" => "#{warehouse.id}",
+        "destination_id" => "#{mission.id}",
+        "carrier" => "STRALOG"
+      })
+
+      [%{shipment: rolling}] = Enum.filter(Outbound.open_shipments(), & &1.in_transit?)
+
+      {:ok, view, _html} = live(conn, ~p"/returns")
+
+      # Receiving a load that is still on a highway is receiving goods nobody
+      # has in their hands.
+      assert has_element?(view, ~s{select[name="shipment_id"] option[value="#{landed.id}"]})
+      refute has_element?(view, ~s{select[name="shipment_id"] option[value="#{rolling.id}"]})
+    end
+  end
 end

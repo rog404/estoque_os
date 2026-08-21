@@ -37,6 +37,8 @@ defmodule EstoqueOSWeb.ReturnLive.Index do
      |> assign(:locations, locations)
      |> assign(:source_id, source && source.id)
      |> assign(:destination_id, destination && destination.id)
+     |> assign(:shipment_id, nil)
+     |> assign(:shipments, landed_shipments())
      |> assign(:new_boxes, nil)
      |> assign(:revealed?, false)
      # What has been typed, held here rather than left to the browser: this form
@@ -44,6 +46,13 @@ defmodule EstoqueOSWeb.ReturnLive.Index do
      # rendered without a value comes back empty under the person typing.
      |> assign(:draft, %{})
      |> load_plan()}
+  end
+
+  # The loads this screen can close: still open, and no longer on a truck. A
+  # load that has not landed has nothing to hand back, and offering it here
+  # would ask somebody to receive goods that are still on the road.
+  defp landed_shipments do
+    Enum.reject(Outbound.open_shipments(), & &1.in_transit?)
   end
 
   defp load_plan(socket) do
@@ -145,6 +154,25 @@ defmodule EstoqueOSWeb.ReturnLive.Index do
       </.header>
 
       <form id="route-form" phx-change="route" class="field-row mt-4">
+        <!-- The load, when there is one. A mission return is normally the far
+             end of a load that left here, and picking it fills the route in and
+             lets this screen close the shipment instead of leaving it open for
+             ever. A return with no load behind it is still normal — goods come
+             back from places nothing was sent to — so "no load" stays an
+             answer rather than a missing one. -->
+        <label :if={@shipments != []} class="fieldset">
+          <span class="label">{gettext("Load")}</span>
+          <select name="shipment_id" class="select select-bordered">
+            <option value="">{gettext("No load — a return on its own")}</option>
+            <option
+              :for={row <- @shipments}
+              value={row.shipment.id}
+              selected={row.shipment.id == @shipment_id}
+            >
+              {shipment_label(row)}
+            </option>
+          </select>
+        </label>
         <label class="fieldset">
           <span class="label">{gettext("Coming from")}</span>
           <select name="source_id" class="select select-bordered">
@@ -309,8 +337,7 @@ defmodule EstoqueOSWeb.ReturnLive.Index do
   def handle_event("route", params, socket) do
     {:noreply,
      socket
-     |> assign(:source_id, to_id(params["source_id"]))
-     |> assign(:destination_id, to_id(params["destination_id"]))
+     |> route(params)
      |> load_plan()}
   end
 
@@ -330,6 +357,49 @@ defmodule EstoqueOSWeb.ReturnLive.Index do
 
   def handle_event("cancel_new_box", _params, socket) do
     {:noreply, assign(socket, :new_boxes, nil)}
+  end
+
+  # Picking a load answers both halves of the route: it came from where the load
+  # was addressed and it arrives back where the load left from. Choosing a place
+  # by hand afterwards is still allowed — a mission that moved on sends its
+  # goods home from somewhere else.
+  defp route(socket, %{"shipment_id" => id} = params) when id != "" do
+    shipment_id = to_id(id)
+
+    case Enum.find(socket.assigns.shipments, &(&1.shipment.id == shipment_id)) do
+      nil ->
+        places(socket, params)
+
+      %{shipment: shipment} ->
+        if shipment_id == socket.assigns.shipment_id do
+          places(socket, params)
+        else
+          socket
+          |> assign(:shipment_id, shipment_id)
+          |> assign(:source_id, shipment.to_location_id)
+          |> assign(:destination_id, shipment.from_location_id)
+        end
+    end
+  end
+
+  defp route(socket, params) do
+    socket
+    |> assign(:shipment_id, nil)
+    |> places(params)
+  end
+
+  defp places(socket, params) do
+    socket
+    |> assign(:source_id, to_id(params["source_id"]))
+    |> assign(:destination_id, to_id(params["destination_id"]))
+  end
+
+  defp shipment_label(%{shipment: shipment, days_out: days_out}) do
+    gettext("%{route} · left %{date} (%{days} day(s))",
+      route: "#{shipment.from_location.name} → #{shipment.to_location.name}",
+      date: date(shipment.shipped_on),
+      days: days_out
+    )
   end
 
   defp do_receive(socket, params, opts) do
@@ -358,11 +428,13 @@ defmodule EstoqueOSWeb.ReturnLive.Index do
       user_id: socket.assigns.current_scope.user.id
     }
 
-    case Outbound.receive_return(attrs) do
+    case receive_load(socket.assigns.shipment_id, attrs) do
       {:ok, result} ->
         {:noreply,
          socket
          |> put_flash(:info, result_message(result, created))
+         |> assign(:shipment_id, nil)
+         |> assign(:shipments, landed_shipments())
          |> load_plan()}
 
       {:error, {:negative_stock, _positions}} ->
@@ -388,9 +460,27 @@ defmodule EstoqueOSWeb.ReturnLive.Index do
         {:noreply,
          put_flash(socket, :error, gettext("Choose a destination other than the origin."))}
 
+      {:error, :already_received} ->
+        {:noreply,
+         socket
+         |> put_flash(:error, gettext("This load has already been received."))
+         |> assign(:shipment_id, nil)
+         |> assign(:shipments, landed_shipments())}
+
       {:error, _reason} ->
         {:noreply, put_flash(socket, :error, gettext("The return could not be recorded."))}
     end
+  end
+
+  # Same movement either way; naming the load is what also closes it. Receiving
+  # through the shipment is what keeps the transit report honest — a load
+  # received as a loose return stays "still out there" for ever.
+  defp receive_load(nil, attrs), do: Outbound.receive_return(attrs)
+
+  defp receive_load(shipment_id, attrs) do
+    shipment_id
+    |> Outbound.get_shipment!()
+    |> Outbound.receive_shipment(attrs)
   end
 
   # Forty lines can name the same new box, and can name several. Each code is
