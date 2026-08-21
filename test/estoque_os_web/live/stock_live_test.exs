@@ -87,10 +87,12 @@ defmodule EstoqueOSWeb.StockLiveTest do
 
       cell = flags_cell(html, "Gaze vencida")
 
-      # Expired and below minimum are both true, and so are controlled and
-      # donation. Two of them, the worst two.
+      # Expired, below minimum, controlled and donation are all true of this
+      # row. Two of them, the worst two — and "controlled" is now one of them,
+      # because this column is the only place the row says so at all.
       assert cell =~ "vencido"
-      assert cell =~ "abaixo do mínimo"
+      assert cell =~ "controlado"
+      refute cell =~ "abaixo do mínimo"
       refute cell =~ "doação"
     end
 

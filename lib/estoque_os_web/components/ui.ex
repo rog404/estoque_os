@@ -556,9 +556,14 @@ defmodule EstoqueOSWeb.UI do
   what kind of answer each one is before it is read. Pass the same tone to the
   group and to the chips that echo it elsewhere on the page.
 
+  The chips sit in a grid, not in a wrapping row. Wrapped, a chip changes width
+  when it is ticked and every chip after it slides to a new place — so the one
+  the finger was already over is no longer the one under it. In a grid the cells
+  are fixed and a chip can only change colour where it stands.
+
   Long lists stay usable rather than becoming a wall: the group scrolls at about
-  seven rows, and above `searchable_from` options it grows a box that narrows
-  the chips as you type. The narrowing is done in the browser — a form that
+  five rows, and above `searchable_from` options it grows a box that narrows the
+  chips as you type. The narrowing is done in the browser — a form that
   round-trips on every keystroke is exactly the field that empties itself, which
   is a mistake this codebase has already paid for once.
   """
@@ -577,19 +582,21 @@ defmodule EstoqueOSWeb.UI do
     <fieldset class={["fieldset w-full filter-chips", "tone-#{@tone}"]}>
       <legend class="label">{@label}</legend>
 
-      <input
-        :if={length(@options) >= @searchable_from}
-        type="text"
-        id={"chip-search-#{chip_id(@name)}"}
-        phx-hook=".ChipSearch"
-        class="input input-sm w-full mb-1.5"
-        placeholder={gettext("Narrow the list")}
-        aria-label={gettext("Narrow the list")}
-        autocomplete="off"
-      />
+      <label :if={length(@options) >= @searchable_from} class="input input-sm w-full mb-2">
+        <.icon name="hero-magnifying-glass" class="size-4 opacity-50" />
+        <input
+          type="text"
+          id={"chip-search-#{chip_id(@name)}"}
+          phx-hook=".ChipSearch"
+          class="grow"
+          placeholder={gettext("Search")}
+          aria-label={gettext("Search %{group}", group: @label)}
+          autocomplete="off"
+        />
+      </label>
 
       <div class="chip-group">
-        <label :for={{value, label} <- @options} class="chip-check" data-label={label}>
+        <label :for={{value, label} <- @options} class="chip-check" data-label={label} title={label}>
           <input
             type="checkbox"
             name={@name}
@@ -608,7 +615,7 @@ defmodule EstoqueOSWeb.UI do
       // because somebody typed a word that does not match it.
       export default {
         mounted() {
-          const group = this.el.parentElement.querySelector(".chip-group")
+          const group = this.el.closest(".filter-chips").querySelector(".chip-group")
 
           this.el.addEventListener("input", () => {
             const term = this.el.value.trim().toLowerCase()

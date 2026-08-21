@@ -107,7 +107,9 @@ defmodule EstoqueOSWeb.StockLive.Index do
   # says — not the urgency of the value, which the row itself already says.
   defp filter_tone("location"), do: "info"
   defp filter_tone("situation"), do: "warning"
-  defp filter_tone("segment"), do: "accent"
+  # Green, not the accent: the accent is an orange at hue 38 and the situation
+  # amber is at 68, which is the same colour to anybody not holding a swatch.
+  defp filter_tone("segment"), do: "success"
   defp filter_tone(_kind), do: "primary"
 
   # The filters that are on, in one list the row of chips can render: the kind
@@ -218,7 +220,7 @@ defmodule EstoqueOSWeb.StockLive.Index do
               </span>
             </summary>
 
-            <div class="dropdown-content z-50 mt-2 w-72 rounded-box bg-base-100 shadow-lg border border-base-300 p-4 space-y-2">
+            <div class="dropdown-content z-50 mt-2 w-80 max-w-[calc(100vw-2rem)] rounded-box bg-base-100 shadow-lg border border-base-300 p-4 space-y-2">
               <!-- One control per kind of answer, and the colour is the kind:
                    places are one tone, situations another, the stock a third.
                    Nothing ticked means everywhere, which is what an empty
@@ -362,7 +364,6 @@ defmodule EstoqueOSWeb.StockLive.Index do
                 · {packaging_label(row.packagings)}
               </span>
             </span>
-            <.status :if={row.controlled} kind={:controlled} class="align-middle" />
           </:col>
 
           <:col :let={row} label={gettext("Lot")} key="lot" group width="w-[9%]">
@@ -383,8 +384,12 @@ defmodule EstoqueOSWeb.StockLive.Index do
                Ranked and capped at two. Every row could wear five, and a row
                wearing five says nothing at all — what the eye needs is the
                worst thing that is true about it. Expired outranks expiring
-               outranks running low; how it arrived comes last, because it is
-               background and never urgent. -->
+               outranks controlled outranks running low; how it arrived comes
+               last, because it is background and never urgent.
+
+               Controlled sits above the shortage because this column is the
+               only place the row says it: the badge under the product name said
+               the same word twice on the same line, and it went. -->
           <:col :let={row} label={gettext("Flags")} width="w-[11%]">
             <div class="flex flex-wrap gap-1">
               <.status :for={kind <- flags(row)} kind={kind} />
@@ -666,8 +671,11 @@ defmodule EstoqueOSWeb.StockLive.Index do
     [
       row.expired && :expired,
       row.expiring && not row.expired && :expiring,
-      row.below_minimum && :below_minimum,
+      # Above the shortage on purpose: with the cap at two, "controlled" is the
+      # one that must not be the flag that gets dropped. It used to also sit
+      # under the product name, which said the same thing twice on the same row.
       row.controlled && :controlled,
+      row.below_minimum && :below_minimum,
       is_nil(row.unit_cost) && :donation,
       not is_nil(row.unit_cost) && :bought
     ]
