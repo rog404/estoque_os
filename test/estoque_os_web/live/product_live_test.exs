@@ -202,4 +202,92 @@ defmodule EstoqueOSWeb.ProductLiveTest do
       refute html =~ ~s(href="/issue?product=#{gauze.id}")
     end
   end
+
+  describe "putting loose stock away" do
+    setup %{warehouse: warehouse, gauze: gauze} do
+      loose = lot_fixture(%{product_id: gauze.id, lot_number: "L-SOLTO"})
+
+      {:ok, _} =
+        Inventory.post_transaction(%{
+          type: "purchase_in",
+          user_id: actor_id(),
+          entries: [
+            %{lot_id: loose.id, location_id: warehouse.id, quantity: Decimal.new(60)}
+          ]
+        })
+
+      %{loose: loose}
+    end
+
+    test "a loose lot goes into a box from the product's own page", %{
+      conn: conn,
+      gauze: gauze,
+      loose: loose,
+      box: box,
+      warehouse: warehouse
+    } do
+      {:ok, view, _html} = live(conn, ~p"/products/#{gauze.id}")
+
+      html =
+        view
+        |> element("#stow-#{loose.id}-#{warehouse.id}")
+        |> render_submit(%{"box_code" => "PL01", "quantity" => "60"})
+
+      assert html =~ "Guardado em PL01"
+
+      assert Decimal.equal?(
+               Inventory.balance(lot_id: loose.id, box_id: box.id),
+               Decimal.new(60)
+             )
+
+      assert Decimal.equal?(
+               Inventory.balance(lot_id: loose.id, location_id: warehouse.id, box_id: nil),
+               Decimal.new(0)
+             )
+    end
+
+    test "an unknown code is a typo, not a new box", %{
+      conn: conn,
+      gauze: gauze,
+      loose: loose,
+      warehouse: warehouse
+    } do
+      {:ok, view, _html} = live(conn, ~p"/products/#{gauze.id}")
+
+      html =
+        view
+        |> element("#stow-#{loose.id}-#{warehouse.id}")
+        |> render_submit(%{"box_code" => "ZZ99", "quantity" => "60"})
+
+      assert html =~ "ZZ99"
+      refute EstoqueOS.Repo.get_by(EstoqueOS.Inventory.Box, code: "ZZ99")
+
+      assert Decimal.equal?(
+               Inventory.balance(lot_id: loose.id, location_id: warehouse.id, box_id: nil),
+               Decimal.new(60)
+             )
+    end
+
+    test "a line already in a box is offered no form", %{
+      conn: conn,
+      gauze: gauze,
+      lot: lot,
+      warehouse: warehouse
+    } do
+      {:ok, view, _html} = live(conn, ~p"/products/#{gauze.id}")
+
+      refute has_element?(view, "#stow-#{lot.id}-#{warehouse.id}")
+    end
+
+    # Marketing writes to the ledger and still has no boxes: every screen about
+    # them is closed to that role, and this page is the one they share.
+    test "marketing is offered no box at all", %{gauze: gauze, loose: loose, warehouse: warehouse} do
+      {:ok, marketing} = Catalog.update_product(gauze, %{segment: "marketing"})
+      %{conn: conn} = register_and_log_in_as(%{conn: build_conn()}, "marketing")
+
+      {:ok, view, _html} = live(conn, ~p"/products/#{marketing.id}")
+
+      refute has_element?(view, "#stow-#{loose.id}-#{warehouse.id}")
+    end
+  end
 end

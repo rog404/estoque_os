@@ -25,6 +25,9 @@ defmodule EstoqueOSWeb.ProductLive.Show do
   alias EstoqueOS.Accounts.Scope
   alias EstoqueOS.Accounts.User
   alias EstoqueOS.Catalog
+  import EstoqueOS.Coercion, only: [to_id: 1]
+
+  alias EstoqueOS.Inventory.Locations
   alias EstoqueOS.Reports.ProductHistory
   alias EstoqueOSWeb.Movement
 
@@ -46,6 +49,74 @@ defmodule EstoqueOSWeb.ProductLive.Show do
     end
   end
 
+  # A code from the same location, because a fixed example is a code standing
+  # somewhere else — which is the one answer this field must not suggest.
+  defp placeholder_box([%{code: code} | _rest]), do: code
+  defp placeholder_box(_none), do: nil
+
+  # `create: false` on purpose. Creating a box is an act with a place in it —
+  # which warehouse, written on which box in marker pen — and the box screen is
+  # where that conversation already happens. From here, an unknown code is a
+  # typo far more often than it is a new box.
+  defp stow(socket, lot_id, location_id, params) do
+    case Locations.resolve_box(params["box_code"], location_id, create: false) do
+      {:ok, nil} ->
+        {:noreply, put_flash(socket, :error, gettext("Say which box it goes into."))}
+
+      {:ok, box} ->
+        put_away(socket, box, lot_id, params["quantity"])
+
+      {:unknown, code} ->
+        {:noreply,
+         put_flash(
+           socket,
+           :error,
+           gettext("No box %{code} here. Create it on the boxes screen first.", code: code)
+         )}
+
+      {:error, {:box_elsewhere, elsewhere}} ->
+        {:noreply,
+         put_flash(
+           socket,
+           :error,
+           gettext("Box %{code} is somewhere else. Move it first, or use another.",
+             code: elsewhere.code
+           )
+         )}
+
+      {:error, _changeset} ->
+        {:noreply, put_flash(socket, :error, gettext("That could not be stored."))}
+    end
+  end
+
+  defp put_away(socket, box, lot_id, quantity) do
+    scope = socket.assigns.current_scope
+
+    case Locations.put_in_box(box, lot_id, quantity, user_id: scope.user.id) do
+      {:ok, _transaction} ->
+        history = ProductHistory.for_product(socket.assigns.history.product.id)
+
+        {:noreply,
+         socket
+         |> put_flash(:info, gettext("Stored in %{box}.", box: box.code))
+         |> assign_positions(history)}
+
+      {:error, {:insufficient_stock, %{available: available}}} ->
+        {:noreply,
+         put_flash(
+           socket,
+           :error,
+           gettext("There is only %{available} loose here.", available: quantity(available))
+         )}
+
+      {:error, :invalid_quantity} ->
+        {:noreply, put_flash(socket, :error, gettext("Type a quantity greater than zero."))}
+
+      {:error, _reason} ->
+        {:noreply, put_flash(socket, :error, gettext("That could not be stored."))}
+    end
+  end
+
   defp hidden_from?(scope, product) do
     case Scope.segment(scope) do
       nil -> false
@@ -62,7 +133,32 @@ defmodule EstoqueOSWeb.ProductLive.Show do
        EstoqueOS.Inventory.average_cost_by_product([history.product.id])[id_of(history)]
      )
      |> assign(:changes, Catalog.product_changes(history.product.id))
-     |> assign(:history, history)}
+     |> assign(:may_box?, may_box?(socket.assigns.current_scope))
+     |> assign_positions(history)}
+  end
+
+  # The loose lines carry the boxes of their own location, because the box a
+  # lot may go into is one standing in the same place. Grouped by location so a
+  # product sitting loose in two warehouses offers each one its own list.
+  defp assign_positions(socket, history) do
+    boxes =
+      history.positions
+      |> Enum.filter(&is_nil(&1.box_id))
+      |> Enum.map(& &1.location_id)
+      |> Enum.uniq()
+      |> Map.new(&{&1, Locations.list_boxes(&1)})
+
+    socket
+    |> assign(:history, history)
+    |> assign(:boxes_at, boxes)
+  end
+
+  # Marketing writes, and still not here: the boxes belong to the surgical
+  # operation and every screen about them is already closed to that role. This
+  # page is the one place the two meet, so it asks the question itself.
+  defp may_box?(scope) do
+    EstoqueOSWeb.UserAuth.role_may_write?(scope) and
+      Scope.effective_role(scope) in User.roles_that_box()
   end
 
   # A third question, and not a rung above `@writable?`. The logistics operator
@@ -217,6 +313,61 @@ defmodule EstoqueOSWeb.ProductLive.Show do
           <:col :let={row} label={gettext("Quantity")} align={:right} emphasis={:primary}>
             {quantity(row.quantity)}
           </:col>
+
+          <!-- `:if` on the slot, not on the cell: a column that only some rows
+               would render is a table whose rows have different widths. The
+               column appears for whoever handles boxes, and a line that is
+               already in one renders the slot empty rather than skipping it.
+
+               Loose stock cannot travel, so the fastest route from "I am
+               looking at this product" to "it is in a box" belongs here. The
+               box's own screen keeps its list; this is the other door to the
+               same act. -->
+          <:col
+            :let={row}
+            :if={@may_box?}
+            label={gettext("Into a box")}
+            field={:block}
+            group
+          >
+            <.write_gate may={is_nil(row.box_id)} allowed={@writable?} reason={@write_block}>
+              <form
+                id={"stow-#{row.lot_id}-#{row.location_id}"}
+                phx-submit="stow"
+                phx-value-lot={row.lot_id}
+                phx-value-location={row.location_id}
+                class="flex flex-wrap items-center gap-2 justify-end"
+              >
+                <input
+                  type="text"
+                  name="box_code"
+                  list={"boxes-#{row.location_id}"}
+                  placeholder={placeholder_box(@boxes_at[row.location_id])}
+                  class="input input-sm input-bordered w-24"
+                  aria-label={gettext("Which box at %{location}", location: row.location)}
+                />
+                <.box_options
+                  id={"boxes-#{row.location_id}"}
+                  boxes={@boxes_at[row.location_id] || []}
+                />
+
+                <!-- The whole line, because putting away half of what is on the
+                     floor is the exception. Type less to send part of it. -->
+                <input
+                  type="text"
+                  name="quantity"
+                  value={quantity(row.quantity)}
+                  inputmode="decimal"
+                  data-numeric
+                  class="input input-sm input-bordered w-20 text-right"
+                  aria-label={gettext("How much to put in")}
+                />
+                <button class="btn btn-sm" phx-disable-with={gettext("Storing...")}>
+                  {gettext("Put away")}
+                </button>
+              </form>
+            </.write_gate>
+          </:col>
         </.data_table>
       </.panel>
 
@@ -360,6 +511,17 @@ defmodule EstoqueOSWeb.ProductLive.Show do
   # whether this role plans, which the logistics operator does not. The markup
   # disables the field either way; this is the half that cannot be bypassed by
   # a socket message.
+  # The same act as the one on the box's screen, reached from the other side.
+  # The location is the line's own: a lot loose in two warehouses has two lines
+  # and each one puts its stock into a box standing where that stock is.
+  def handle_event("stow", %{"lot" => lot_id, "location" => location_id} = params, socket) do
+    if socket.assigns.may_box? and socket.assigns.writable? do
+      stow(socket, lot_id, to_id(location_id), params)
+    else
+      {:noreply, socket}
+    end
+  end
+
   def handle_event("set_minimum", %{"min_stock_override" => value}, socket) do
     scope = socket.assigns.current_scope
 
