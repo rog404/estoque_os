@@ -43,9 +43,11 @@ defmodule EstoqueOSWeb.LoadOutLive.Index do
      |> load_plan()}
   end
 
+  defp source(assigns), do: Enum.find(assigns.locations, &(&1.id == assigns.source_id))
+
   defp default_destination(locations, source) do
     locations
-    |> Enum.reject(&(source && &1.id == source.id))
+    |> destinations(source)
     |> Enum.sort_by(&destination_rank(&1.kind))
     |> List.first()
     |> case do
@@ -54,9 +56,17 @@ defmodule EstoqueOSWeb.LoadOutLive.Index do
     end
   end
 
+  # Transit is not somewhere a load is sent; it is where a load *is* while
+  # somebody else drives it. Naming a carrier is what puts it there, and the
+  # arrival is what takes it out — so offering it as a destination asked the
+  # operator to model the trip by hand, and a load parked in transit on purpose
+  # is a load addressed to nowhere.
+  defp destinations(locations, source) do
+    Enum.reject(locations, &((source && &1.id == source.id) or &1.kind == "transit"))
+  end
+
   defp destination_rank("mission_site"), do: 0
-  defp destination_rank("transit"), do: 1
-  defp destination_rank(_kind), do: 2
+  defp destination_rank(_kind), do: 1
 
   defp load_plan(socket) do
     plan =
@@ -105,10 +115,9 @@ defmodule EstoqueOSWeb.LoadOutLive.Index do
           <span class="label">{gettext("To")}</span>
           <select name="destination_id" class="select select-bordered">
             <option
-              :for={location <- @locations}
+              :for={location <- destinations(@locations, source(assigns))}
               value={location.id}
               selected={location.id == @destination_id}
-              disabled={location.id == @source_id}
             >
               {location.name}
             </option>

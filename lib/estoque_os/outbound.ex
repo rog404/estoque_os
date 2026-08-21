@@ -22,7 +22,7 @@ defmodule EstoqueOS.Outbound do
   alias Ecto.Multi
   alias EstoqueOS.Catalog.Product
   alias EstoqueOS.Inventory
-  alias EstoqueOS.Inventory.{Box, Lot, StockSnapshot}
+  alias EstoqueOS.Inventory.{Box, Locations, Lot, StockSnapshot, TransactionEntry}
   alias EstoqueOS.Missions
   alias EstoqueOS.Outbound.Shipment
   alias EstoqueOS.Repo
@@ -98,8 +98,19 @@ defmodule EstoqueOS.Outbound do
 
   defp do_load_out(source_id, destination_id, box_ids, picks, attrs) do
     boxes = Repo.all(from b in Box, where: b.id in ^box_ids)
+    carrier_id = to_id(field(attrs, :carrier_id))
 
-    entries = box_entries(boxes, source_id, destination_id)
+    # Where the goods actually are the minute the truck pulls away. With a
+    # carrier that is transit, not the mission: the load is on the road for
+    # days, and a mission whose balance includes goods still on a highway is a
+    # mission that will pick against stock nobody there can touch. Driven by the
+    # ONG, leaving and arriving are one act and the goods go straight there.
+    #
+    # The address does not change either way — the shipment keeps saying where
+    # the load is headed, and the arrival is what moves it the last leg.
+    resting_id = resting_location(carrier_id, destination_id)
+
+    entries = box_entries(boxes, source_id, resting_id)
 
     cond do
       picks != [] ->
@@ -108,13 +119,16 @@ defmodule EstoqueOS.Outbound do
       entries == [] ->
         {:error, :nothing_to_send}
 
+      is_nil(resting_id) ->
+        {:error, :no_transit_location}
+
       true ->
         Multi.new()
         |> Multi.run(:transaction, fn _repo, _changes ->
           Inventory.post_transaction(%{
             type: "load_out",
             source_location_id: source_id,
-            destination_location_id: destination_id,
+            destination_location_id: resting_id,
             mission_id: mission_at(destination_id),
             source_mission_id: mission_at(source_id),
             user_id: field(attrs, :user_id),
@@ -127,7 +141,7 @@ defmodule EstoqueOS.Outbound do
             Box
             |> where([b], b.id in ^box_ids)
             |> repo.update_all(
-              set: [location_id: destination_id, updated_at: DateTime.utc_now(:second)]
+              set: [location_id: resting_id, updated_at: DateTime.utc_now(:second)]
             )
 
           {:ok, count}
@@ -141,7 +155,7 @@ defmodule EstoqueOS.Outbound do
           |> Shipment.changeset(%{
             from_location_id: source_id,
             to_location_id: destination_id,
-            carrier_id: to_id(field(attrs, :carrier_id)),
+            carrier_id: carrier_id,
             waybill: blank_to_nil(field(attrs, :waybill)),
             expected_arrival: field(attrs, :expected_arrival),
             mission_id: mission_at(destination_id),
@@ -163,6 +177,16 @@ defmodule EstoqueOS.Outbound do
           {:error, _step, reason, _changes} ->
             {:error, reason}
         end
+    end
+  end
+
+  defp resting_location(nil, destination_id), do: destination_id
+
+  defp resting_location(_carrier_id, destination_id) do
+    case Locations.transit_location() do
+      nil -> nil
+      %{id: id} when id == destination_id -> destination_id
+      transit -> transit.id
     end
   end
 
@@ -195,8 +219,148 @@ defmodule EstoqueOS.Outbound do
     %{
       shipment: shipment,
       days_out: Date.diff(today, shipment.shipped_on),
+      in_transit?: Shipment.in_transit?(shipment),
       late?: shipment.expected_arrival != nil and Date.before?(shipment.expected_arrival, today)
     }
+  end
+
+  @doc """
+  Loads on the road right now: a carrier has them and nobody has said they
+  landed.
+  """
+  def shipments_in_transit(opts \\ []) do
+    Shipment
+    |> where([s], is_nil(s.arrived_at) and not is_nil(s.carrier_id))
+    |> order_by([s], asc: s.shipped_on, asc: s.id)
+    |> maybe_carrier(opts[:carrier_id])
+    |> preload([:carrier, :from_location, :to_location, :mission])
+    |> Repo.all()
+    |> Enum.map(&decorate_shipment/1)
+  end
+
+  @doc "One shipment, with everything the screens name."
+  def get_shipment!(id) do
+    Shipment
+    |> Repo.get!(id)
+    |> Repo.preload([:carrier, :from_location, :to_location, :mission])
+  end
+
+  @doc """
+  The load landed: whatever is in transit for this shipment finishes the trip.
+
+  The last leg, and it is an ordinary transfer — every box the load-out put in
+  transit moves to the address the shipment has been carrying since it left.
+  Nothing is counted here: what arrived is what left, and the count happens
+  where somebody opens the boxes.
+
+  Refused for a load nobody is carrying, because that one never stopped at
+  transit, and for a load already stamped, because arriving twice would move the
+  same goods twice.
+  """
+  def arrive_shipment(%Shipment{} = shipment, attrs \\ %{}) do
+    if Shipment.in_transit?(shipment) do
+      do_arrive(shipment, attrs)
+    else
+      {:error, :not_in_transit}
+    end
+  end
+
+  defp do_arrive(shipment, attrs) do
+    entries = transit_entries(shipment)
+
+    if entries == [] do
+      {:error, :nothing_in_transit}
+    else
+      Multi.new()
+      |> Multi.run(:transaction, fn _repo, _changes ->
+        Inventory.post_transaction(%{
+          type: "transfer",
+          source_location_id: shipment.from_location_id,
+          destination_location_id: shipment.to_location_id,
+          mission_id: shipment.mission_id,
+          user_id: field(attrs, :user_id),
+          notes: field(attrs, :notes) || arrival_note(shipment),
+          entries: entries
+        })
+      end)
+      |> Multi.run(:boxes, fn repo, _changes ->
+        box_ids = entries |> Enum.map(& &1.box_id) |> Enum.reject(&is_nil/1) |> Enum.uniq()
+
+        {count, _} =
+          Box
+          |> where([b], b.id in ^box_ids)
+          |> repo.update_all(
+            set: [location_id: shipment.to_location_id, updated_at: DateTime.utc_now(:second)]
+          )
+
+        {:ok, count}
+      end)
+      |> Multi.run(:shipment, fn repo, %{transaction: transaction} ->
+        shipment
+        |> Shipment.arrival_changeset(%{
+          arrived_at: DateTime.utc_now(:second),
+          arrival_transaction_id: transaction.id
+        })
+        |> repo.update()
+      end)
+      |> Repo.transaction()
+      |> case do
+        {:ok, changes} ->
+          {:ok, %{shipment: changes.shipment, transaction: changes.transaction}}
+
+        {:error, _step, reason, _changes} ->
+          {:error, reason}
+      end
+    end
+  end
+
+  defp arrival_note(shipment) do
+    gettext("arrived at %{place}", place: shipment.to_location.name)
+  end
+
+  # What this load still has sitting in transit. Boxes only: loose stock cannot
+  # travel, so nothing else can be there.
+  defp transit_entries(shipment) do
+    case Locations.transit_location() do
+      nil ->
+        []
+
+      transit ->
+        box_ids = shipment_box_ids(shipment)
+
+        StockSnapshot
+        |> where([s], s.location_id == ^transit.id and s.quantity != 0)
+        |> where([s], s.box_id in ^box_ids)
+        |> select([s], %{lot_id: s.lot_id, box_id: s.box_id, quantity: s.quantity})
+        |> Repo.all()
+        |> Enum.flat_map(fn row ->
+          [
+            %{
+              lot_id: row.lot_id,
+              box_id: row.box_id,
+              location_id: transit.id,
+              quantity: Decimal.negate(row.quantity)
+            },
+            %{
+              lot_id: row.lot_id,
+              box_id: row.box_id,
+              location_id: shipment.to_location_id,
+              quantity: row.quantity
+            }
+          ]
+        end)
+    end
+  end
+
+  # The boxes this load took out, read from the movement that sent it — the
+  # shipment names the trip, and the trip's entries name the boxes.
+  defp shipment_box_ids(shipment) do
+    TransactionEntry
+    |> where([e], e.transaction_id == ^shipment.sent_transaction_id)
+    |> select([e], e.box_id)
+    |> Repo.all()
+    |> Enum.reject(&is_nil/1)
+    |> Enum.uniq()
   end
 
   @doc """
