@@ -88,6 +88,9 @@ defmodule EstoqueOSWeb do
       import EstoqueOSWeb.CoreComponents
       # The design system: panel, page_head, stat, status, check, data_table
       import EstoqueOSWeb.UI
+      # Counting: the field, the reveal, the recount notice — one shape for the
+      # three screens that ask somebody to count something.
+      import EstoqueOSWeb.Counting
 
       # One place where a number becomes text
       import EstoqueOSWeb.Format,

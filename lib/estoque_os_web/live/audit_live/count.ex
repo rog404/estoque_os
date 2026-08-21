@@ -95,17 +95,10 @@ defmodule EstoqueOSWeb.AuditLive.Count do
           {@box.location.name} · {verified_label(@box)}
         </:subtitle>
         <:actions>
-          <!-- The exception, and it belongs to the manager alone. Off by
-               default, and taking it is written into the transaction — a count
-               made with the answer in view must never later read as blind. -->
-          <button
-            :if={@sees_money? and @step == :count and not @revealed?}
-            phx-click="reveal"
-            class="btn btn-sm btn-outline"
-          >
-            {gettext("Show what the ledger expects")}
-          </button>
-          <.status :if={@revealed?} kind={:presumed} detail={gettext("expected shown")} />
+          <.reveal_expected
+            available?={@sees_money? and @step == :count and not @revealed?}
+            revealed?={@revealed?}
+          />
         </:actions>
       </.header>
 
@@ -136,14 +129,9 @@ defmodule EstoqueOSWeb.AuditLive.Count do
             {quantity(row.quantity)}
           </:col>
           <:col :let={row} label={gettext("Counted")} align={:right} field={:inline}>
-            <input
-              type="text"
+            <.count_field
               name={"counts[#{row.lot_id}]"}
-              inputmode="decimal"
-              data-numeric
-              placeholder={gettext("not counted")}
-              class="input input-sm input-bordered w-28 text-right"
-              aria-label={gettext("Counted quantity for lot %{lot}", lot: row.lot_number || "—")}
+              label={gettext("Counted quantity for lot %{lot}", lot: row.lot_number || "—")}
             />
           </:col>
         </.data_table>
@@ -152,26 +140,13 @@ defmodule EstoqueOSWeb.AuditLive.Count do
           <.button variant="primary" phx-disable-with={gettext("Checking...")}>
             {gettext("Record count")}
           </.button>
-          <p class="text-sm opacity-70">
-            {gettext("Blank lines are not counted and keep what the ledger presumed.")}
-          </p>
+          <.blank_note />
         </div>
       </form>
 
       <!-- STEP 2 — recount, naming the items but never the gap. -->
       <form :if={@step == :recount} id="recount-form" phx-submit="recount" class="mt-6">
-        <div class="alert alert-warning flex-col items-start gap-1">
-          <p class="font-semibold">
-            {gettext("%{count} item(s) did not match. Please count these again.",
-              count: length(@recount_lots)
-            )}
-          </p>
-          <p class="text-sm">
-            {gettext(
-              "A first count that disagrees is as often a miscount as a real loss, and the box is still open."
-            )}
-          </p>
-        </div>
+        <.recount_notice count={length(@recount_lots)} />
 
         <.data_table rows={@recount_lots} row_id={&"recount-#{&1.lot_id}"}>
           <:col :let={row} label={gettext("Product")} emphasis={:identity}>
@@ -181,13 +156,9 @@ defmodule EstoqueOSWeb.AuditLive.Count do
             {row.lot_number || gettext("unknown")}
           </:col>
           <:col :let={row} label={gettext("Count again")} align={:right} field={:inline}>
-            <input
-              type="text"
+            <.count_field
               name={"counts[#{row.lot_id}]"}
-              inputmode="decimal"
-              data-numeric
-              class="input input-sm input-bordered w-28 text-right"
-              aria-label={gettext("Second count for lot %{lot}", lot: row.lot_number || "—")}
+              label={gettext("Second count for lot %{lot}", lot: row.lot_number || "—")}
             />
           </:col>
         </.data_table>

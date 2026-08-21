@@ -377,6 +377,12 @@ defmodule EstoqueOS.Outbound do
       lines == [] ->
         {:error, :nothing_returned}
 
+      Enum.all?(lines, &is_nil(&1.quantity)) ->
+        # Every line blank. Posting this would consume the mission's whole
+        # stock as "used" and call it a return, which is the shape of the
+        # accident the blank field made possible in the first place.
+        {:error, :nothing_counted}
+
       true ->
         do_receive_return(source_id, destination_id, lines, consume_missing?, attrs)
     end
@@ -385,8 +391,10 @@ defmodule EstoqueOS.Outbound do
   defp do_receive_return(source_id, destination_id, lines, consume_missing?, attrs) do
     user_id = field(attrs, :user_id)
 
+    counted = Enum.reject(lines, &is_nil(&1.quantity))
+
     returned =
-      Enum.flat_map(lines, fn line ->
+      Enum.flat_map(counted, fn line ->
         if Decimal.compare(line.quantity, 0) == :gt do
           [
             %{
@@ -409,7 +417,7 @@ defmodule EstoqueOS.Outbound do
 
     missing =
       if consume_missing? do
-        Enum.flat_map(lines, fn line ->
+        Enum.flat_map(counted, fn line ->
           left_behind = Decimal.sub(line.expected, line.quantity)
 
           if Decimal.compare(left_behind, 0) == :gt do
@@ -474,7 +482,12 @@ defmodule EstoqueOS.Outbound do
         lot_id: to_id(field(line, :lot_id)),
         from_box_id: to_id(field(line, :from_box_id)),
         to_box_id: to_id(field(line, :to_box_id)),
-        quantity: to_decimal(field(line, :quantity)) || Decimal.new(0),
+        # nil and not zero. A blank field means *not counted*, and the two
+        # readings are opposites here: zero says the goods did not come back,
+        # which with "o que não voltou foi usado" ticked writes the whole line
+        # off as consumed. Not counted says nobody has looked yet, and a line
+        # nobody looked at must not move.
+        quantity: to_decimal(field(line, :quantity)),
         expected: to_decimal(field(line, :expected)) || Decimal.new(0)
       }
     end)

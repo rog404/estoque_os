@@ -204,7 +204,7 @@ msgstr "Senha atualizada com sucesso!"
 
 #: lib/estoque_os_web/live/invoice_live/show.ex:526
 #: lib/estoque_os_web/live/product_live/show.ex:149
-#: lib/estoque_os_web/live/receipt_live/show.ex:294
+#: lib/estoque_os_web/live/receipt_live/show.ex:293
 #: lib/estoque_os_web/live/user_live/reset_password.ex:86
 #: lib/estoque_os_web/live/user_live/reset_password.ex:136
 #: lib/estoque_os_web/live/user_live/settings.ex:86
@@ -405,10 +405,10 @@ msgstr "Emissão"
 msgid "Item confirmed."
 msgstr "Item confirmado."
 
-#: lib/estoque_os_web/live/audit_live/count.ex:129
-#: lib/estoque_os_web/live/audit_live/count.ex:180
-#: lib/estoque_os_web/live/audit_live/count.ex:219
-#: lib/estoque_os_web/live/audit_live/count.ex:273
+#: lib/estoque_os_web/live/audit_live/count.ex:122
+#: lib/estoque_os_web/live/audit_live/count.ex:155
+#: lib/estoque_os_web/live/audit_live/count.ex:190
+#: lib/estoque_os_web/live/audit_live/count.ex:244
 #: lib/estoque_os_web/live/audit_report_live/index.ex:201
 #: lib/estoque_os_web/live/box_live/show.ex:101
 #: lib/estoque_os_web/live/entry_live/new.ex:399
@@ -417,7 +417,7 @@ msgstr "Item confirmado."
 #: lib/estoque_os_web/live/product_live/show.ex:205
 #: lib/estoque_os_web/live/product_live/show.ex:248
 #: lib/estoque_os_web/live/product_live/show.ex:287
-#: lib/estoque_os_web/live/return_live/index.ex:171
+#: lib/estoque_os_web/live/return_live/index.ex:197
 #: lib/estoque_os_web/live/stock_live/index.ex:312
 #, elixir-autogen, elixir-format
 msgid "Lot"
@@ -470,10 +470,10 @@ msgstr "Lançar no estoque"
 msgid "Posted to stock"
 msgstr "Lançada no estoque"
 
-#: lib/estoque_os_web/live/audit_live/count.ex:126
-#: lib/estoque_os_web/live/audit_live/count.ex:177
-#: lib/estoque_os_web/live/audit_live/count.ex:218
-#: lib/estoque_os_web/live/audit_live/count.ex:272
+#: lib/estoque_os_web/live/audit_live/count.ex:119
+#: lib/estoque_os_web/live/audit_live/count.ex:152
+#: lib/estoque_os_web/live/audit_live/count.ex:189
+#: lib/estoque_os_web/live/audit_live/count.ex:243
 #: lib/estoque_os_web/live/audit_report_live/index.ex:200
 #: lib/estoque_os_web/live/box_live/show.ex:100
 #: lib/estoque_os_web/live/entry_live/new.ex:126
@@ -484,7 +484,7 @@ msgstr "Lançada no estoque"
 #: lib/estoque_os_web/live/issue_live/index.ex:532
 #: lib/estoque_os_web/live/kit_live/show.ex:432
 #: lib/estoque_os_web/live/mission_live/show.ex:201
-#: lib/estoque_os_web/live/return_live/index.ex:167
+#: lib/estoque_os_web/live/return_live/index.ex:193
 #: lib/estoque_os_web/live/sales_report_live/index.ex:158
 #: lib/estoque_os_web/live/stock_live/index.ex:296
 #, elixir-autogen, elixir-format
@@ -517,7 +517,7 @@ msgid "Search the catalog"
 msgstr "Buscar no catálogo"
 
 #: lib/estoque_os_web/live/invoice_live/index.ex:71
-#: lib/estoque_os_web/live/receipt_live/show.ex:472
+#: lib/estoque_os_web/live/receipt_live/show.ex:471
 #: lib/estoque_os_web/live/user_live/index.ex:75
 #, elixir-autogen, elixir-format
 msgid "Status"
@@ -636,13 +636,13 @@ msgstr "%{counted} linha(s) lida(s), %{adjusted} posição(ões) ajustada(s)."
 #: lib/estoque_os_web/live/issue_live/index.ex:300
 #: lib/estoque_os_web/live/load_out_live/index.ex:128
 #: lib/estoque_os_web/live/product_live/show.ex:211
-#: lib/estoque_os_web/live/receipt_live/show.ex:283
-#: lib/estoque_os_web/live/receipt_live/show.ex:456
+#: lib/estoque_os_web/live/receipt_live/show.ex:282
+#: lib/estoque_os_web/live/receipt_live/show.ex:455
 #, elixir-autogen, elixir-format
 msgid "Box"
 msgstr "Caixa"
 
-#: lib/estoque_os_web/live/audit_live/count.ex:132
+#: lib/estoque_os_web/live/audit_live/count.ex:125
 #: lib/estoque_os_web/live/audit_report_live/index.ex:202
 #: lib/estoque_os_web/live/box_live/show.ex:102
 #: lib/estoque_os_web/live/entry_live/new.ex:410
@@ -788,10 +788,10 @@ msgstr "falta a quantidade"
 msgid "the quantity is negative"
 msgstr "a quantidade é negativa"
 
-#: lib/estoque_os_web/live/audit_live/count.ex:130
-#: lib/estoque_os_web/live/audit_live/count.ex:181
-#: lib/estoque_os_web/live/audit_live/count.ex:220
-#: lib/estoque_os_web/live/audit_live/count.ex:274
+#: lib/estoque_os_web/live/audit_live/count.ex:123
+#: lib/estoque_os_web/live/audit_live/count.ex:156
+#: lib/estoque_os_web/live/audit_live/count.ex:191
+#: lib/estoque_os_web/live/audit_live/count.ex:245
 #: lib/estoque_os_web/live/audit_report_live/index.ex:201
 #: lib/estoque_os_web/live/box_live/show.ex:101
 #: lib/estoque_os_web/live/home_live/index.ex:208
@@ -802,7 +802,7 @@ msgstr "a quantidade é negativa"
 #: lib/estoque_os_web/live/product_live/show.ex:206
 #: lib/estoque_os_web/live/product_live/show.ex:248
 #: lib/estoque_os_web/live/product_live/show.ex:288
-#: lib/estoque_os_web/live/return_live/index.ex:172
+#: lib/estoque_os_web/live/return_live/index.ex:198
 #: lib/estoque_os_web/live/stock_live/index.ex:484
 #, elixir-autogen, elixir-format
 msgid "unknown"
@@ -962,7 +962,7 @@ msgstr "O que precisa de atenção antes da próxima missão."
 msgid "active products"
 msgstr "produtos ativos"
 
-#: lib/estoque_os_web/live/audit_live/count.ex:304
+#: lib/estoque_os_web/live/audit_live/count.ex:275
 #: lib/estoque_os_web/live/box_live/show.ex:211
 #: lib/estoque_os_web/live/home_live/index.ex:430
 #, elixir-autogen, elixir-format
@@ -988,7 +988,7 @@ msgid "lot %{lot}"
 msgstr "lote %{lot}"
 
 #: lib/estoque_os/auditing.ex:126
-#: lib/estoque_os_web/live/audit_live/count.ex:301
+#: lib/estoque_os_web/live/audit_live/count.ex:272
 #: lib/estoque_os_web/live/box_live/index.ex:151
 #: lib/estoque_os_web/live/box_live/show.ex:208
 #: lib/estoque_os_web/live/home_live/index.ex:427
@@ -1016,7 +1016,7 @@ msgstr "%{count} linha(s) não contada(s)"
 msgid "%{description}: invoice says %{expected}, counted %{counted} (%{difference})"
 msgstr "%{description}: a nota diz %{expected}, contamos %{counted} (%{difference})"
 
-#: lib/estoque_os_web/live/receipt_live/show.ex:586
+#: lib/estoque_os_web/live/receipt_live/show.ex:585
 #, elixir-autogen, elixir-format
 msgid "Back to the invoice"
 msgstr "Voltar para a nota fiscal"
@@ -1026,14 +1026,14 @@ msgstr "Voltar para a nota fiscal"
 msgid "Check what physically arrived against what the invoice promised."
 msgstr "Confira o que chegou fisicamente contra o que a nota prometeu."
 
-#: lib/estoque_os_web/live/receipt_live/show.ex:496
-#: lib/estoque_os_web/live/receipt_live/show.ex:508
+#: lib/estoque_os_web/live/receipt_live/show.ex:495
+#: lib/estoque_os_web/live/receipt_live/show.ex:507
 #, elixir-autogen, elixir-format
 msgid "Close conference"
 msgstr "Encerrar conferência"
 
-#: lib/estoque_os_web/live/receipt_live/show.ex:494
-#: lib/estoque_os_web/live/receipt_live/show.ex:569
+#: lib/estoque_os_web/live/receipt_live/show.ex:493
+#: lib/estoque_os_web/live/receipt_live/show.ex:568
 #, elixir-autogen, elixir-format
 msgid "Closing..."
 msgstr "Encerrando..."
@@ -1043,28 +1043,23 @@ msgstr "Encerrando..."
 msgid "Conference closed"
 msgstr "Conferência encerrada"
 
-#: lib/estoque_os_web/live/receipt_live/show.ex:688
+#: lib/estoque_os_web/live/receipt_live/show.ex:687
 #, elixir-autogen, elixir-format
 msgid "Conference closed and stock updated."
 msgstr "Conferência encerrada e estoque atualizado."
 
-#: lib/estoque_os_web/live/audit_live/count.ex:138
-#: lib/estoque_os_web/live/audit_live/count.ex:225
-#: lib/estoque_os_web/live/audit_live/count.ex:279
+#: lib/estoque_os_web/live/audit_live/count.ex:131
+#: lib/estoque_os_web/live/audit_live/count.ex:196
+#: lib/estoque_os_web/live/audit_live/count.ex:250
 #: lib/estoque_os_web/live/receipt_live/show.ex:247
-#: lib/estoque_os_web/live/receipt_live/show.ex:441
+#: lib/estoque_os_web/live/receipt_live/show.ex:440
 #, elixir-autogen, elixir-format
 msgid "Counted"
 msgstr "Contado"
 
-#: lib/estoque_os_web/live/receipt_live/show.ex:271
-#, elixir-autogen, elixir-format
-msgid "Counted quantity"
-msgstr "Quantidade contada"
-
-#: lib/estoque_os_web/live/audit_live/count.ex:228
-#: lib/estoque_os_web/live/audit_live/count.ex:282
-#: lib/estoque_os_web/live/receipt_live/show.ex:465
+#: lib/estoque_os_web/live/audit_live/count.ex:199
+#: lib/estoque_os_web/live/audit_live/count.ex:253
+#: lib/estoque_os_web/live/receipt_live/show.ex:464
 #, elixir-autogen, elixir-format
 msgid "Difference"
 msgstr "Diferença"
@@ -1084,7 +1079,7 @@ msgstr "Guarda da mercadoria após a conferência"
 msgid "Invoice says"
 msgstr "A nota diz"
 
-#: lib/estoque_os_web/live/receipt_live/show.ex:512
+#: lib/estoque_os_web/live/receipt_live/show.ex:511
 #, elixir-autogen, elixir-format
 msgid "Lines left uncounted stay exactly as the invoice booked them."
 msgstr "Linhas não contadas ficam exatamente como a nota lançou."
@@ -1111,7 +1106,7 @@ msgstr "Conferência de recebimento da nota %{number}, rodada %{round}"
 msgid "Receiving of invoice %{number}"
 msgstr "Recebimento da nota %{number}"
 
-#: lib/estoque_os_web/live/receipt_live/show.ex:296
+#: lib/estoque_os_web/live/receipt_live/show.ex:295
 #, elixir-autogen, elixir-format
 msgid "Record"
 msgstr "Registrar"
@@ -1128,7 +1123,7 @@ msgid "Round %{round} · %{location}"
 msgstr "Rodada %{round} · %{location}"
 
 #: lib/estoque_os_web/live/invoice_live/show.ex:166
-#: lib/estoque_os_web/live/receipt_live/show.ex:588
+#: lib/estoque_os_web/live/receipt_live/show.ex:587
 #, elixir-autogen, elixir-format
 msgid "See stock"
 msgstr "Ver estoque"
@@ -1139,7 +1134,7 @@ msgstr "Ver estoque"
 msgid "Start conference"
 msgstr "Iniciar conferência"
 
-#: lib/estoque_os_web/live/receipt_live/show.ex:695
+#: lib/estoque_os_web/live/receipt_live/show.ex:694
 #, elixir-autogen, elixir-format
 msgid "The conference could not be closed."
 msgstr "Não foi possível encerrar a conferência."
@@ -1156,13 +1151,13 @@ msgstr "Não foi possível iniciar a conferência."
 msgid "There is already an open conference."
 msgstr "Já existe uma conferência aberta."
 
-#: lib/estoque_os_web/live/receipt_live/show.ex:692
+#: lib/estoque_os_web/live/receipt_live/show.ex:691
 #, elixir-autogen, elixir-format
 msgid "This conference is already closed."
 msgstr "Esta conferência já foi encerrada."
 
-#: lib/estoque_os_web/live/receipt_live/show.ex:757
-#: lib/estoque_os_web/live/receipt_live/show.ex:760
+#: lib/estoque_os_web/live/receipt_live/show.ex:756
+#: lib/estoque_os_web/live/receipt_live/show.ex:759
 #, elixir-autogen, elixir-format
 msgid "Type the counted quantity as a number."
 msgstr "Digite a quantidade contada como número."
@@ -1177,11 +1172,6 @@ msgstr "cancelada"
 msgid "closed"
 msgstr "encerrada"
 
-#: lib/estoque_os_web/live/receipt_live/show.ex:268
-#, elixir-autogen, elixir-format
-msgid "count"
-msgstr "contagem"
-
 #: lib/estoque_os_web/live/invoice_live/show.ex:853
 #, elixir-autogen, elixir-format
 msgid "in progress"
@@ -1194,13 +1184,13 @@ msgstr "em andamento"
 msgid "no box"
 msgstr "sem caixa"
 
-#: lib/estoque_os_web/live/audit_live/count.ex:144
-#: lib/estoque_os_web/live/receipt_live/show.ex:620
+#: lib/estoque_os_web/components/counting.ex:70
+#: lib/estoque_os_web/live/receipt_live/show.ex:619
 #, elixir-autogen, elixir-format
 msgid "not counted"
 msgstr "não contada"
 
-#: lib/estoque_os_web/live/receipt_live/show.ex:595
+#: lib/estoque_os_web/live/receipt_live/show.ex:594
 #, elixir-autogen, elixir-format
 msgid "product not resolved"
 msgstr "produto não resolvido"
@@ -1418,12 +1408,12 @@ msgstr "%{days} dias sem contagem"
 msgid "%{quantity} units in %{count} position(s)"
 msgstr "%{quantity} unidades em %{count} posição(ões)"
 
-#: lib/estoque_os_web/live/audit_live/count.ex:156
+#: lib/estoque_os_web/components/counting.ex:128
 #, elixir-autogen, elixir-format
 msgid "Blank lines are not counted and keep what the ledger presumed."
 msgstr "Linhas em branco não são contadas e mantêm o que o livro presumia."
 
-#: lib/estoque_os_web/live/audit_live/count.ex:397
+#: lib/estoque_os_web/live/audit_live/count.ex:368
 #, elixir-autogen, elixir-format
 msgid "Box counted and marked as verified."
 msgstr "Caixa contada e marcada como verificada."
@@ -1440,7 +1430,7 @@ msgstr "Conte poucas caixas bem, em vez de fingir que um inventário completo é
 msgid "Count of box %{code}"
 msgstr "Contagem da caixa %{code}"
 
-#: lib/estoque_os_web/live/audit_live/count.ex:113
+#: lib/estoque_os_web/live/audit_live/count.ex:106
 #, elixir-autogen, elixir-format
 msgid "Count recorded: %{adjusted} position(s) corrected out of %{counted} counted."
 msgstr "Contagem registrada: %{adjusted} posição(ões) corrigida(s) de %{counted} contada(s)."
@@ -1451,7 +1441,7 @@ msgstr "Contagem registrada: %{adjusted} posição(ões) corrigida(s) de %{count
 msgid "Count this box"
 msgstr "Contar esta caixa"
 
-#: lib/estoque_os_web/live/audit_live/count.ex:146
+#: lib/estoque_os_web/live/audit_live/count.ex:134
 #, elixir-autogen, elixir-format
 msgid "Counted quantity for lot %{lot}"
 msgstr "Quantidade contada do lote %{lot}"
@@ -1467,7 +1457,7 @@ msgstr "Mini-auditoria"
 msgid "No box holds stock yet."
 msgstr "Nenhuma caixa tem estoque ainda."
 
-#: lib/estoque_os_web/live/audit_live/count.ex:153
+#: lib/estoque_os_web/live/audit_live/count.ex:141
 #, elixir-autogen, elixir-format
 msgid "Record count"
 msgstr "Registrar contagem"
@@ -1478,17 +1468,17 @@ msgstr "Registrar contagem"
 msgid "Recording..."
 msgstr "Registrando..."
 
-#: lib/estoque_os_web/live/audit_live/count.ex:294
+#: lib/estoque_os_web/live/audit_live/count.ex:265
 #, elixir-autogen, elixir-format
 msgid "See the box"
 msgstr "Ver a caixa"
 
-#: lib/estoque_os_web/live/audit_live/count.ex:389
+#: lib/estoque_os_web/live/audit_live/count.ex:360
 #, elixir-autogen, elixir-format
 msgid "The count could not be recorded."
 msgstr "Não foi possível registrar a contagem."
 
-#: lib/estoque_os_web/live/audit_live/count.ex:120
+#: lib/estoque_os_web/live/audit_live/count.ex:113
 #, elixir-autogen, elixir-format
 msgid "The ledger presumes this box is empty."
 msgstr "O livro presume que esta caixa está vazia."
@@ -1499,7 +1489,7 @@ msgid "A box travels whole and is not recounted."
 msgstr "A caixa viaja inteira e não é recontada."
 
 #: lib/estoque_os_web/live/load_out_live/index.ex:262
-#: lib/estoque_os_web/live/return_live/index.ex:326
+#: lib/estoque_os_web/live/return_live/index.ex:389
 #, elixir-autogen, elixir-format
 msgid "Choose a destination other than the origin."
 msgstr "Escolha um destino diferente da origem."
@@ -1621,7 +1611,7 @@ msgid "How many"
 msgstr "Quantos"
 
 #: lib/estoque_os_web/live/kit_live/show.ex:261
-#: lib/estoque_os_web/live/return_live/index.ex:201
+#: lib/estoque_os_web/live/return_live/index.ex:233
 #, elixir-autogen, elixir-format
 msgid "Into box"
 msgstr "Na caixa"
@@ -1693,22 +1683,22 @@ msgstr "não ligado"
 msgid "%{quantity} available here"
 msgstr "%{quantity} disponíveis aqui"
 
-#: lib/estoque_os_web/live/return_live/index.ex:141
+#: lib/estoque_os_web/live/return_live/index.ex:161
 #, elixir-autogen, elixir-format
 msgid "Arriving at"
 msgstr "Chegando em"
 
-#: lib/estoque_os_web/live/return_live/index.ex:183
+#: lib/estoque_os_web/live/return_live/index.ex:219
 #, elixir-autogen, elixir-format
 msgid "Came back"
 msgstr "Voltou"
 
-#: lib/estoque_os_web/live/return_live/index.ex:129
+#: lib/estoque_os_web/live/return_live/index.ex:149
 #, elixir-autogen, elixir-format
 msgid "Coming from"
 msgstr "Vindo de"
 
-#: lib/estoque_os_web/live/return_live/index.ex:123
+#: lib/estoque_os_web/live/return_live/index.ex:137
 #, elixir-autogen, elixir-format
 msgid "Count what came back and say which box it went into."
 msgstr "Conte o que voltou e diga em qual caixa foi guardado."
@@ -1718,19 +1708,19 @@ msgstr "Conte o que voltou e diga em qual caixa foi guardado."
 msgid "Goods leaving without an invoice or a kit. FEFO picks the lot."
 msgstr "Mercadoria saindo sem nota nem kit. O FEFO escolhe o lote."
 
-#: lib/estoque_os_web/live/return_live/index.ex:180
+#: lib/estoque_os_web/live/return_live/index.ex:214
 #, elixir-autogen, elixir-format
 msgid "Ledger says"
 msgstr "O livro diz"
 
-#: lib/estoque_os_web/live/return_live/index.ex:177
+#: lib/estoque_os_web/live/return_live/index.ex:203
 #, elixir-autogen, elixir-format
 msgid "Left in"
 msgstr "Saiu em"
 
 #: lib/estoque_os_web/components/layouts.ex:398
-#: lib/estoque_os_web/live/return_live/index.ex:35
-#: lib/estoque_os_web/live/return_live/index.ex:121
+#: lib/estoque_os_web/live/return_live/index.ex:36
+#: lib/estoque_os_web/live/return_live/index.ex:135
 #, elixir-autogen, elixir-format
 msgid "Mission return"
 msgstr "Retorno de missão"
@@ -1745,37 +1735,32 @@ msgstr "Nenhum produto corresponde."
 msgid "Not enough here: %{missing} missing."
 msgstr "Não há o bastante aqui: faltam %{missing}."
 
-#: lib/estoque_os_web/live/return_live/index.ex:322
+#: lib/estoque_os_web/live/return_live/index.ex:377
 #, elixir-autogen, elixir-format
 msgid "Nothing to receive."
 msgstr "Nada a receber."
-
-#: lib/estoque_os_web/live/return_live/index.ex:198
-#, elixir-autogen, elixir-format
-msgid "Quantity that came back"
-msgstr "Quantidade que voltou"
 
 #: lib/estoque_os_web/live/issue_live/index.ex:461
 #, elixir-autogen, elixir-format
 msgid "Quantity to issue"
 msgstr "Quantidade a dar baixa"
 
-#: lib/estoque_os_web/live/return_live/index.ex:227
+#: lib/estoque_os_web/live/return_live/index.ex:261
 #, elixir-autogen, elixir-format
 msgid "Receive return"
 msgstr "Receber retorno"
 
-#: lib/estoque_os_web/live/return_live/index.ex:371
+#: lib/estoque_os_web/live/return_live/index.ex:434
 #, elixir-autogen, elixir-format
 msgid "Return received."
 msgstr "Retorno recebido."
 
-#: lib/estoque_os_web/live/return_live/index.ex:374
+#: lib/estoque_os_web/live/return_live/index.ex:437
 #, elixir-autogen, elixir-format
 msgid "Return received; what did not come back was written off as used."
 msgstr "Retorno recebido; o que não voltou foi baixado como consumido."
 
-#: lib/estoque_os_web/live/return_live/index.ex:318
+#: lib/estoque_os_web/live/return_live/index.ex:373
 #, elixir-autogen, elixir-format
 msgid "Some line says more came back than went out. Check the quantities."
 msgstr "Alguma linha diz que voltou mais do que saiu. Confira as quantidades."
@@ -1785,12 +1770,12 @@ msgstr "Alguma linha diz que voltou mais do que saiu. Confira as quantidades."
 msgid "The issue could not be recorded."
 msgstr "Não foi possível registrar a baixa."
 
-#: lib/estoque_os_web/live/return_live/index.ex:156
+#: lib/estoque_os_web/live/return_live/index.ex:176
 #, elixir-autogen, elixir-format
 msgid "The ledger says there is nothing out there."
 msgstr "O livro diz que não há nada lá fora."
 
-#: lib/estoque_os_web/live/return_live/index.ex:329
+#: lib/estoque_os_web/live/return_live/index.ex:392
 #, elixir-autogen, elixir-format
 msgid "The return could not be recorded."
 msgstr "Não foi possível registrar o retorno."
@@ -1802,17 +1787,17 @@ msgstr "Não foi possível registrar o retorno."
 msgid "Type a quantity greater than zero."
 msgstr "Digite uma quantidade maior que zero."
 
-#: lib/estoque_os_web/live/return_live/index.ex:245
+#: lib/estoque_os_web/live/return_live/index.ex:279
 #, elixir-autogen, elixir-format
 msgid "Unchecked, the missing goods stay on the mission's books."
 msgstr "Desmarcado, o que falta continua nos registros da missão."
 
-#: lib/estoque_os/outbound.ex:446
+#: lib/estoque_os/outbound.ex:454
 #, elixir-autogen, elixir-format
 msgid "Used during the mission (did not come back)"
 msgstr "Consumido durante a missão (não voltou)"
 
-#: lib/estoque_os_web/live/return_live/index.ex:216
+#: lib/estoque_os_web/live/return_live/index.ex:250
 #, elixir-autogen, elixir-format
 msgid "What did not come back was used during the mission"
 msgstr "O que não voltou foi consumido durante a missão"
@@ -2078,7 +2063,7 @@ msgstr "Contas são criadas por um administrador."
 msgid "%{boxes} box(es) and %{lines} loose line(s) leave %{from} for %{to}."
 msgstr "%{boxes} caixa(s) e %{lines} linha(s) avulsa(s) saem de %{from} para %{to}."
 
-#: lib/estoque_os_web/live/return_live/index.ex:232
+#: lib/estoque_os_web/live/return_live/index.ex:266
 #, elixir-autogen, elixir-format
 msgid "%{count} position(s) come back to %{to}."
 msgstr "%{count} posição(ões) voltam para %{to}."
@@ -2114,8 +2099,8 @@ msgstr "Cancelar"
 
 #: lib/estoque_os_web/components/core_components.ex:638
 #: lib/estoque_os_web/components/core_components.ex:638
-#: lib/estoque_os_web/live/receipt_live/show.ex:580
-#: lib/estoque_os_web/live/receipt_live/show.ex:580
+#: lib/estoque_os_web/live/receipt_live/show.ex:579
+#: lib/estoque_os_web/live/receipt_live/show.ex:579
 #, elixir-autogen, elixir-format
 msgid "Close"
 msgstr "Fechar"
@@ -2125,7 +2110,7 @@ msgstr "Fechar"
 msgid "Post this invoice to stock?"
 msgstr "Lançar esta nota no estoque?"
 
-#: lib/estoque_os_web/live/return_live/index.ex:228
+#: lib/estoque_os_web/live/return_live/index.ex:262
 #, elixir-autogen, elixir-format
 msgid "Receive this return?"
 msgstr "Receber este retorno?"
@@ -2135,7 +2120,7 @@ msgstr "Receber este retorno?"
 msgid "Send this load?"
 msgstr "Enviar esta carga?"
 
-#: lib/estoque_os_web/live/return_live/index.ex:238
+#: lib/estoque_os_web/live/return_live/index.ex:272
 #, elixir-autogen, elixir-format
 msgid "Whatever did not come back is written off as used during the mission, unless you unchecked that."
 msgstr "O que não voltou é baixado como consumido na missão, a menos que você tenha desmarcado."
@@ -2546,23 +2531,23 @@ msgstr "Nome do novo produto no catálogo"
 msgid "Positions"
 msgstr "Posições"
 
-#: lib/estoque_os_web/live/audit_live/count.ex:289
+#: lib/estoque_os_web/live/audit_live/count.ex:260
 #, elixir-autogen, elixir-format
 msgid "Every line counted matched what the ledger presumed."
 msgstr "Toda linha contada conferiu com o que o livro presumia."
 
-#: lib/estoque_os_web/live/audit_live/count.ex:222
-#: lib/estoque_os_web/live/audit_live/count.ex:276
+#: lib/estoque_os_web/live/audit_live/count.ex:193
+#: lib/estoque_os_web/live/audit_live/count.ex:247
 #, elixir-autogen, elixir-format
 msgid "Ledger presumed"
 msgstr "O livro presumia"
 
-#: lib/estoque_os_web/live/audit_live/count.ex:268
+#: lib/estoque_os_web/live/audit_live/count.ex:239
 #, elixir-autogen, elixir-format
 msgid "The ledger had presumed these numbers; the count corrected them."
 msgstr "O livro presumia estes números; a contagem corrigiu."
 
-#: lib/estoque_os_web/live/audit_live/count.ex:266
+#: lib/estoque_os_web/live/audit_live/count.ex:237
 #, elixir-autogen, elixir-format
 msgid "What the count changed"
 msgstr "O que a contagem mudou"
@@ -3115,13 +3100,13 @@ msgid "already holds %{product} — one product, one box"
 msgstr "já tem %{product} — um produto, uma caixa"
 
 #: lib/estoque_os_web/live/receipt_live/show.ex:154
-#: lib/estoque_os_web/live/return_live/index.ex:109
+#: lib/estoque_os_web/live/return_live/index.ex:123
 #, elixir-autogen, elixir-format
 msgid "holds %{product}, from the same group"
 msgstr "tem %{product}, do mesmo grupo"
 
 #: lib/estoque_os_web/live/receipt_live/show.ex:158
-#: lib/estoque_os_web/live/return_live/index.ex:113
+#: lib/estoque_os_web/live/return_live/index.ex:127
 #, elixir-autogen, elixir-format
 msgid "holds %{sector} items"
 msgstr "tem itens de %{sector}"
@@ -3246,7 +3231,7 @@ msgstr "presumido"
 msgid "value not informed"
 msgstr "valor não informado"
 
-#: lib/estoque_os_web/live/return_live/index.ex:162
+#: lib/estoque_os_web/live/return_live/index.ex:188
 #, elixir-autogen, elixir-format
 msgid "Boxes coming back"
 msgstr "Caixas que estão voltando"
@@ -3377,28 +3362,28 @@ msgstr "Todos os destinos"
 msgid "All movement types"
 msgstr "Todos os tipos"
 
-#: lib/estoque_os_web/live/receipt_live/show.ex:374
+#: lib/estoque_os_web/live/receipt_live/show.ex:373
 #, elixir-autogen, elixir-format
 msgid "Store in %{box} — %{reason}"
 msgstr "Guardar em %{box} — %{reason}"
 
-#: lib/estoque_os_web/live/return_live/index.ex:105
+#: lib/estoque_os_web/live/return_live/index.ex:119
 #, elixir-autogen, elixir-format
 msgid "already holds %{product}"
 msgstr "já tem %{product}"
 
-#: lib/estoque_os_web/live/return_live/index.ex:87
+#: lib/estoque_os_web/live/return_live/index.ex:101
 #, elixir-autogen, elixir-format
 msgid "came back in this one"
 msgstr "voltou nesta caixa"
 
+#: lib/estoque_os_web/live/receipt_live/show.ex:334
 #: lib/estoque_os_web/live/receipt_live/show.ex:335
-#: lib/estoque_os_web/live/receipt_live/show.ex:336
 #, elixir-autogen, elixir-format
 msgid "recorded"
 msgstr "registrado"
 
-#: lib/estoque_os_web/live/receipt_live/show.ex:476
+#: lib/estoque_os_web/live/receipt_live/show.ex:475
 #, elixir-autogen, elixir-format
 msgid "to count"
 msgstr "a contar"
@@ -3499,7 +3484,7 @@ msgstr "Escolha outro local, ou dê entrada em mercadoria antes."
 #: lib/estoque_os_web/live/box_live/show.ex:290
 #: lib/estoque_os_web/live/entry_live/new.ex:604
 #: lib/estoque_os_web/live/kit_live/show.ex:806
-#: lib/estoque_os_web/live/receipt_live/show.ex:718
+#: lib/estoque_os_web/live/receipt_live/show.ex:717
 #, elixir-autogen, elixir-format
 msgid "Box %{code} created here."
 msgstr "Caixa %{code} criada aqui."
@@ -3511,17 +3496,17 @@ msgstr "A caixa %{code} está em %{location}. Mova-a antes, ou use outra."
 
 #: lib/estoque_os_web/live/box_live/show.ex:298
 #: lib/estoque_os_web/live/kit_live/show.ex:814
-#: lib/estoque_os_web/live/receipt_live/show.ex:726
+#: lib/estoque_os_web/live/receipt_live/show.ex:725
 #, elixir-autogen, elixir-format
 msgid "Box %{code} is somewhere else. Move it first, or use another."
 msgstr "A caixa %{code} está em outro local. Mova-a antes, ou use outra."
 
-#: lib/estoque_os_web/live/return_live/index.ex:207
+#: lib/estoque_os_web/live/return_live/index.ex:239
 #, elixir-autogen, elixir-format
 msgid "Box it came back into"
 msgstr "Caixa em que voltou"
 
-#: lib/estoque_os_web/live/return_live/index.ex:379
+#: lib/estoque_os_web/live/return_live/index.ex:442
 #, elixir-autogen, elixir-format
 msgid "New box(es) created here: %{codes}"
 msgstr "Caixa(s) criada(s) aqui: %{codes}"
@@ -3529,7 +3514,7 @@ msgstr "Caixa(s) criada(s) aqui: %{codes}"
 #: lib/estoque_os_web/live/box_live/show.ex:304
 #: lib/estoque_os_web/live/entry_live/new.ex:619
 #: lib/estoque_os_web/live/kit_live/show.ex:820
-#: lib/estoque_os_web/live/receipt_live/show.ex:732
+#: lib/estoque_os_web/live/receipt_live/show.ex:731
 #, elixir-autogen, elixir-format
 msgid "That box code could not be used."
 msgstr "Esse código de caixa não pôde ser usado."
@@ -3575,96 +3560,96 @@ msgstr "Uma caixa vai para a missão pela derrubada de carga, que registra a via
 msgid "Moving a box moves what it holds. No recount is required. Sending one to a mission is a load-out."
 msgstr "Mover uma caixa move o que ela contém. Nenhuma recontagem é exigida. Mandar uma para a missão é uma derrubada de carga."
 
-#: lib/estoque_os_web/live/audit_live/count.ex:165
+#: lib/estoque_os_web/components/counting.ex:111
 #, elixir-autogen, elixir-format
 msgid "%{count} item(s) did not match. Please count these again."
 msgstr "%{count} item(ns) não conferiram. Conte estes de novo, por favor."
 
-#: lib/estoque_os_web/live/audit_live/count.ex:251
+#: lib/estoque_os_web/live/audit_live/count.ex:222
 #, elixir-autogen, elixir-format
 msgid "%{count} position(s) change; the box is marked as counted today."
 msgstr "%{count} posição(ões) mudam; a caixa fica marcada como contada hoje."
 
-#: lib/estoque_os_web/live/audit_live/count.ex:170
+#: lib/estoque_os_web/components/counting.ex:114
 #, elixir-autogen, elixir-format
 msgid "A first count that disagrees is as often a miscount as a real loss, and the box is still open."
 msgstr "Uma primeira contagem que não bate é tão frequentemente erro de contagem quanto perda real, e a caixa ainda está aberta."
 
-#: lib/estoque_os_web/live/audit_live/count.ex:394
+#: lib/estoque_os_web/live/audit_live/count.ex:365
 #, elixir-autogen, elixir-format
 msgid "Box counted, and flagged for the manager: it disagreed twice."
 msgstr "Caixa contada e sinalizada para o gestor: não bateu duas vezes."
 
-#: lib/estoque_os_web/live/audit_live/count.ex:152
-#: lib/estoque_os_web/live/audit_live/count.ex:196
+#: lib/estoque_os_web/live/audit_live/count.ex:140
+#: lib/estoque_os_web/live/audit_live/count.ex:167
 #: lib/estoque_os_web/live/kit_live/show.ex:198
 #, elixir-autogen, elixir-format
 msgid "Checking..."
 msgstr "Conferindo..."
 
-#: lib/estoque_os_web/live/audit_live/count.ex:197
+#: lib/estoque_os_web/live/audit_live/count.ex:168
 #, elixir-autogen, elixir-format
 msgid "Confirm the second count"
 msgstr "Confirmar a segunda contagem"
 
-#: lib/estoque_os_web/live/audit_live/count.ex:183
+#: lib/estoque_os_web/live/audit_live/count.ex:158
+#: lib/estoque_os_web/live/receipt_live/show.ex:356
 #: lib/estoque_os_web/live/receipt_live/show.ex:357
-#: lib/estoque_os_web/live/receipt_live/show.ex:358
 #, elixir-autogen, elixir-format
 msgid "Count again"
 msgstr "Contar de novo"
 
-#: lib/estoque_os_web/live/audit_live/count.ex:259
+#: lib/estoque_os_web/live/audit_live/count.ex:230
 #, elixir-autogen, elixir-format
 msgid "Count again from the start"
 msgstr "Contar tudo de novo"
 
-#: lib/estoque_os_web/live/audit_live/count.ex:235
+#: lib/estoque_os_web/live/audit_live/count.ex:206
 #, elixir-autogen, elixir-format
 msgid "Counted twice and still different. Recording this will flag the box for the manager."
 msgstr "Contada duas vezes e ainda diferente. Gravar isso sinaliza a caixa para o gestor."
 
-#: lib/estoque_os_web/live/audit_live/count.ex:213
+#: lib/estoque_os_web/live/audit_live/count.ex:184
 #, elixir-autogen, elixir-format
 msgid "Everything counted matched the ledger."
-msgstr "Tudo que foi contado conferiu com o registro."
+msgstr "Tudo que foi contado conferiu com o livro."
 
-#: lib/estoque_os_web/live/audit_live/count.ex:135
+#: lib/estoque_os_web/live/audit_live/count.ex:128
 #, elixir-autogen, elixir-format
 msgid "Ledger presumes"
 msgstr "O registro presume"
 
-#: lib/estoque_os_web/live/audit_live/count.ex:206
+#: lib/estoque_os_web/live/audit_live/count.ex:177
 #, elixir-autogen, elixir-format
 msgid "Nothing has been written yet."
 msgstr "Nada foi gravado ainda."
 
-#: lib/estoque_os_web/live/audit_live/count.ex:214
+#: lib/estoque_os_web/live/audit_live/count.ex:185
 #, elixir-autogen, elixir-format
 msgid "Recording this changes no quantity; it marks the box as counted."
 msgstr "Gravar não muda nenhuma quantidade; apenas marca a caixa como contada."
 
-#: lib/estoque_os_web/live/audit_live/count.ex:246
+#: lib/estoque_os_web/live/audit_live/count.ex:217
 #, elixir-autogen, elixir-format
 msgid "Save this count"
 msgstr "Salvar esta contagem"
 
-#: lib/estoque_os_web/live/audit_live/count.ex:247
+#: lib/estoque_os_web/live/audit_live/count.ex:218
 #, elixir-autogen, elixir-format
 msgid "Save this count?"
 msgstr "Salvar esta contagem?"
 
-#: lib/estoque_os_web/live/audit_live/count.ex:190
+#: lib/estoque_os_web/live/audit_live/count.ex:161
 #, elixir-autogen, elixir-format
 msgid "Second count for lot %{lot}"
 msgstr "Segunda contagem do lote %{lot}"
 
-#: lib/estoque_os_web/live/audit_live/count.ex:106
+#: lib/estoque_os_web/components/counting.ex:93
 #, elixir-autogen, elixir-format
 msgid "Show what the ledger expects"
-msgstr "Mostrar o que o registro espera"
+msgstr "Mostrar o que o livro espera"
 
-#: lib/estoque_os_web/live/audit_live/count.ex:205
+#: lib/estoque_os_web/live/audit_live/count.ex:176
 #, elixir-autogen, elixir-format
 msgid "What this count will change"
 msgstr "O que esta contagem vai mudar"
@@ -3679,7 +3664,7 @@ msgstr "contada duas vezes"
 msgid "expected quantities were shown to the counter"
 msgstr "as quantidades esperadas foram mostradas a quem contou"
 
-#: lib/estoque_os_web/live/audit_live/count.ex:108
+#: lib/estoque_os_web/components/counting.ex:95
 #, elixir-autogen, elixir-format
 msgid "expected shown"
 msgstr "esperado à vista"
@@ -3858,22 +3843,22 @@ msgstr "Remover %{item}"
 msgid "Remove %{product}"
 msgstr "Remover %{product}"
 
-#: lib/estoque_os_web/live/receipt_live/show.ex:571
+#: lib/estoque_os_web/live/receipt_live/show.ex:570
 #, elixir-autogen, elixir-format
 msgid "Close anyway"
 msgstr "Encerrar mesmo assim"
 
-#: lib/estoque_os_web/live/receipt_live/show.ex:540
+#: lib/estoque_os_web/live/receipt_live/show.ex:539
 #, elixir-autogen, elixir-format
 msgid "Closing now books these exactly as the invoice said, uncounted."
 msgstr "Encerrar agora registra estas exatamente como a nota disse, sem contagem."
 
-#: lib/estoque_os_web/live/receipt_live/show.ex:574
+#: lib/estoque_os_web/live/receipt_live/show.ex:573
 #, elixir-autogen, elixir-format
 msgid "Go back and count"
 msgstr "Voltar e contar"
 
-#: lib/estoque_os_web/live/receipt_live/show.ex:677
+#: lib/estoque_os_web/live/receipt_live/show.ex:676
 #, elixir-autogen, elixir-format
 msgid "This line could not be reopened."
 msgstr "Não foi possível reabrir esta linha."
@@ -3964,7 +3949,7 @@ msgstr "O que foi alterado aqui"
 msgid "minimum %{from} → %{to}"
 msgstr "mínimo %{from} → %{to}"
 
-#: lib/estoque_os_web/live/receipt_live/show.ex:706
+#: lib/estoque_os_web/live/receipt_live/show.ex:705
 #, elixir-autogen, elixir-format
 msgid "Say which box the goods went into."
 msgstr "Diga em qual caixa os itens foram guardados."
@@ -4344,12 +4329,12 @@ msgstr "%{count} linha(s) para contar de novo"
 msgid "Add to the write-off"
 msgstr "Incluir na baixa"
 
-#: lib/estoque_os_web/live/receipt_live/show.ex:427
+#: lib/estoque_os_web/live/receipt_live/show.ex:426
 #, elixir-autogen, elixir-format
 msgid "Count this one again."
 msgstr "Conte este item de novo."
 
-#: lib/estoque_os_web/live/receipt_live/show.ex:558
+#: lib/estoque_os_web/live/receipt_live/show.ex:557
 #, elixir-autogen, elixir-format
 msgid "Counting them again is what tells a miscount from a delivery that came short."
 msgstr "Contar de novo é o que separa erro de contagem de entrega que veio faltando."
@@ -4359,7 +4344,7 @@ msgstr "Contar de novo é o que separa erro de contagem de entrega que veio falt
 msgid "Hide password"
 msgstr "Ocultar senha"
 
-#: lib/estoque_os_web/live/receipt_live/show.ex:429
+#: lib/estoque_os_web/live/receipt_live/show.ex:428
 #, elixir-autogen, elixir-format
 msgid "It does not match the invoice — %{attempt}."
 msgstr "Não bate com a nota — %{attempt}."
@@ -4376,7 +4361,7 @@ msgstr "Separar"
 msgid "Show password"
 msgstr "Mostrar senha"
 
-#: lib/estoque_os_web/live/receipt_live/show.ex:612
+#: lib/estoque_os_web/live/receipt_live/show.ex:611
 #, elixir-autogen, elixir-format
 msgid "count %{n} of %{total}"
 msgstr "contagem %{n} de %{total}"
@@ -4386,22 +4371,22 @@ msgstr "contagem %{n} de %{total}"
 msgid "count again"
 msgstr "contar de novo"
 
-#: lib/estoque_os_web/live/receipt_live/show.ex:452
+#: lib/estoque_os_web/live/receipt_live/show.ex:451
 #, elixir-autogen, elixir-format
 msgid "counted %{count}x"
 msgstr "contada %{count}x"
 
-#: lib/estoque_os_web/live/receipt_live/show.ex:527
+#: lib/estoque_os_web/live/receipt_live/show.ex:526
 #, elixir-autogen, elixir-format
 msgid "%{count} line(s) are still open."
 msgstr "%{count} linha(s) ainda em aberto."
 
-#: lib/estoque_os_web/live/receipt_live/show.ex:532
+#: lib/estoque_os_web/live/receipt_live/show.ex:531
 #, elixir-autogen, elixir-format
 msgid "%{count} nobody counted:"
 msgstr "%{count} que ninguém contou:"
 
-#: lib/estoque_os_web/live/receipt_live/show.ex:552
+#: lib/estoque_os_web/live/receipt_live/show.ex:551
 #, elixir-autogen, elixir-format
 msgid "%{count} were counted and did not match:"
 msgstr "%{count} foram contadas e não bateram:"
@@ -4636,3 +4621,18 @@ msgstr "Dados"
 #, elixir-autogen, elixir-format
 msgid "Import and export data"
 msgstr "Importar e exportar dados"
+
+#: lib/estoque_os_web/live/return_live/index.ex:384
+#, elixir-autogen, elixir-format
+msgid "Count at least one line. A blank line is not counted, and does not move."
+msgstr "Conte pelo menos uma linha. Linha em branco não é contada e não se move."
+
+#: lib/estoque_os_web/live/return_live/index.ex:230
+#, elixir-autogen, elixir-format
+msgid "Quantity of %{product} that came back"
+msgstr "Quantidade de %{product} que voltou"
+
+#: lib/estoque_os_web/live/receipt_live/show.ex:265
+#, elixir-autogen, elixir-format
+msgid "Counted quantity of %{product}"
+msgstr "Quantidade contada de %{product}"
