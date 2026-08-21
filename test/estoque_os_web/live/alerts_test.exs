@@ -17,7 +17,8 @@ defmodule EstoqueOSWeb.AlertsTest do
   import EstoqueOS.CatalogFixtures
   import EstoqueOS.InventoryFixtures
 
-  alias EstoqueOS.{Alerts, Inventory, Repo, Reports}
+  alias EstoqueOS.Accounts.Scope
+  alias EstoqueOS.{Alerts, Catalog, Inventory, Repo, Reports}
   alias EstoqueOS.Inventory.{Lot, Transaction}
 
   setup do
@@ -61,7 +62,7 @@ defmodule EstoqueOSWeb.AlertsTest do
 
       {:ok, _view, html} = live(conn, ~p"/")
 
-      assert html =~ "O que precisa de atenção"
+      assert html =~ ~s(aria-label="O que precisa de atenção")
       assert html =~ "Contagens que não bateram"
       assert html =~ "Mercadoria sem dados de lote"
     end
@@ -131,7 +132,7 @@ defmodule EstoqueOSWeb.AlertsTest do
       transaction = diverged_count(warehouse, product)
       %{conn: conn, user: user} = register_and_log_in_logistics(%{conn: conn})
 
-      scope = EstoqueOS.Accounts.Scope.for_user(user)
+      scope = Scope.for_user(user)
       refute Alerts.may_acknowledge?(scope)
 
       {:ok, _view, html} = live(conn, ~p"/")
@@ -150,6 +151,76 @@ defmodule EstoqueOSWeb.AlertsTest do
       # An acknowledgement carries a name, and it has to be the name of whoever
       # actually looked.
       refute html =~ "acknowledge_lot"
+    end
+  end
+
+  describe "who is shown the bell" do
+    setup %{warehouse: warehouse, product: product} do
+      diverged_count(warehouse, product)
+      :ok
+    end
+
+    test "the manager and the admin are", %{conn: conn} do
+      for log_in <- [&register_and_log_in_operator/1, &register_and_log_in_admin/1] do
+        %{conn: conn} = log_in.(%{conn: conn})
+
+        {:ok, _view, html} = live(conn, ~p"/")
+
+        assert html =~ ~s(aria-label="O que precisa de atenção")
+      end
+    end
+
+    # A number nobody can close is a number people learn to walk past.
+    test "the logistics operator and the auditor are not", %{conn: conn} do
+      for log_in <- [&register_and_log_in_logistics/1, &register_and_log_in_user/1] do
+        %{conn: conn} = log_in.(%{conn: conn})
+
+        {:ok, _view, html} = live(conn, ~p"/")
+
+        refute html =~ ~s(aria-label="O que precisa de atenção")
+      end
+    end
+
+    test "an admin standing in the auditor's shoes stops seeing it", %{conn: conn} do
+      %{conn: conn} = register_and_log_in_admin(%{conn: conn})
+      conn = post(conn, ~p"/users/view-as", %{"role" => "auditor"})
+
+      {:ok, _view, html} = live(conn, ~p"/")
+
+      # Which is the point of standing in the role: what that person sees, and
+      # the auditor does not see this.
+      refute html =~ ~s(aria-label="O que precisa de atenção")
+    end
+  end
+
+  describe "where an alert lands" do
+    test "the shortage alert opens the stock already filtered to it", %{
+      conn: conn,
+      warehouse: warehouse,
+      product: product
+    } do
+      {:ok, product} = Catalog.update_product(product, %{min_stock_override: 100})
+      lot = lot_fixture(%{product_id: product.id})
+
+      {:ok, _} =
+        Inventory.post_transaction(%{
+          type: "purchase_in",
+          user_id: actor_id(),
+          entries: [
+            %{lot_id: lot.id, location_id: warehouse.id, quantity: Decimal.new(10)}
+          ]
+        })
+
+      %{conn: conn} = register_and_log_in_operator(%{conn: conn})
+
+      assert %{path: path} =
+               Enum.find(Alerts.pending(Scope.for_user(nil)), &(&1.kind == :below_minimum))
+
+      assert path == "/stock?below_minimum=on"
+
+      {:ok, _view, html} = live(conn, path)
+
+      assert html =~ product.name
     end
   end
 end
