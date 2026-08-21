@@ -80,11 +80,15 @@ defmodule EstoqueOS.Alerts do
     }
   end
 
+  # Lands on the stock already filtered to what is short, the way the expiring
+  # and the missing-lot alerts always did. It used to open the whole stock and
+  # leave the reader to find the rows the number was about; the filter it needed
+  # exists now.
   defp below_minimum_alert(segment) do
     %{
       kind: :below_minimum,
       count: length(Reports.below_minimum(limit: 50, segment: segment)),
-      path: "/stock",
+      path: "/stock?below_minimum=on",
       severity: :low
     }
   end
@@ -178,6 +182,21 @@ defmodule EstoqueOS.Alerts do
   def may_acknowledge?(scope) do
     not Scope.viewing_as?(scope) and Scope.effective_role(scope) in User.roles_that_plan()
   end
+
+  @doc """
+  Whether this scope is shown the bell at all.
+
+  Asked for by name, and it is the same sentence as `may_acknowledge?/1` with
+  the borrowing clause removed: these are the manager's alerts. The logistics
+  operator counts the box they are holding and the auditor reads; neither can
+  act on "four counts did not agree", and a number nobody can close is a number
+  people learn to walk past.
+
+  The borrowed role decides, which is what borrowing one is for: an admin
+  standing in the auditor's shoes stops seeing the bell, because the auditor
+  does not have one.
+  """
+  def visible_to?(scope), do: Scope.effective_role(scope) in User.roles_that_plan()
 
   defp acknowledge(schema, id, scope, attrs) do
     if may_acknowledge?(scope) do

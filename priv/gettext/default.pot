@@ -11,18 +11,18 @@
 msgid ""
 msgstr ""
 
-#: lib/estoque_os_web/components/layouts.ex:689
-#: lib/estoque_os_web/components/layouts.ex:704
+#: lib/estoque_os_web/components/layouts.ex:693
+#: lib/estoque_os_web/components/layouts.ex:708
 #, elixir-autogen, elixir-format
 msgid "Attempting to reconnect"
 msgstr ""
 
-#: lib/estoque_os_web/components/layouts.ex:696
+#: lib/estoque_os_web/components/layouts.ex:700
 #, elixir-autogen, elixir-format
 msgid "Something went wrong!"
 msgstr ""
 
-#: lib/estoque_os_web/components/layouts.ex:681
+#: lib/estoque_os_web/components/layouts.ex:685
 #, elixir-autogen, elixir-format
 msgid "We can't find the internet"
 msgstr ""
@@ -130,7 +130,7 @@ msgstr ""
 msgid "Keep me logged in on this device"
 msgstr ""
 
-#: lib/estoque_os_web/components/layouts.ex:190
+#: lib/estoque_os_web/components/layouts.ex:194
 #: lib/estoque_os_web/live/user_live/confirmation.ex:53
 #: lib/estoque_os_web/live/user_live/login.ex:13
 #, elixir-autogen, elixir-format
@@ -162,7 +162,7 @@ msgstr ""
 msgid "Log me in only this time"
 msgstr ""
 
-#: lib/estoque_os_web/components/layouts.ex:183
+#: lib/estoque_os_web/components/layouts.ex:187
 #, elixir-autogen, elixir-format
 msgid "Log out"
 msgstr ""
@@ -212,7 +212,7 @@ msgstr ""
 msgid "Saving..."
 msgstr ""
 
-#: lib/estoque_os_web/components/layouts.ex:157
+#: lib/estoque_os_web/components/layouts.ex:161
 #, elixir-autogen, elixir-format
 msgid "Settings"
 msgstr ""
@@ -385,7 +385,7 @@ msgstr ""
 msgid "Invoice line"
 msgstr ""
 
-#: lib/estoque_os_web/components/layouts.ex:358
+#: lib/estoque_os_web/components/layouts.ex:362
 #: lib/estoque_os_web/live/invoice_live/import.ex:39
 #: lib/estoque_os_web/live/invoice_live/index.ex:15
 #: lib/estoque_os_web/live/invoice_live/index.ex:27
@@ -697,8 +697,8 @@ msgstr ""
 msgid "Reading the spreadsheet..."
 msgstr ""
 
-#: lib/estoque_os_web/components/layouts.ex:411
-#: lib/estoque_os_web/components/layouts.ex:420
+#: lib/estoque_os_web/components/layouts.ex:415
+#: lib/estoque_os_web/components/layouts.ex:424
 #: lib/estoque_os_web/live/entry_live/new.ex:135
 #: lib/estoque_os_web/live/product_live/show.ex:186
 #: lib/estoque_os_web/live/sales_report_live/index.ex:88
@@ -1214,7 +1214,7 @@ msgstr ""
 msgid "Box marked as counted today."
 msgstr ""
 
-#: lib/estoque_os_web/components/layouts.ex:431
+#: lib/estoque_os_web/components/layouts.ex:435
 #: lib/estoque_os_web/live/box_live/index.ex:21
 #: lib/estoque_os_web/live/box_live/index.ex:58
 #: lib/estoque_os_web/live/box_live/show.ex:44
@@ -1273,7 +1273,7 @@ msgstr ""
 msgid "Location name"
 msgstr ""
 
-#: lib/estoque_os_web/components/layouts.ex:437
+#: lib/estoque_os_web/components/layouts.ex:441
 #: lib/estoque_os_web/live/location_live/index.ex:16
 #: lib/estoque_os_web/live/location_live/index.ex:36
 #: lib/estoque_os_web/live/location_live/index.ex:68
@@ -1575,7 +1575,7 @@ msgstr ""
 msgid "Into box"
 msgstr ""
 
-#: lib/estoque_os_web/components/layouts.ex:443
+#: lib/estoque_os_web/components/layouts.ex:447
 #: lib/estoque_os_web/live/kit_live/index.ex:29
 #: lib/estoque_os_web/live/kit_live/index.ex:52
 #: lib/estoque_os_web/live/kit_live/show.ex:141
@@ -1804,7 +1804,7 @@ msgstr ""
 msgid "Adjustments by reason"
 msgstr ""
 
-#: lib/estoque_os_web/components/layouts.ex:487
+#: lib/estoque_os_web/components/layouts.ex:491
 #: lib/estoque_os_web/live/audit_report_live/index.ex:31
 #: lib/estoque_os_web/live/audit_report_live/index.ex:83
 #, elixir-autogen, elixir-format
@@ -1939,12 +1939,12 @@ msgstr ""
 msgid "loss"
 msgstr ""
 
-#: lib/estoque_os_web/components/layouts.ex:146
+#: lib/estoque_os_web/components/layouts.ex:150
 #, elixir-autogen, elixir-format
 msgid "Account"
 msgstr ""
 
-#: lib/estoque_os_web/components/layouts.ex:354
+#: lib/estoque_os_web/components/layouts.ex:358
 #, elixir-autogen, elixir-format
 msgid "Incoming"
 msgstr ""
@@ -1954,12 +1954,12 @@ msgstr ""
 msgid "Main"
 msgstr ""
 
-#: lib/estoque_os_web/components/layouts.ex:132
+#: lib/estoque_os_web/components/layouts.ex:136
 #, elixir-autogen, elixir-format
 msgid "Open menu"
 msgstr ""
 
-#: lib/estoque_os_web/components/layouts.ex:164
+#: lib/estoque_os_web/components/layouts.ex:168
 #, elixir-autogen, elixir-format
 msgid "Appearance"
 msgstr ""
@@ -1984,12 +1984,12 @@ msgstr ""
 msgid "Nothing here matches that."
 msgstr ""
 
-#: lib/estoque_os_web/components/layouts.ex:373
+#: lib/estoque_os_web/components/layouts.ex:377
 #, elixir-autogen, elixir-format
 msgid "Operation"
 msgstr ""
 
-#: lib/estoque_os_web/components/layouts.ex:452
+#: lib/estoque_os_web/components/layouts.ex:456
 #, elixir-autogen, elixir-format
 msgid "Reports"
 msgstr ""
@@ -2000,7 +2000,7 @@ msgstr ""
 msgid "Search"
 msgstr ""
 
-#: lib/estoque_os_web/components/layouts.ex:385
+#: lib/estoque_os_web/components/layouts.ex:389
 #: lib/estoque_os_web/live/issue_live/index.ex:40
 #: lib/estoque_os_web/live/issue_live/index.ex:219
 #: lib/estoque_os_web/live/issue_live/index.ex:379
@@ -2420,7 +2420,7 @@ msgstr ""
 msgid "Goods that left by hand between %{from} and %{to}."
 msgstr ""
 
-#: lib/estoque_os_web/components/layouts.ex:493
+#: lib/estoque_os_web/components/layouts.ex:497
 #: lib/estoque_os_web/live/issue_live/list.ex:41
 #: lib/estoque_os_web/live/issue_live/list.ex:81
 #, elixir-autogen, elixir-format
@@ -2518,7 +2518,7 @@ msgstr ""
 msgid "Into"
 msgstr ""
 
-#: lib/estoque_os_web/components/layouts.ex:364
+#: lib/estoque_os_web/components/layouts.ex:368
 #: lib/estoque_os_web/live/entry_live/new.ex:38
 #: lib/estoque_os_web/live/entry_live/new.ex:106
 #: lib/estoque_os_web/live/stock_live/index.ex:338
@@ -2642,7 +2642,7 @@ msgstr ""
 msgid "Mission %{name} created."
 msgstr ""
 
-#: lib/estoque_os_web/components/layouts.ex:499
+#: lib/estoque_os_web/components/layouts.ex:503
 #: lib/estoque_os_web/live/mission_live/index.ex:26
 #: lib/estoque_os_web/live/mission_live/index.ex:39
 #: lib/estoque_os_web/live/mission_live/index.ex:98
@@ -3208,8 +3208,8 @@ msgstr ""
 msgid "Save %{item}"
 msgstr ""
 
-#: lib/estoque_os_web/components/layouts.ex:124
-#: lib/estoque_os_web/components/layouts.ex:125
+#: lib/estoque_os_web/components/layouts.ex:128
+#: lib/estoque_os_web/components/layouts.ex:129
 #, elixir-autogen, elixir-format
 msgid "Show or hide the amounts"
 msgstr ""
@@ -3219,7 +3219,7 @@ msgstr ""
 msgid "on this page"
 msgstr ""
 
-#: lib/estoque_os_web/components/layouts.ex:216
+#: lib/estoque_os_web/components/layouts.ex:220
 #, elixir-autogen, elixir-format
 msgid "Back to my account"
 msgstr ""
@@ -3229,12 +3229,12 @@ msgstr ""
 msgid "Back to your own account."
 msgstr ""
 
-#: lib/estoque_os_web/components/layouts.ex:210
+#: lib/estoque_os_web/components/layouts.ex:214
 #, elixir-autogen, elixir-format
 msgid "Read-only: nothing can be recorded."
 msgstr ""
 
-#: lib/estoque_os_web/components/layouts.ex:206
+#: lib/estoque_os_web/components/layouts.ex:210
 #, elixir-autogen, elixir-format
 msgid "Seeing the app as %{role}"
 msgstr ""
@@ -3244,7 +3244,7 @@ msgstr ""
 msgid "That is not a role you can view as."
 msgstr ""
 
-#: lib/estoque_os_web/components/layouts.ex:173
+#: lib/estoque_os_web/components/layouts.ex:177
 #, elixir-autogen, elixir-format
 msgid "View as"
 msgstr ""
@@ -3320,7 +3320,7 @@ msgstr ""
 msgid "%{count} already closed"
 msgstr ""
 
-#: lib/estoque_os_web/components/layouts.ex:379
+#: lib/estoque_os_web/components/layouts.ex:383
 #: lib/estoque_os_web/live/conference_live/index.ex:23
 #: lib/estoque_os_web/live/conference_live/index.ex:34
 #: lib/estoque_os_web/live/receipt_live/show.ex:165
@@ -4077,7 +4077,7 @@ msgstr ""
 msgid "If your email is in our system, you will receive instructions to reset your password shortly."
 msgstr ""
 
-#: lib/estoque_os_web/components/layouts.ex:159
+#: lib/estoque_os_web/components/layouts.ex:163
 #, elixir-autogen, elixir-format
 msgid "Manage users"
 msgstr ""
@@ -4440,7 +4440,7 @@ msgstr ""
 msgid "Sale price (unit)"
 msgstr ""
 
-#: lib/estoque_os_web/components/layouts.ex:470
+#: lib/estoque_os_web/components/layouts.ex:474
 #: lib/estoque_os_web/live/sales_report_live/index.ex:38
 #: lib/estoque_os_web/live/sales_report_live/index.ex:70
 #, elixir-autogen, elixir-format
@@ -4529,7 +4529,7 @@ msgstr ""
 msgid "Apply filters"
 msgstr ""
 
-#: lib/estoque_os_web/components/layouts.ex:464
+#: lib/estoque_os_web/components/layouts.ex:468
 #: lib/estoque_os_web/live/stock_live/spreadsheet.ex:30
 #, elixir-autogen, elixir-format
 msgid "Data"
@@ -4657,7 +4657,7 @@ msgstr ""
 msgid "Expected arrival"
 msgstr ""
 
-#: lib/estoque_os_web/components/layouts.ex:481
+#: lib/estoque_os_web/components/layouts.ex:485
 #: lib/estoque_os_web/live/transit_live/index.ex:31
 #: lib/estoque_os_web/live/transit_live/index.ex:50
 #, elixir-autogen, elixir-format
@@ -4674,12 +4674,12 @@ msgstr ""
 msgid "Nothing is on the road."
 msgstr ""
 
-#: lib/estoque_os_web/components/layouts.ex:402
+#: lib/estoque_os_web/components/layouts.ex:406
 #, elixir-autogen, elixir-format
 msgid "Receive a load"
 msgstr ""
 
-#: lib/estoque_os_web/components/layouts.ex:396
+#: lib/estoque_os_web/components/layouts.ex:400
 #: lib/estoque_os_web/live/load_out_live/index.ex:34
 #: lib/estoque_os_web/live/load_out_live/index.ex:78
 #, elixir-autogen, elixir-format

@@ -105,10 +105,14 @@ defmodule EstoqueOSWeb.Layouts do
                you can see without being on the overview — and the lot alert in
                particular sat at the bottom of it, where it was not being read.
 
+               Only for the roles that can do something about it: a count that
+               did not agree is closed by a manager, and a number nobody can
+               close is a number people learn to walk past.
+
                A `live_component`, so its two actions target itself instead of
                whichever of the twenty-six screens happens to be underneath. -->
           <.live_component
-            :if={@current_scope}
+            :if={@current_scope && EstoqueOS.Alerts.visible_to?(@current_scope)}
             module={EstoqueOSWeb.AlertsBell}
             id="alerts-bell"
             current_scope={@current_scope}
