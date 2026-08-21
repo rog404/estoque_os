@@ -13,6 +13,7 @@ defmodule EstoqueOS.Invoices do
 
   alias Ecto.Multi
   alias EstoqueOS.Catalog
+  alias EstoqueOS.Catalog.Product
   alias EstoqueOS.Inventory
   alias EstoqueOS.Inventory.Lot
   alias EstoqueOS.Invoices.{Invoice, InvoiceEvent, InvoiceItem}
@@ -168,11 +169,62 @@ defmodule EstoqueOS.Invoices do
 
   def list_invoices(opts \\ []) do
     Invoice
+    |> maybe_segment(opts[:segment])
     |> order_by([i], desc: i.issued_on, desc: i.id)
     |> limit(^(opts[:limit] || 50))
     |> preload([:supplier])
     |> Repo.all()
   end
+
+  @doc """
+  Whether a scope confined to one stock may open this invoice at all.
+
+  An NF-e is a supplier's document, not a stock, so it belongs to whichever
+  stocks its lines landed in. A delivery of shirts is marketing's; a delivery of
+  gauze is not theirs to read, because reading it is reading the ONG's purchase
+  prices for the surgical supply.
+  """
+  def visible?(%Invoice{} = invoice, nil), do: is_struct(invoice, Invoice)
+
+  def visible?(%Invoice{} = invoice, segment) do
+    Repo.exists?(
+      from i in InvoiceItem,
+        join: p in Product,
+        on: p.id == i.product_id,
+        where: i.invoice_id == ^invoice.id and p.segment == ^segment
+    )
+  end
+
+  # An invoice belongs to the segments its lines landed in. A mixed delivery is
+  # therefore visible to both, and each of them sees their own lines on it —
+  # which is the only reading that does not make somebody re-key a document the
+  # system already parsed.
+  defp maybe_segment(query, nil), do: query
+  defp maybe_segment(query, ""), do: query
+
+  defp maybe_segment(query, segment) do
+    of_segment =
+      from i in InvoiceItem,
+        join: p in Product,
+        on: p.id == i.product_id,
+        where: p.segment == ^segment,
+        select: i.invoice_id
+
+    where(query, [i], i.id in subquery(of_segment))
+  end
+
+  @doc """
+  One invoice, with only the lines this scope may see.
+
+  The document is the same document; what differs is which of its lines are
+  about your stock.
+  """
+  def get_invoice!(id, segment) when is_binary(segment) do
+    invoice = get_invoice!(id)
+    %{invoice | items: Enum.filter(invoice.items, &(&1.product && &1.product.segment == segment))}
+  end
+
+  def get_invoice!(id, nil), do: get_invoice!(id)
 
   @doc "Lines a human still has to resolve before the invoice can be posted."
   def unresolved_items(%Invoice{} = invoice) do

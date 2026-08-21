@@ -23,14 +23,29 @@ defmodule EstoqueOSWeb.InvoiceLive.Show do
 
   import EstoqueOS.Coercion, only: [to_decimal: 1]
 
+  alias EstoqueOS.Accounts.Scope
   alias EstoqueOS.{Catalog, Invoices, Receiving}
 
   alias EstoqueOS.Inventory.Locations
 
   @impl true
   def mount(%{"id" => id}, _session, socket) do
+    segment = Scope.segment(socket.assigns.current_scope)
     invoice = Invoices.get_invoice!(id)
 
+    if Invoices.visible?(invoice, segment) do
+      mount_invoice(socket, Invoices.get_invoice!(id, segment), segment)
+    else
+      # A delivery with nothing of yours on it is a list of somebody else's
+      # purchase prices. Refused here rather than rendered empty.
+      {:ok,
+       socket
+       |> put_flash(:error, gettext("You don't have permission to access this page."))
+       |> push_navigate(to: ~p"/invoices")}
+    end
+  end
+
+  defp mount_invoice(socket, invoice, segment) do
     {:ok,
      socket
      |> assign(:page_title, gettext("Invoice %{number}", number: invoice.number))
@@ -53,6 +68,7 @@ defmodule EstoqueOSWeb.InvoiceLive.Show do
      # Lines a resolved item has been reopened on. A confirmed line collapses
      # to its summary; this is the way back in.
      |> assign(:editing, MapSet.new())
+     |> assign(:segment, segment)
      |> assign(:posted, nil)
      |> assign_invoice(invoice)
      |> assign_receipts(invoice)}
@@ -752,7 +768,7 @@ defmodule EstoqueOSWeb.InvoiceLive.Show do
     item = find_item(socket.assigns.invoice, item_id)
     user_id = socket.assigns.current_scope.user.id
 
-    with {:ok, attrs} <- resolution_attrs(item, params),
+    with {:ok, attrs} <- resolution_attrs(item, params, new_product_segment(socket)),
          {:ok, _resolved} <- Invoices.resolve_item(item, attrs, user_id: user_id) do
       {:noreply,
        socket
@@ -765,7 +781,7 @@ defmodule EstoqueOSWeb.InvoiceLive.Show do
        |> assign(:queries, Map.delete(socket.assigns.queries, item.id))
        |> assign(:factors, Map.delete(socket.assigns.factors, item.id))
        |> close_matches(item.id)
-       |> assign_invoice(Invoices.get_invoice!(socket.assigns.invoice.id))}
+       |> assign_invoice(Invoices.get_invoice!(socket.assigns.invoice.id, socket.assigns.segment))}
     else
       {:error, :missing_product} ->
         {:noreply, put_flash(socket, :error, gettext("Pick a product for this item."))}
@@ -863,20 +879,25 @@ defmodule EstoqueOSWeb.InvoiceLive.Show do
   # The name comes from the field the operator can edit, never straight from the
   # invoice: a catalog name outlives the invoice that introduced it, and the
   # supplier's description carries the shipment's own data inside it.
-  defp resolution_attrs(item, %{"product_id" => "__new__"} = params) do
+  # A product invented while resolving a line is filed under the stock the
+  # person resolving it works in. Without this, marketing imports its own XML,
+  # creates its own products, and none of them are theirs.
+  defp new_product_segment(socket), do: socket.assigns.segment || "medical"
+
+  defp resolution_attrs(item, %{"product_id" => "__new__"} = params, segment) do
     name =
       case String.trim(params["new_product_name"] || "") do
         "" -> Catalog.suggested_product_name(item.description)
         edited -> edited
       end
 
-    case Catalog.create_product(%{name: name, ncm: item.ncm}) do
+    case Catalog.create_product(%{name: name, ncm: item.ncm, segment: segment}) do
       {:ok, product} -> {:ok, base_attrs(params, product.id)}
       {:error, _changeset} -> {:error, :invalid_product}
     end
   end
 
-  defp resolution_attrs(_item, params) do
+  defp resolution_attrs(_item, params, _segment) do
     case params["product_id"] do
       # Blank now means the operator pressed "Change" and picked nothing yet.
       # It used to fall back to the product already on the line, which made

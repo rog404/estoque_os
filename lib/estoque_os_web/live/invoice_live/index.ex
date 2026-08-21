@@ -5,6 +5,7 @@ defmodule EstoqueOSWeb.InvoiceLive.Index do
 
   use EstoqueOSWeb, :live_view
 
+  alias EstoqueOS.Accounts.Scope
   alias EstoqueOS.Invoices
 
   @impl true
@@ -12,7 +13,10 @@ defmodule EstoqueOSWeb.InvoiceLive.Index do
     {:ok,
      socket
      |> assign(:page_title, gettext("Invoices"))
-     |> assign(:invoices, Invoices.list_invoices())}
+     |> assign(
+       :invoices,
+       Invoices.list_invoices(segment: Scope.segment(socket.assigns.current_scope))
+     )}
   end
 
   @impl true
