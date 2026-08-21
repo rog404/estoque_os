@@ -475,6 +475,7 @@ body {
   color: color-mix(in oklab, var(--chip, var(--color-primary)) 75%, var(--color-base-content));
   font-size: 0.8125rem;
   line-height: 1.25;
+  cursor: pointer;
 }
 
 .chip-drop:hover {
