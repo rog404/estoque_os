@@ -47,22 +47,22 @@ msgstr "\n==============================\n\nOlá %{email},\n\nVocê pode confirm
 msgid "\n==============================\n\nHi %{email},\n\nYou can log into your account by visiting the URL below:\n\n%{url}\n\nIf you didn't request this email, please ignore this.\n\n==============================\n"
 msgstr "\n==============================\n\nOlá %{email},\n\nVocê pode entrar na sua conta acessando o endereço abaixo:\n\n%{url}\n\nSe você não solicitou este e-mail, ignore esta mensagem.\n\n==============================\n"
 
-#: lib/estoque_os_web/live/user_live/settings.ex:169
+#: lib/estoque_os_web/live/user_live/settings.ex:256
 #, elixir-autogen, elixir-format
 msgid "A link to confirm your email change has been sent to the new address."
 msgstr "Enviamos um link para o novo endereço para confirmar a alteração de e-mail."
 
-#: lib/estoque_os_web/live/user_live/settings.ex:22
+#: lib/estoque_os_web/live/user_live/settings.ex:34
 #, elixir-autogen, elixir-format
 msgid "Account Settings"
 msgstr "Configurações da conta"
 
-#: lib/estoque_os_web/live/user_live/settings.ex:49
+#: lib/estoque_os_web/live/user_live/settings.ex:66
 #, elixir-autogen, elixir-format
 msgid "Change Email"
 msgstr "Alterar e-mail"
 
-#: lib/estoque_os_web/live/user_live/settings.ex:48
+#: lib/estoque_os_web/live/user_live/settings.ex:64
 #, elixir-autogen, elixir-format
 msgid "Changing..."
 msgstr "Alterando..."
@@ -79,7 +79,7 @@ msgstr "Confirmar e continuar conectado"
 
 #: lib/estoque_os_web/live/user_live/reset_password.ex:82
 #: lib/estoque_os_web/live/user_live/reset_password.ex:132
-#: lib/estoque_os_web/live/user_live/settings.ex:82
+#: lib/estoque_os_web/live/user_live/settings.ex:99
 #, elixir-autogen, elixir-format
 msgid "Confirm new password"
 msgstr "Confirmar nova senha"
@@ -100,17 +100,17 @@ msgstr "Confirmando..."
 #: lib/estoque_os_web/live/user_live/login.ex:48
 #: lib/estoque_os_web/live/user_live/login.ex:73
 #: lib/estoque_os_web/live/user_live/reset_password.ex:31
-#: lib/estoque_os_web/live/user_live/settings.ex:43
+#: lib/estoque_os_web/live/user_live/settings.ex:55
 #, elixir-autogen, elixir-format
 msgid "Email"
 msgstr "E-mail"
 
-#: lib/estoque_os_web/live/user_live/settings.ex:132
+#: lib/estoque_os_web/live/user_live/settings.ex:169
 #, elixir-autogen, elixir-format
 msgid "Email change link is invalid or it has expired."
 msgstr "O link de alteração de e-mail é inválido ou expirou."
 
-#: lib/estoque_os_web/live/user_live/settings.ex:129
+#: lib/estoque_os_web/live/user_live/settings.ex:166
 #, elixir-autogen, elixir-format
 msgid "Email changed successfully."
 msgstr "E-mail alterado com sucesso."
@@ -186,7 +186,7 @@ msgstr "O link de acesso é inválido ou expirou."
 
 #: lib/estoque_os_web/live/user_live/reset_password.ex:73
 #: lib/estoque_os_web/live/user_live/reset_password.ex:123
-#: lib/estoque_os_web/live/user_live/settings.ex:74
+#: lib/estoque_os_web/live/user_live/settings.ex:91
 #, elixir-autogen, elixir-format
 msgid "New password"
 msgstr "Nova senha"
@@ -207,7 +207,7 @@ msgstr "Senha atualizada com sucesso!"
 #: lib/estoque_os_web/live/receipt_live/show.ex:293
 #: lib/estoque_os_web/live/user_live/reset_password.ex:86
 #: lib/estoque_os_web/live/user_live/reset_password.ex:136
-#: lib/estoque_os_web/live/user_live/settings.ex:86
+#: lib/estoque_os_web/live/user_live/settings.ex:107
 #, elixir-autogen, elixir-format
 msgid "Saving..."
 msgstr "Salvando..."
@@ -4257,7 +4257,7 @@ msgstr "Quem tem conta, e o que cada um pode fazer com ela."
 msgid "You must set a new password before continuing."
 msgstr "Você precisa definir uma nova senha antes de continuar."
 
-#: lib/estoque_os_web/live/user_live/settings.ex:27
+#: lib/estoque_os_web/live/user_live/settings.ex:39
 #, elixir-autogen, elixir-format
 msgid "Change your password. Ask an administrator to change your email."
 msgstr "Troque sua senha. Para mudar seu e-mail, fale com um administrador."
@@ -4267,17 +4267,17 @@ msgstr "Troque sua senha. Para mudar seu e-mail, fale com um administrador."
 msgid "Forgot your password? Ask an administrator to reset it — this installation does not send email."
 msgstr "Esqueceu sua senha? Fale com um administrador para redefini-la — esta instalação não envia e-mail."
 
-#: lib/estoque_os_web/live/user_live/settings.ex:25
+#: lib/estoque_os_web/live/user_live/settings.ex:37
 #, elixir-autogen, elixir-format
 msgid "Manage your account email address and password settings"
 msgstr "Gerencie o e-mail e a senha da sua conta"
 
-#: lib/estoque_os_web/live/user_live/settings.ex:87
+#: lib/estoque_os_web/live/user_live/settings.ex:109
 #, elixir-autogen, elixir-format
 msgid "Save Password"
 msgstr "Salvar senha"
 
-#: lib/estoque_os_web/live/user_live/settings.ex:208
+#: lib/estoque_os_web/live/user_live/settings.ex:275
 #, elixir-autogen, elixir-format
 msgid "This installation does not send email. Ask an administrator to change your address."
 msgstr "Esta instalação não envia e-mail. Fale com um administrador para mudar seu endereço."
@@ -4790,3 +4790,13 @@ msgstr "atrasada"
 #, elixir-autogen, elixir-format
 msgid "who is carrying it"
 msgstr "quem está levando"
+
+#: lib/estoque_os_web/live/user_live/settings.ex:118
+#, elixir-autogen, elixir-format
+msgid "For your own security, changing your email or password needs a fresh sign-in. Log out and in again, and come back here."
+msgstr "Por segurança, trocar seu e-mail ou senha precisa de uma entrada recente. Saia e entre de novo, e volte aqui."
+
+#: lib/estoque_os_web/live/user_live/settings.ex:271
+#, elixir-autogen, elixir-format
+msgid "Log out and in again to change your email or password."
+msgstr "Saia e entre de novo para trocar seu e-mail ou senha."
