@@ -1,9 +1,13 @@
 defmodule EstoqueOSWeb.StockLive.Spreadsheet do
   @moduledoc """
-  The spreadsheet round trip on a page of its own.
+  The spreadsheet round trip, on a page of its own under Relatórios.
 
-  Same two actions the stock screen offers in a dropdown, reachable without
-  first finding the stock screen. What comes back in is a *count*: the sheet
+  It used to be here *and* in a dropdown on the stock screen, which put
+  "importar dados" — an act that writes counts for the whole warehouse — one
+  click away from a list anybody may read. One home, and it is a reporting one:
+  this is done sitting down, with no box in anyone's hands.
+
+  What comes back in is a *count*: the sheet
   states what is physically on the shelf, and only the difference is posted,
   as an adjustment. It never adds stock the way an invoice does.
   """
@@ -23,7 +27,7 @@ defmodule EstoqueOSWeb.StockLive.Spreadsheet do
   def mount(_params, _session, socket) do
     {:ok,
      socket
-     |> assign(:page_title, gettext("Import data"))
+     |> assign(:page_title, gettext("Data"))
      |> assign(:import_result, nil)
      |> assign(:import_errors, [])
      |> allow_upload(:sheet,
@@ -39,7 +43,7 @@ defmodule EstoqueOSWeb.StockLive.Spreadsheet do
     <Layouts.app flash={@flash} current_scope={@current_scope} current_path={assigns[:current_path]}>
       <div class="mx-auto max-w-xl space-y-6">
         <.header back_to={~p"/stock"} back_label={gettext("Stock")}>
-          {gettext("Import data")}
+          {gettext("Import and export data")}
           <:subtitle>
             {gettext("Take the stock out to a sheet, or bring a physical count back in.")}
           </:subtitle>

@@ -1,7 +1,11 @@
 defmodule EstoqueOSWeb.StockLive.Index do
   @moduledoc """
-  What is in stock right now, with the spreadsheet escape hatch in both
-  directions.
+  What is in stock right now.
+
+  The spreadsheet round trip used to hang off this screen in a dropdown, which
+  put "importar dados" — an act that writes counts for the whole warehouse — one
+  click away from a list anybody may read. It lives under Relatórios now, on a
+  page of its own.
 
   Quantities carry a data-quality mark: a box counted long ago is *presumed*,
   not verified, and the screen says so rather than pretending otherwise.
@@ -15,7 +19,7 @@ defmodule EstoqueOSWeb.StockLive.Index do
   Reporting only. The spreadsheet import posts adjustments and stays with
   operators, as does the upload validation that feeds it.
   """
-  def viewer_events, do: ~w(filter page sort clear_filters)
+  def viewer_events, do: ~w(search filter page sort clear_filters)
 
   import EstoqueOS.Coercion
 
@@ -23,7 +27,6 @@ defmodule EstoqueOSWeb.StockLive.Index do
   alias EstoqueOS.Catalog.Product
   alias EstoqueOS.Inventory.Locations
   alias EstoqueOS.Reports
-  alias EstoqueOSWeb.UserAuth
 
   @stale_after_days 30
 
@@ -32,10 +35,8 @@ defmodule EstoqueOSWeb.StockLive.Index do
     {:ok,
      socket
      |> assign(:page_title, gettext("Stock"))
-     |> assign(:import_result, nil)
-     |> assign(:import_errors, [])
      |> assign(:search, "")
-     |> assign(:location_id, nil)
+     |> assign(:location_ids, [])
      |> assign(:only_expiring, false)
      |> assign(:only_controlled, false)
      |> assign(:only_needs_review, false)
@@ -45,12 +46,7 @@ defmodule EstoqueOSWeb.StockLive.Index do
      |> assign(:segment_locked?, false)
      |> assign(:sort, %{key: "product", dir: :asc})
      |> assign(:page, 1)
-     |> assign(:locations, Locations.list_locations())
-     |> allow_upload(:sheet,
-       accept: ~w(.xlsx application/vnd.openxmlformats-officedocument.spreadsheetml.sheet),
-       max_entries: 1,
-       max_file_size: 16_000_000
-     )}
+     |> assign(:locations, Locations.list_locations())}
   end
 
   @doc """
@@ -64,7 +60,7 @@ defmodule EstoqueOSWeb.StockLive.Index do
     {:noreply,
      socket
      |> assign(:search, params["search"] || "")
-     |> assign(:location_id, parse_id(params["location_id"]))
+     |> assign(:location_ids, parse_ids(params["location_id"] || params["location_ids"]))
      |> assign(:only_expiring, checked?(params["expiring"]))
      |> assign(:only_controlled, checked?(params["controlled"]))
      |> assign(:only_needs_review, checked?(params["review"]))
@@ -77,7 +73,7 @@ defmodule EstoqueOSWeb.StockLive.Index do
     page =
       Reports.stock_page(
         search: socket.assigns.search,
-        location_id: socket.assigns.location_id,
+        location_ids: socket.assigns.location_ids,
         only_expiring: socket.assigns.only_expiring,
         only_controlled: socket.assigns.only_controlled,
         only_needs_review: socket.assigns.only_needs_review,
@@ -101,7 +97,7 @@ defmodule EstoqueOSWeb.StockLive.Index do
   # stock — the search box alone would hide that a location filter is on.
   defp active_filters(assigns) do
     [
-      assigns.location_id != nil,
+      assigns.location_ids != [],
       assigns.segment != nil and not assigns.segment_locked?,
       assigns.only_expiring,
       assigns.only_controlled,
@@ -111,7 +107,7 @@ defmodule EstoqueOSWeb.StockLive.Index do
   end
 
   defp filtering?(assigns) do
-    assigns.search != "" or assigns.location_id != nil or assigns.only_expiring or
+    assigns.search != "" or assigns.location_ids != [] or assigns.only_expiring or
       assigns.only_controlled or assigns.only_needs_review or
       (assigns.segment != nil and not assigns.segment_locked?)
   end
@@ -145,22 +141,21 @@ defmodule EstoqueOSWeb.StockLive.Index do
             · <.amount value={money(@total_value)} /> {gettext("on this page")}
           </span>
         </:subtitle>
-        <:actions>
-          <details :if={UserAuth.operator?(@current_scope)} class="dropdown dropdown-end">
-            <summary class="btn btn-outline">
-              <.icon name="hero-table-cells" class="size-5" />
-              {gettext("Spreadsheet")}
-            </summary>
-            <div class="dropdown-content z-50 mt-2 w-80 rounded-box bg-base-100 shadow-lg border border-base-300 p-4 space-y-3">
-              <.spreadsheet_actions upload={@uploads.sheet} export_path={~p"/stock/export.xlsx"} />
-            </div>
-          </details>
-        </:actions>
       </.header>
 
-      <form id="filter-form" phx-change="filter" phx-submit="filter">
-        <.toolbar>
-          <label class="input flex items-center gap-2 grow min-w-64">
+      <!-- Two forms, and the split is the point. The search box still answers as
+           you type — it is how a product is found, and a product is found
+           dozens of times a day. The panel does not: ticking a location, then a
+           stock, then an expiry box used to reload the list three times, twice
+           of them showing something nobody had asked for yet. You pick
+           everything and press Aplicar. -->
+      <!-- One bar, two forms: a form cannot nest inside another, and the search
+           and the panel behave differently. Wrapping them in the same toolbar
+           keeps that a detail of the markup rather than a second grey bar
+           stacked under the first. -->
+      <.toolbar>
+        <form id="search-form" phx-change="search" phx-submit="search" class="grow min-w-64">
+          <label class="input flex items-center gap-2 w-full">
             <.icon name="hero-magnifying-glass" class="size-5 opacity-60" />
             <span class="sr-only">{gettext("Search")}</span>
             <input
@@ -172,7 +167,9 @@ defmodule EstoqueOSWeb.StockLive.Index do
               phx-debounce="300"
             />
           </label>
+        </form>
 
+        <form id="filter-form" phx-submit="filter">
           <details class="dropdown dropdown-end">
             <summary class="btn">
               <.icon name="hero-adjustments-horizontal" class="size-5" />
@@ -183,19 +180,21 @@ defmodule EstoqueOSWeb.StockLive.Index do
             </summary>
 
             <div class="dropdown-content z-50 mt-2 w-72 rounded-box bg-base-100 shadow-lg border border-base-300 p-4 space-y-2">
-              <label class="fieldset w-full">
-                <span class="label">{gettext("Location")}</span>
-                <select name="location_id" class="select w-full">
-                  <option value="">{gettext("All locations")}</option>
-                  <option
-                    :for={location <- @locations}
-                    value={location.id}
-                    selected={location.id == @location_id}
-                  >
-                    {location.name}
-                  </option>
-                </select>
-              </label>
+              <!-- Checkboxes and not a `select multiple`: this panel is opened
+                   one-handed on a phone, where a multi-select is a scrolling
+                   list you have to hold a modifier key to use. Nothing ticked
+                   means everywhere, which is what an empty filter should
+                   mean. -->
+              <fieldset class="w-full">
+                <legend class="label">{gettext("Location")}</legend>
+                <.check
+                  :for={location <- @locations}
+                  name="location_id[]"
+                  value={location.id}
+                  label={location.name}
+                  checked={location.id in @location_ids}
+                />
+              </fieldset>
 
               <!-- Not rendered for a role that has only one stock. The gate is
                    `segment/2`, which ignores whatever arrives; this is only
@@ -226,6 +225,8 @@ defmodule EstoqueOSWeb.StockLive.Index do
                 checked={@only_needs_review}
               />
 
+              <.button variant="primary" class="btn-block">{gettext("Apply filters")}</.button>
+
               <button
                 :if={filtering?(assigns)}
                 type="button"
@@ -236,12 +237,12 @@ defmodule EstoqueOSWeb.StockLive.Index do
               </button>
             </div>
           </details>
+        </form>
 
-          <p :if={filtering?(assigns)} class="text-sm text-base-content/80 basis-full">
-            {gettext("%{count} position(s) match", count: @total)}
-          </p>
-        </.toolbar>
-      </form>
+        <p :if={filtering?(assigns)} class="text-sm text-base-content/80 basis-full">
+          {gettext("%{count} position(s) match", count: @total)}
+        </p>
+      </.toolbar>
 
       <p :if={@capped} class="alert alert-warning">
         {gettext(
@@ -249,8 +250,6 @@ defmodule EstoqueOSWeb.StockLive.Index do
           count: @max_rows
         )}
       </p>
-
-      <.spreadsheet_outcome result={@import_result} errors={@import_errors} />
 
       <.panel title={gettext("Positions")} flush>
         <.data_table
@@ -430,11 +429,18 @@ defmodule EstoqueOSWeb.StockLive.Index do
   end
 
   @impl true
-  def handle_event("filter", params, socket) do
+  def handle_event("search", params, socket) do
     {:noreply,
      socket
      |> assign(:search, params["search"] || "")
-     |> assign(:location_id, parse_id(params["location_id"]))
+     |> assign(:page, 1)
+     |> load_rows()}
+  end
+
+  def handle_event("filter", params, socket) do
+    {:noreply,
+     socket
+     |> assign(:location_ids, parse_ids(params["location_id"]))
      |> assign(:only_expiring, checked?(params["only_expiring"]))
      |> assign(:only_controlled, checked?(params["only_controlled"]))
      |> assign(:only_needs_review, checked?(params["only_needs_review"]))
@@ -459,7 +465,7 @@ defmodule EstoqueOSWeb.StockLive.Index do
     {:noreply,
      socket
      |> assign(:search, "")
-     |> assign(:location_id, nil)
+     |> assign(:location_ids, [])
      |> assign(:only_expiring, false)
      |> assign(:only_controlled, false)
      |> assign(:only_needs_review, false)
@@ -474,53 +480,8 @@ defmodule EstoqueOSWeb.StockLive.Index do
   # segment is not a filter they chose and can drop — it is the only stock they
   # have — so a `segment=` in the address or in a form they hand-crafted is
   # ignored rather than obeyed.
-  def handle_event("validate", _params, socket), do: {:noreply, socket}
-
-  # This screen is readable by anyone signed in, so the gate on the route is the
-  # wrong one to rely on: hiding the form is presentation, and an event arrives
-  # over a socket whether or not the button was ever rendered.
-  def handle_event("import", _params, socket) do
-    if UserAuth.operator?(socket.assigns.current_scope) do
-      import_spreadsheet(socket)
-    else
-      {:noreply,
-       put_flash(socket, :error, gettext("You don't have permission to access this page."))}
-    end
-  end
-
-  defp import_spreadsheet(socket) do
-    user_id = socket.assigns.current_scope.user.id
-
-    case consume_uploaded_entries(socket, :sheet, fn %{path: path}, _entry ->
-           {:ok, path |> File.read!() |> Reports.import_stock(user_id: user_id)}
-         end) do
-      [{:ok, result}] ->
-        {:noreply,
-         socket
-         |> assign(:import_result, result)
-         |> assign(:import_errors, [])
-         |> load_rows()}
-
-      [{:error, errors}] when is_list(errors) ->
-        {:noreply, socket |> assign(:import_errors, errors) |> assign(:import_result, nil)}
-
-      [{:error, {:missing_columns, columns}}] ->
-        {:noreply,
-         put_flash(
-           socket,
-           :error,
-           gettext("The spreadsheet is missing these columns: %{columns}",
-             columns: Enum.join(columns, ", ")
-           )
-         )}
-
-      [{:error, _reason}] ->
-        {:noreply, put_flash(socket, :error, gettext("The spreadsheet could not be read."))}
-
-      [] ->
-        {:noreply, put_flash(socket, :error, gettext("Pick a spreadsheet first."))}
-    end
-  end
+  defp blank_lot(%{lot_expected: false}), do: "—"
+  defp blank_lot(_row), do: gettext("unknown")
 
   # The two stocks, in the words the operation uses. `Movement` holds the
   # movement labels for the same reason: a name that lives next to the data it
@@ -529,11 +490,12 @@ defmodule EstoqueOSWeb.StockLive.Index do
   def segment_label("marketing"), do: gettext("Marketing")
   def segment_label(nil), do: nil
 
-  defp blank_lot(%{lot_expected: false}), do: "—"
-  defp blank_lot(_row), do: gettext("unknown")
-
   defp locked?(socket), do: Scope.segment(socket.assigns.current_scope) != nil
 
+  # What the page may ask for, and the role always wins. A marketing user's
+  # segment is not a filter they chose and can drop — it is the only stock they
+  # have — so a `segment=` in the address or in a form they hand-crafted is
+  # ignored rather than obeyed.
   defp segment(socket, asked) do
     case Scope.segment(socket.assigns.current_scope) do
       nil -> if asked in Product.segments(), do: asked
@@ -560,9 +522,24 @@ defmodule EstoqueOSWeb.StockLive.Index do
   # or a future hidden input can say "off" and be believed.
   defp checked?(value), do: value not in [nil, "", "false", "off", "0"]
 
-  defp parse_id(nil), do: nil
-  defp parse_id(""), do: nil
-  defp parse_id(value), do: String.to_integer(value)
+  # Locations arrive as a list of checkbox values, and a list of one is still a
+  # list: the filter used to hold exactly one place, which meant "o que existe
+  # no depósito **e** no trânsito" was two searches and a subtraction done in
+  # somebody's head.
+  defp parse_ids(nil), do: []
+  defp parse_ids(""), do: []
+  defp parse_ids(value) when is_binary(value), do: parse_ids([value])
+
+  defp parse_ids(values) when is_list(values) do
+    values
+    |> Enum.flat_map(fn value ->
+      case Integer.parse(to_string(value)) do
+        {id, ""} -> [id]
+        _ -> []
+      end
+    end)
+    |> Enum.uniq()
+  end
 
   # "CX/50" reads the way the warehouse says it out loud.
   defp packaging_label(packagings) do

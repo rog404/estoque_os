@@ -89,18 +89,18 @@ defmodule EstoqueOSWeb.NavRolesTest do
   # warehouse at once, with no box in anyone's hands. That is a planning act.
   test "importing data belongs to the admin and the manager", %{conn: conn} do
     for role <- ~w(admin manager) do
-      assert Layouts.may_access?(scope_for(role), "/stock/spreadsheet")
+      assert Layouts.may_access?(scope_for(role), "/reports/data")
     end
 
     for role <- ~w(logistics auditor) do
-      refute Layouts.may_access?(scope_for(role), "/stock/spreadsheet")
+      refute Layouts.may_access?(scope_for(role), "/reports/data")
     end
 
     %{conn: conn} = register_and_log_in_logistics(%{conn: conn})
     {:ok, _view, html} = live(conn, ~p"/")
-    refute html =~ ~s(href="/stock/spreadsheet")
+    refute html =~ ~s(href="/reports/data")
 
-    assert {:error, {:redirect, %{to: "/"}}} = live(conn, ~p"/stock/spreadsheet")
+    assert {:error, {:redirect, %{to: "/"}}} = live(conn, ~p"/reports/data")
   end
 
   # The reader who writes nothing still has somewhere to be: hiding what a role

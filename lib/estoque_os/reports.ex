@@ -42,7 +42,7 @@ defmodule EstoqueOS.Reports do
     |> join(:left, [s], b in Box, on: b.id == s.box_id)
     |> join(:inner, [s], loc in Location, on: loc.id == s.location_id)
     |> where([s], s.quantity != 0)
-    |> maybe_filter_location(opts[:location_id])
+    |> maybe_filter_locations(opts[:location_ids] || opts[:location_id])
     |> maybe_segment(opts[:segment])
     |> maybe_search(opts[:search])
     |> maybe_only_controlled(opts[:only_controlled])
@@ -257,8 +257,16 @@ defmodule EstoqueOS.Reports do
   defp maybe_limit(query, nil), do: query
   defp maybe_limit(query, limit), do: limit(query, ^limit)
 
-  defp maybe_filter_location(query, nil), do: query
-  defp maybe_filter_location(query, id), do: where(query, [s], s.location_id == ^id)
+  # One place or several. "What is in the warehouse *and* in transit" was two
+  # searches and a subtraction done in somebody's head while the goods were on
+  # a truck.
+  defp maybe_filter_locations(query, nil), do: query
+  defp maybe_filter_locations(query, []), do: query
+
+  defp maybe_filter_locations(query, ids) when is_list(ids),
+    do: where(query, [s], s.location_id in ^ids)
+
+  defp maybe_filter_locations(query, id), do: where(query, [s], s.location_id == ^id)
 
   # Average of the costs stock actually entered at, weighted by quantity.
   # Entries without a cost (donations) are ignored rather than counted as zero.
