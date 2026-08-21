@@ -12,10 +12,12 @@ defmodule EstoqueOSWeb.HomeLive.Index do
   alias EstoqueOS.Accounts.Scope
   alias EstoqueOS.Accounts.User
   alias EstoqueOS.Alerts
+  alias EstoqueOS.Catalog.Product
   alias EstoqueOS.Inventory.Locations
   alias EstoqueOS.Kits
   alias EstoqueOS.Reports
   alias EstoqueOSWeb.Movement
+  alias EstoqueOSWeb.StockLive
 
   # A dashboard answers "is anything wrong"; the screen it links to answers
   # "what exactly". Five rows is enough to tell the difference.
@@ -24,19 +26,34 @@ defmodule EstoqueOSWeb.HomeLive.Index do
 
   @impl true
   def mount(_params, _session, socket) do
-    # Which stock this overview is about. `nil` for everyone who has both, and
-    # then every panel below is the whole operation as it always was.
-    segment = Scope.segment(socket.assigns.current_scope)
-
     {:ok,
      socket
      |> assign(:page_title, gettext("Overview"))
+     |> assign(:may_review?, may_review?(socket))
+     |> assign(:may_acknowledge?, Alerts.may_acknowledge?(socket.assigns.current_scope))
+     # Whether this person has a stock to choose at all. A marketing user has
+     # one and only one, so they are never offered the tabs — the same rule the
+     # stock list uses, and the same reason: an answer that cannot change is
+     # not a question.
+     |> assign(:segment_locked?, Scope.segment(socket.assigns.current_scope) != nil)}
+  end
+
+  # Which stock this overview is about, and the role always wins: `segment/2`
+  # gives a marketing user their own segment whatever the address asks for, and
+  # anyone who holds both stocks gets what they asked for or all of it.
+  #
+  # In the address rather than in an event, so the coordinator can keep the
+  # marketing overview open in a tab and the reload lands on the same page.
+  @impl true
+  def handle_params(params, _uri, socket) do
+    segment = Scope.segment(socket.assigns.current_scope, params["segment"])
+
+    {:noreply,
+     socket
      |> assign(:segment, segment)
      |> assign(:summary, Reports.summary(segment: segment))
      |> assign(:expiring, Reports.expiring_soon(limit: @preview, segment: segment))
      |> assign(:activity, Reports.recent_activity(limit: @preview, segment: segment))
-     |> assign(:may_review?, may_review?(socket))
-     |> assign(:may_acknowledge?, Alerts.may_acknowledge?(socket.assigns.current_scope))
      # No screen goes deeper into shortages, so this one carries its own weight
      # rather than teasing five rows and stopping.
      |> assign(:below_minimum, Reports.below_minimum(limit: @shortage_limit, segment: segment))
@@ -85,6 +102,23 @@ defmodule EstoqueOSWeb.HomeLive.Index do
         {gettext("Overview")}
         <:subtitle>{gettext("What needs attention before the next mission.")}</:subtitle>
       </.header>
+
+      <!-- The two stocks share a warehouse and almost nothing else: what is
+           expiring in the marketing shelf is not a mission problem, and a
+           coordinator reading one number for both was reading neither. The tabs
+           are the whole answer for a role that holds both stocks; a role that
+           holds one never sees them and lands on their own overview. -->
+      <div :if={not @segment_locked?} role="tablist" class="tabs tabs-box w-fit">
+        <.link
+          :for={{value, label} <- segment_tabs()}
+          patch={overview_path(value)}
+          role="tab"
+          aria-selected={to_string(@segment == value)}
+          class={["tab", @segment == value && "tab-active"]}
+        >
+          {label}
+        </.link>
+      </div>
 
       <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <.stat
@@ -381,6 +415,18 @@ defmodule EstoqueOSWeb.HomeLive.Index do
     </div>
     """
   end
+
+  # Both stocks first, because the operation is one operation and the person
+  # with the tabs is the one who has to see it whole before splitting it.
+  defp segment_tabs do
+    [
+      {nil, gettext("All")}
+      | Enum.map(Product.segments(), &{&1, StockLive.Index.segment_label(&1)})
+    ]
+  end
+
+  defp overview_path(nil), do: ~p"/"
+  defp overview_path(segment), do: ~p"/?segment=#{segment}"
 
   defp bottleneck_names(bottlenecks) do
     bottlenecks |> Enum.map(& &1.item.description) |> Enum.take(2) |> Enum.join(", ")

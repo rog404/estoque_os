@@ -12,7 +12,7 @@ defmodule EstoqueOS.Reports do
   alias EstoqueOS.Catalog.{Product, ProductGroup, ProductIdentifier, UnitConversion}
   alias EstoqueOS.Inventory
   alias EstoqueOS.Inventory.{Box, Location, Lot, StockSnapshot, Transaction, TransactionEntry}
-  alias EstoqueOS.Invoices.Invoice
+  alias EstoqueOS.Invoices.{Invoice, InvoiceItem}
   alias EstoqueOS.Repo
   alias EstoqueOS.Reports.StockWorkbook
 
@@ -517,7 +517,7 @@ defmodule EstoqueOS.Reports do
         |> Enum.map(& &1.total)
         |> Enum.reject(&is_nil/1)
         |> Enum.reduce(Decimal.new(0), &Decimal.add/2),
-      invoices_pending: Repo.aggregate(from(i in Invoice, where: i.status != "posted"), :count),
+      invoices_pending: pending_invoices(segment),
       lots_needing_review:
         Repo.aggregate(
           from(l in Lot,
@@ -529,6 +529,33 @@ defmodule EstoqueOS.Reports do
           :count
         )
     }
+  end
+
+  # A note belongs to whichever stock its items land in, and a note can carry
+  # both. Counted through the items so the marketing overview does not raise a
+  # number about a delivery of gauze — an unattended item, still without a
+  # product, has no segment yet and stays in the whole-operation count only.
+  defp pending_invoices(nil) do
+    Repo.aggregate(from(i in Invoice, where: i.status != "posted"), :count)
+  end
+
+  defp pending_invoices(segment) do
+    Repo.aggregate(
+      from(i in Invoice,
+        as: :invoice,
+        where:
+          i.status != "posted" and
+            exists(
+              from(item in InvoiceItem,
+                join: p in Product,
+                on: p.id == item.product_id,
+                where: parent_as(:invoice).id == item.invoice_id and p.segment == ^segment,
+                select: 1
+              )
+            )
+      ),
+      :count
+    )
   end
 
   # For the queries that reach `products` under another name than the stock
