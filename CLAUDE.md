@@ -53,6 +53,13 @@ not stop it rendering. `Import data` came out as "Importar", `recorded` as
 "Registrar". Use `/i18n` after any change that touches a `gettext(...)` call, and
 read every fuzzy entry rather than clearing the flag.
 
+**A HEEx `<!-- -->` comment is shipped to the browser.** It is in the rendered
+HTML, so a `refute html =~ "..."` finds the word in *the comment explaining why
+the word is not there*. Three times in one session: "vencendo" in a comment
+about the filter panel, "Caixas para recontar" in one about a hidden panel,
+"vencido" in one about a new filter option. Explain the behaviour without
+quoting the user-facing string, or use `<%!-- --%>`, which is not rendered.
+
 **A control that appears on save moves the row under the operator's thumb.**
 Reported four times now (B3, C1, N1, and the "Contar de novo" button that wrapped
 onto a second line on the counted row only). These screens are used one-handed,

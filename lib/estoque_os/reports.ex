@@ -45,9 +45,12 @@ defmodule EstoqueOS.Reports do
     |> maybe_filter_locations(opts[:location_ids] || opts[:location_id])
     |> maybe_segment(opts[:segment])
     |> maybe_search(opts[:search])
-    |> maybe_only_controlled(opts[:only_controlled])
-    |> maybe_only_expiring(opts[:only_expiring], horizon)
-    |> maybe_only_review(opts[:only_needs_review])
+    |> filter_situations(
+      opts[:situations] || situations_from_legacy(opts),
+      horizon,
+      today,
+      totals
+    )
     |> order_by([s, l, p, g, b, loc], asc: p.name, asc_nulls_last: l.expires_on)
     |> maybe_limit(opts[:limit])
     |> select([s, l, p, g, b, loc], %{
@@ -206,28 +209,76 @@ defmodule EstoqueOS.Reports do
   defp maybe_segment(query, ""), do: query
   defp maybe_segment(query, segment), do: where(query, [_s, _l, p], p.segment == ^segment)
 
-  defp maybe_only_controlled(query, true), do: where(query, [_s, _l, p], p.controlled)
-  defp maybe_only_controlled(query, _), do: query
+  # One list instead of three flags, and the list is a *union*: asking for
+  # expired and below-minimum together means "show me either", which is how
+  # somebody chasing problems reads it. Three separate `where`s would have meant
+  # "both at once" and answered almost nothing.
+  defp filter_situations(query, [], _horizon, _today, _totals), do: query
 
-  defp maybe_only_expiring(query, true, horizon) do
-    where(query, [_s, l], not is_nil(l.expires_on) and l.expires_on <= ^horizon)
+  defp filter_situations(query, situations, horizon, today, totals) do
+    low = below_minimum_ids(totals)
+
+    Enum.reduce(situations, nil, fn situation, acc ->
+      condition = situation_condition(situation, horizon, today, low)
+      if acc, do: dynamic([s, l, p], ^acc or ^condition), else: condition
+    end)
+    |> case do
+      nil -> query
+      condition -> where(query, ^condition)
+    end
   end
 
-  defp maybe_only_expiring(query, _, _horizon), do: query
+  defp situation_condition("expired", _horizon, today, _low) do
+    dynamic([_s, l], not is_nil(l.expires_on) and l.expires_on < ^today)
+  end
+
+  defp situation_condition("expiring", horizon, _today, _low) do
+    dynamic([_s, l], not is_nil(l.expires_on) and l.expires_on <= ^horizon)
+  end
+
+  defp situation_condition("controlled", _horizon, _today, _low) do
+    dynamic([_s, _l, p], p.controlled)
+  end
+
+  defp situation_condition("review", _horizon, _today, _low) do
+    dynamic([_s, l], l.needs_review and is_nil(l.review_acknowledged_at))
+  end
+
+  # "Running low" is a fact about the product across the whole warehouse, not
+  # about this position, so it cannot be a comparison inside the row's own
+  # `where`. The products are worked out first and the filter is a membership
+  # test — the same reasoning `below_minimum?/2` already uses to decide the flag.
+  defp situation_condition("below_minimum", _horizon, _today, low) do
+    dynamic([_s, l], l.product_id in ^low)
+  end
+
+  defp situation_condition(_unknown, _horizon, _today, _low), do: dynamic([_s], false)
+
+  defp below_minimum_ids(totals) do
+    Product
+    |> where([p], p.active and not is_nil(p.min_stock_override))
+    |> select([p], {p.id, p.min_stock_override})
+    |> Repo.all()
+    |> Enum.filter(fn {id, minimum} ->
+      Decimal.compare(Map.get(totals, id, Decimal.new(0)), minimum) == :lt
+    end)
+    |> Enum.map(&elem(&1, 0))
+  end
+
+  # The old spelling, for callers that still pass one flag at a time.
+  defp situations_from_legacy(opts) do
+    [
+      opts[:only_expiring] && "expiring",
+      opts[:only_controlled] && "controlled",
+      opts[:only_needs_review] && "review"
+    ]
+    |> Enum.filter(&is_binary/1)
+  end
 
   # Goods that arrived with no lot number or no expiry — usually a donation, or
   # an invoice whose `rastro` group the supplier left out. The overview counts
   # them; this is where the count leads, because a warning that only states a
   # number leaves the manager to find the rows by hand.
-  # The open ones. A lot somebody has already accepted is still flagged — the
-  # goods really did arrive without a number — but it is no longer something
-  # anybody has to do, and a list that keeps showing resolved work stops being
-  # read.
-  defp maybe_only_review(query, true),
-    do: where(query, [_s, l], l.needs_review and is_nil(l.review_acknowledged_at))
-
-  defp maybe_only_review(query, _), do: query
-
   defp below_minimum?(%{min_stock_override: nil}, _totals), do: false
 
   defp below_minimum?(row, totals) do

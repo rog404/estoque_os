@@ -376,6 +376,21 @@ body {
   margin-bottom: 0;
 }
 
+/* daisyUI's `.select` is an `inline-flex` row, which is right for the one-line
+   control it was written for and wrong the moment the select takes `multiple`:
+   the options become flex items and lay themselves out side by side, four
+   places overlapping in the width of one. A list of places is a list. */
+select.select[multiple] {
+  display: block;
+  white-space: normal;
+  padding-inline: 0.25rem;
+}
+
+select.select[multiple] option {
+  padding: 0.25rem 0.5rem;
+  border-radius: var(--radius-field);
+}
+
 /* ==========================================================================
    HIDDEN AMOUNTS
 

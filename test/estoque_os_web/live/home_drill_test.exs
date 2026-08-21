@@ -53,7 +53,9 @@ defmodule EstoqueOSWeb.HomeDrillTest do
       |> render_click()
       |> follow_redirect(conn)
 
-    assert stock_html =~ ~r/name="only_expiring"[^>]*checked/
+    # The three checkboxes became one "Situação" droplist, so the link arriving
+    # filtered now shows as the matching option being selected.
+    assert stock_html =~ ~r/value="expiring"[^>]*selected/
   end
 
   # Shortages are the one listing with nowhere deeper to go, so this card

@@ -497,12 +497,23 @@ defmodule EstoqueOSWeb.CoreComponents do
 
   def write_gate(assigns) do
     ~H"""
+    <!-- `min-w-0` and a plain block, not `display: contents`.
+         `contents` was the obvious choice and it cost every screen its
+         spacing: the page lays its sections out with `space-y-6`, which puts a
+         margin on each DOM child after the first — and a margin on a box that
+         `contents` has removed from the layout does nothing at all. So on the
+         four screens where a form is wrapped in this gate, the form sat welded
+         to the table under it. Reported on Caixas, and it was never about
+         Caixas.
+         A fieldset with no border, padding or margin lays out exactly like the
+         div it replaces, and still disables everything inside it in one
+         attribute — which is the whole reason it is a fieldset. -->
     <fieldset
       :if={@may}
       disabled={not @allowed}
       title={@reason}
       aria-disabled={not @allowed}
-      class="contents"
+      class="min-w-0 border-0 p-0 m-0"
     >
       {render_slot(@inner_block)}
     </fieldset>

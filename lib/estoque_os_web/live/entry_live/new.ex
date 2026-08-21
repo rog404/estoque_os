@@ -395,13 +395,23 @@ defmodule EstoqueOSWeb.EntryLive.New do
               />
             </label>
 
+            <!-- Off for a product that has neither, and the catalog already
+                 knows which: a blanket a volunteer brought has no lot printed on
+                 it and no date, and `lot_expected` / `expiry_expected` are the
+                 two flags that say so. Rendered and disabled rather than hidden,
+                 so the row keeps its shape and the reason is on hover — the same
+                 rule every other guarded control here follows. -->
             <label class="fieldset">
               <span class="label">{gettext("Lot")}</span>
               <input
                 type="text"
                 name="lot_number"
                 value={@draft["lot_number"]}
-                placeholder={gettext("if it has one")}
+                placeholder={
+                  if(@product.lot_expected, do: gettext("if it has one"), else: gettext("has none"))
+                }
+                disabled={not @product.lot_expected}
+                title={unless @product.lot_expected, do: gettext("This product has no lot number.")}
                 class="input input-bordered w-40"
               />
             </label>
@@ -412,6 +422,10 @@ defmodule EstoqueOSWeb.EntryLive.New do
                 type="date"
                 name="expires_on"
                 value={@draft["expires_on"]}
+                disabled={not @product.expiry_expected}
+                title={
+                  unless @product.expiry_expected, do: gettext("This product has no expiry date.")
+                }
                 class="input input-bordered"
               />
             </label>
