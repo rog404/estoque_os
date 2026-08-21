@@ -206,12 +206,29 @@ defmodule EstoqueOSWeb.StockFilterTest do
     # one answer, not the whole panel.
     left =
       view
-      |> element(~s{button[phx-value-kind="situation"][phx-value-value="controlled"]})
+      |> element(~s{button[phx-value-kind="situation"][phx-value-filter="controlled"]})
       |> render_click()
 
     assert left =~ "Fentanila"
     assert left =~ "Eletrodo ECG adulto"
     refute left =~ "Compressa de gaze"
+  end
+
+  # This test does not click anything, because clicking is exactly what the test
+  # above does successfully while the browser does not: `render_click/1` reads
+  # the attribute straight off the markup, and the client overwrites the `value`
+  # key with the button's own `value` property before it sends the event. So the
+  # rule is checked where it can be checked — in the markup, by name.
+  test "a chip never carries the one phx-value name a button overwrites", %{
+    conn: conn,
+    warehouse: warehouse
+  } do
+    {:ok, view, _html} = live(conn, ~p"/stock")
+
+    filtered = filter(view, %{"location_id" => [to_string(warehouse.id)]})
+
+    assert filtered =~ ~s{phx-value-filter="#{warehouse.id}"}
+    refute filtered =~ "phx-value-value"
   end
 
   test "a link may still turn a filter on from the address bar", %{conn: conn} do

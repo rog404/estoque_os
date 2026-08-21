@@ -644,7 +644,13 @@ defmodule EstoqueOSWeb.UI do
   """
   attr :tone, :string, default: "primary", values: ~w(primary info accent warning success)
   attr :label, :string, required: true
-  attr :rest, :global, include: ~w(phx-click phx-value-kind phx-value-value)
+  attr :rest, :global, include: ~w(phx-click phx-value-kind phx-value-filter)
+
+  # Never `phx-value-value`. A `<button>` has a `value` property, and the client
+  # writes that property over the `value` key after it has read the
+  # `phx-value-*` attributes — so the server received an empty string and the
+  # chip stayed on the screen. The one kind that dropped was the search, whose
+  # value is empty anyway, which is why it looked like a mis-aimed click.
 
   def filter_pill(assigns) do
     ~H"""

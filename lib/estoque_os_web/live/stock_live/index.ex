@@ -285,7 +285,7 @@ defmodule EstoqueOSWeb.StockLive.Index do
             tone={filter_tone(kind)}
             phx-click="drop_filter"
             phx-value-kind={kind}
-            phx-value-value={value}
+            phx-value-filter={value}
           />
 
           <span class="text-sm text-base-content/80">
@@ -529,7 +529,7 @@ defmodule EstoqueOSWeb.StockLive.Index do
 
   # One filter off, the rest as they were. Re-opening the panel to untick a
   # chip and pressing Apply again is three taps for what the chip says in one.
-  def handle_event("drop_filter", %{"kind" => kind, "value" => value}, socket) do
+  def handle_event("drop_filter", %{"kind" => kind, "filter" => value}, socket) do
     {:noreply,
      socket
      |> drop_filter(kind, value)
