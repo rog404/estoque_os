@@ -18,6 +18,13 @@ defmodule EstoqueOS.Outbound.Shipment do
   `received_at` being null is what "still out there" means. Derived rather than a
   status column, for the same reason balances are derived: two places to write
   "received" is one place for them to disagree.
+
+  `arrived_at` is a different question, and only a hired carrier raises it. When
+  the ONG drives its own goods, leaving and being there is one act. When a
+  carrier takes them, the truck leaves on a Tuesday and lands on a Friday, and
+  in between the stock is in neither place — so it sits in transit until
+  somebody at the other end says it landed. Arrived is the load reaching the
+  mission; received is the mission handing back what it did not use.
   """
 
   use Ecto.Schema
@@ -33,6 +40,7 @@ defmodule EstoqueOS.Outbound.Shipment do
     field :waybill, :string
     field :shipped_on, :date
     field :expected_arrival, :date
+    field :arrived_at, :utc_datetime
     field :received_at, :utc_datetime
     field :notes, :string
 
@@ -42,6 +50,7 @@ defmodule EstoqueOS.Outbound.Shipment do
     belongs_to :mission, Mission
     belongs_to :received_by, User
     belongs_to :sent_transaction, Transaction
+    belongs_to :arrival_transaction, Transaction
     belongs_to :received_transaction, Transaction
 
     timestamps(type: :utc_datetime)
@@ -72,7 +81,21 @@ defmodule EstoqueOS.Outbound.Shipment do
   end
 
   @doc """
-  Closes the shipment: it arrived, and this is the movement that took it in.
+  Stamps the arrival: the load reached the place it was going.
+
+  Only a load with a carrier ever has one. The movement it points at is the one
+  that took the goods out of transit and put them where they were addressed.
+  """
+  def arrival_changeset(shipment, attrs) do
+    shipment
+    |> cast(attrs, [:arrived_at, :arrival_transaction_id])
+    |> validate_required([:arrived_at, :arrival_transaction_id])
+    |> assoc_constraint(:arrival_transaction)
+    |> check_constraint(:arrived_at, name: :shipments_arrival_needs_both_or_neither)
+  end
+
+  @doc """
+  Closes the shipment: what went out has come back, and this is that movement.
   """
   def receipt_changeset(shipment, attrs) do
     shipment
@@ -85,6 +108,16 @@ defmodule EstoqueOS.Outbound.Shipment do
   @doc "Whether this load is still out there."
   def open?(%__MODULE__{received_at: nil}), do: true
   def open?(%__MODULE__{}), do: false
+
+  @doc """
+  Whether this load is on the road right now: a carrier has it and nobody at
+  the other end has said it landed.
+  """
+  def in_transit?(%__MODULE__{carrier_id: carrier_id, arrived_at: nil})
+      when not is_nil(carrier_id),
+      do: true
+
+  def in_transit?(%__MODULE__{}), do: false
 
   defp put_default_shipped_on(changeset) do
     if get_field(changeset, :shipped_on) do

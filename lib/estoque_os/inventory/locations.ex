@@ -32,6 +32,21 @@ defmodule EstoqueOS.Inventory.Locations do
   end
 
   @doc """
+  The place a load sits while somebody else is driving it.
+
+  There is one, and the load-out needs it by kind rather than by name: "Trânsito"
+  is a word on a seed, and a system that finds it by spelling breaks the day
+  somebody renames it.
+  """
+  def transit_location do
+    Location
+    |> where([l], l.active == true and l.kind == "transit")
+    |> order_by([l], asc: l.id)
+    |> limit(1)
+    |> Repo.one()
+  end
+
+  @doc """
   What each location holds, in the terms the operation actually thinks in.
 
   Boxes, not units: a location's stock travels and is counted as boxes, and a

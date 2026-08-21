@@ -109,6 +109,36 @@ defmodule EstoqueOSWeb.TransitLive.Index do
             </p>
           </:col>
 
+          <!-- Where the load is, which is not the same question as where it is
+               going. With a carrier it sits in transit until somebody at the
+               other end says it landed; driven by the team, leaving and being
+               there were one act and there is nothing to confirm. -->
+          <:col :let={row} label={gettext("Where it is")}>
+            <span :if={row.in_transit?} class="badge badge-warning badge-sm">
+              {gettext("on the road")}
+            </span>
+            <span :if={not row.in_transit?} class="badge is-quiet dot-success">
+              {gettext("delivered")}
+            </span>
+
+            <!-- Always rendered, hidden when it does not apply: a button that
+                 appears on some rows changes their height, and a row that grows
+                 when it is confirmed sends the next tap to the wrong load. -->
+            <div class={["mt-1", not row.in_transit? && "invisible"]}>
+              <.write_gate may={@role_may_write?} allowed={@writable?} reason={@write_block}>
+                <button
+                  type="button"
+                  phx-click="arrive"
+                  phx-value-id={row.shipment.id}
+                  class="btn btn-xs"
+                  phx-disable-with={gettext("Recording...")}
+                >
+                  {gettext("It arrived")}
+                </button>
+              </.write_gate>
+            </div>
+          </:col>
+
           <:col :let={row} label={gettext("Expected")} group>
             <span class={row.late? && "text-error font-medium"}>
               {date(row.shipment.expected_arrival)}
@@ -127,6 +157,28 @@ defmodule EstoqueOSWeb.TransitLive.Index do
   end
 
   @impl true
+  def handle_event("arrive", %{"id" => id}, socket) do
+    shipment = Outbound.get_shipment!(id)
+
+    case Outbound.arrive_shipment(shipment, user_id: socket.assigns.current_scope.user.id) do
+      {:ok, %{shipment: arrived}} ->
+        {:noreply,
+         socket
+         |> put_flash(
+           :info,
+           gettext("Load delivered at %{place}.", place: arrived.to_location.name)
+         )
+         |> load_shipments()}
+
+      {:error, :nothing_in_transit} ->
+        {:noreply,
+         put_flash(socket, :error, gettext("This load has nothing sitting in transit."))}
+
+      {:error, _reason} ->
+        {:noreply, put_flash(socket, :error, gettext("That arrival could not be recorded."))}
+    end
+  end
+
   def handle_event("filter", %{"carrier_id" => carrier_id}, socket) do
     {:noreply,
      socket
