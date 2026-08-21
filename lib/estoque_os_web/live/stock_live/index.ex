@@ -493,16 +493,10 @@ defmodule EstoqueOSWeb.StockLive.Index do
 
   defp locked?(socket), do: Scope.segment(socket.assigns.current_scope) != nil
 
-  # What the page may ask for, and the role always wins. A marketing user's
-  # segment is not a filter they chose and can drop — it is the only stock they
-  # have — so a `segment=` in the address or in a form they hand-crafted is
-  # ignored rather than obeyed.
-  defp segment(socket, asked) do
-    case Scope.segment(socket.assigns.current_scope) do
-      nil -> if asked in Product.segments(), do: asked
-      forced -> forced
-    end
-  end
+  # The role always wins: a marketing user's segment is not a filter they chose
+  # and can drop, it is the only stock they have. `Scope.segment/2` is the one
+  # copy of that rule.
+  defp segment(socket, asked), do: Scope.segment(socket.assigns.current_scope, asked)
 
   defp flip(:asc), do: :desc
   defp flip(:desc), do: :asc

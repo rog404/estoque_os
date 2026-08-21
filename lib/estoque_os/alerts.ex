@@ -22,6 +22,7 @@ defmodule EstoqueOS.Alerts do
   """
 
   import Ecto.Query
+  import EstoqueOS.Coercion, only: [blank_to_nil: 1]
 
   alias EstoqueOS.Accounts.{Scope, User}
   alias EstoqueOS.Inventory.{Lot, Transaction}
@@ -47,9 +48,6 @@ defmodule EstoqueOS.Alerts do
     ]
     |> Enum.reject(&(&1 == nil or &1.count == 0))
   end
-
-  @doc "How many things are open. The number on the bell."
-  def count(scope, opts \\ []), do: scope |> pending(opts) |> Enum.map(& &1.count) |> Enum.sum()
 
   # A divergent count is about a box, and a box belongs to no segment — so this
   # one is the surgical operation's, like the boxes themselves.
@@ -197,13 +195,4 @@ defmodule EstoqueOS.Alerts do
 
   defp user_id(%Scope{user: %{id: id}}), do: id
   defp user_id(_scope), do: nil
-
-  defp blank_to_nil(nil), do: nil
-
-  defp blank_to_nil(value) do
-    case String.trim(value) do
-      "" -> nil
-      trimmed -> trimmed
-    end
-  end
 end

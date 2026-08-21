@@ -27,7 +27,8 @@ defmodule EstoqueOSWeb.IssueLive.List do
   # on one screen and its raw key on the other.
   import EstoqueOSWeb.Movement, only: [destination_label: 1]
   alias EstoqueOS.Accounts.Scope
-  alias EstoqueOS.Catalog.Product
+  import EstoqueOS.Coercion, only: [parse_date: 2]
+
   alias EstoqueOS.Reports
   alias EstoqueOSWeb.UserAuth
 
@@ -55,12 +56,7 @@ defmodule EstoqueOSWeb.IssueLive.List do
 
   # A movement belongs to a segment through what it moved. The marketing role
   # gets theirs whatever the address says; anyone else may ask for one.
-  defp segment(socket, asked) do
-    case Scope.segment(socket.assigns.current_scope) do
-      nil -> if asked in Product.segments(), do: asked
-      forced -> forced
-    end
-  end
+  defp segment(socket, asked), do: Scope.segment(socket.assigns.current_scope, asked)
 
   defp load_issues(socket) do
     %{from: from, to: to, destination: destination, segment: segment} = socket.assigns
@@ -213,15 +209,5 @@ defmodule EstoqueOSWeb.IssueLive.List do
      |> assign(:destination, params["destination"] || "")
      |> assign(:segment, segment(socket, params["segment"] || socket.assigns.segment))
      |> load_issues()}
-  end
-
-  defp parse_date(nil, fallback), do: fallback
-  defp parse_date("", fallback), do: fallback
-
-  defp parse_date(value, fallback) do
-    case Date.from_iso8601(value) do
-      {:ok, date} -> date
-      {:error, _} -> fallback
-    end
   end
 end

@@ -23,6 +23,8 @@ defmodule EstoqueOSWeb.SalesReportLive.Index do
   """
   def viewer_events, do: ~w(period filter)
 
+  import EstoqueOS.Coercion, only: [blank_to_nil: 1, parse_date: 2]
+
   alias EstoqueOS.Accounts.Scope
   alias EstoqueOS.Reports
   alias EstoqueOSWeb.StockLive
@@ -59,9 +61,6 @@ defmodule EstoqueOSWeb.SalesReportLive.Index do
     |> assign(:rows, rows)
     |> assign(:totals, Reports.sales_totals(rows))
   end
-
-  defp blank_to_nil(""), do: nil
-  defp blank_to_nil(value), do: value
 
   @impl true
   def render(assigns) do
@@ -211,15 +210,5 @@ defmodule EstoqueOSWeb.SalesReportLive.Index do
      socket
      |> assign(:from, Date.add(socket.assigns.to, -days))
      |> load_report()}
-  end
-
-  defp parse_date(nil, fallback), do: fallback
-  defp parse_date("", fallback), do: fallback
-
-  defp parse_date(value, fallback) do
-    case Date.from_iso8601(value) do
-      {:ok, date} -> date
-      {:error, _reason} -> fallback
-    end
   end
 end

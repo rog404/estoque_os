@@ -377,15 +377,6 @@ defmodule EstoqueOS.Catalog do
     |> Repo.all()
   end
 
-  defp blank_to_nil(nil), do: nil
-
-  defp blank_to_nil(value) do
-    case String.trim(to_string(value)) do
-      "" -> nil
-      trimmed -> trimmed
-    end
-  end
-
   defp decimal_to_string(nil), do: nil
   defp decimal_to_string(value), do: to_string(value)
 
@@ -535,10 +526,6 @@ defmodule EstoqueOS.Catalog do
           carrier -> {:ok, carrier}
         end
     end
-  end
-
-  def create_carrier(attrs) do
-    %Carrier{} |> Carrier.changeset(attrs) |> Repo.insert()
   end
 
   def create_product_group(attrs) do
