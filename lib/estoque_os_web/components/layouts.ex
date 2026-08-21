@@ -95,6 +95,20 @@ defmodule EstoqueOSWeb.Layouts do
         </nav>
 
         <div class="flex-none flex items-center gap-1">
+          <!-- One place for everything that is open, on every screen. The
+               overview still carries the detail; what was missing was a number
+               you can see without being on the overview — and the lot alert in
+               particular sat at the bottom of it, where it was not being read.
+
+               A `live_component`, so its two actions target itself instead of
+               whichever of the twenty-six screens happens to be underneath. -->
+          <.live_component
+            :if={@current_scope}
+            module={EstoqueOSWeb.AlertsBell}
+            id="alerts-bell"
+            current_scope={@current_scope}
+          />
+
           <!-- Only for somebody who is allowed to see the amounts in the first
                place: offering to hide what was never sent would be theatre. -->
           <button

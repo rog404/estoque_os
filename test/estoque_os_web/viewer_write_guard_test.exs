@@ -171,6 +171,11 @@ defmodule EstoqueOSWeb.ViewerWriteGuardTest do
       # recording one line stops blanking the others. It is still refused to a
       # viewer: somebody who may not record a count has no count to keep.
       "receipt_live/show" => ~w(count complete draft confirm_new_box cancel_new_box count_again),
+      # Closing an alert is a planning decision — the same gate the minimum and
+      # the kit recipe sit behind — so a viewer may not send it. The `Alerts`
+      # context refuses it a second time, because the bell in the layout is a
+      # component and its events never pass this hook.
+      "home_live/index" => ~w(acknowledge_count),
       "issue_live/list" => ~w(),
       "audit_report_live/index" => ~w(),
       "user_live/settings" => ~w(),

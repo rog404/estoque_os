@@ -52,10 +52,15 @@ defmodule EstoqueOS.Inventory.Transaction do
     field :recipient_tax_id, :string
     field :notes, :string
     field :review_reason, :string
+    # Somebody looked at the divergence and said it was fine. The reason stays
+    # where it is — this closes the alert without erasing what raised it.
+    field :review_acknowledged_at, :utc_datetime
+    field :review_acknowledgement, :string
 
     belongs_to :source_location, Location
     belongs_to :destination_location, Location
     belongs_to :user, User
+    belongs_to :review_acknowledged_by, User
     belongs_to :invoice, Invoice
     # Which surgical trip this movement belongs to, when it belongs to one.
     belongs_to :mission, EstoqueOS.Missions.Mission
