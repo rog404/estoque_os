@@ -258,17 +258,16 @@ defmodule EstoqueOSWeb.ReceiptLive.Show do
                 <!-- Empty, not an em dash. `quantity(nil)` renders "—", so an
                      uncounted line arrived with a character the operator had to
                      clear before typing the number they were holding. -->
-                <input
-                  type="text"
+                <.count_field
                   name="counted_quantity"
                   value={draft(assigns, line, "counted_quantity") || counted_value(line)}
-                  inputmode="decimal"
-                  data-numeric
-                  phx-debounce="400"
-                  placeholder={gettext("count")}
+                  label={
+                    gettext("Counted quantity of %{product}",
+                      product: line.invoice_item.description
+                    )
+                  }
                   disabled={recorded?(line)}
-                  class="input input-sm input-bordered w-24 text-right"
-                  aria-label={gettext("Counted quantity")}
+                  phx-debounce="400"
                 />
                 <!-- Required. Goods recorded with no box are loose at the
                      location, and loose stock cannot travel: the next person

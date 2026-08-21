@@ -202,7 +202,58 @@ defmodule EstoqueOSWeb.IssueReturnLiveTest do
       assert html =~ "Retorno de missão"
       assert html =~ "Eletrodo ECG adulto"
       assert html =~ "IR01"
-      assert html =~ "80"
+    end
+
+    # This screen used to print what the ledger expected *and* type it into the
+    # field for you — on the one screen where the ledger is least worth
+    # trusting, because after a mission it is a hypothesis. Counting with the
+    # answer written in the box measures nothing.
+    test "counts blind: the expected quantity is neither shown nor prefilled", %{conn: conn} do
+      {:ok, _view, html} = live(conn, ~p"/returns")
+
+      refute html =~ "O livro diz"
+
+      assert [field] = Regex.run(~r{<input[^>]*name="lines\[0\]\[quantity\]"[^>]*>}, html)
+      assert field =~ ~s(value="")
+      refute field =~ ~s(value="80")
+      assert field =~ "não contada"
+    end
+
+    test "a manager may ask for the expected figure, on purpose", %{conn: conn} do
+      {:ok, view, _html} = live(conn, ~p"/returns")
+
+      html = render_click(view, "reveal", %{})
+
+      assert html =~ "O livro diz"
+      assert html =~ "esperado à vista"
+    end
+
+    # The hazard the blank field created: "o que não voltou foi usado" is ticked
+    # by default, so a blank line read as zero would write the whole mission off
+    # as consumed with nobody having counted anything.
+    test "a blank sheet is refused, not read as nothing came back", %{
+      conn: conn,
+      mission_lot: mission_lot,
+      mission: mission
+    } do
+      {:ok, view, _html} = live(conn, ~p"/returns")
+
+      before = Inventory.balance(lot_id: mission_lot.id, location_id: mission.id)
+
+      html =
+        view
+        |> form("#return-form", %{
+          "lines" => %{"0" => %{"quantity" => "", "to_box_code" => ""}},
+          "consume_missing" => "true"
+        })
+        |> render_submit()
+
+      assert html =~ "Conte pelo menos uma linha"
+
+      assert Decimal.equal?(
+               Inventory.balance(lot_id: mission_lot.id, location_id: mission.id),
+               before
+             )
     end
 
     test "warns that what did not come back will be written off", %{conn: conn} do

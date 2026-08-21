@@ -12,6 +12,7 @@ defmodule EstoqueOSWeb.ReturnLive.Index do
 
   import EstoqueOS.Coercion
 
+  alias EstoqueOS.Accounts.{Scope, User}
   alias EstoqueOS.Outbound
 
   alias EstoqueOS.Inventory.Locations
@@ -22,7 +23,7 @@ defmodule EstoqueOSWeb.ReturnLive.Index do
   Choosing the route reloads the list of what is still out there. `receive`
   is the movement, and `confirm_new_box` creates a box.
   """
-  def viewer_events, do: ~w(route cancel_new_box)
+  def viewer_events, do: ~w(route cancel_new_box reveal draft)
 
   @impl true
   def mount(_params, _session, socket) do
@@ -37,6 +38,11 @@ defmodule EstoqueOSWeb.ReturnLive.Index do
      |> assign(:source_id, source && source.id)
      |> assign(:destination_id, destination && destination.id)
      |> assign(:new_boxes, nil)
+     |> assign(:revealed?, false)
+     # What has been typed, held here rather than left to the browser: this form
+     # repaints when the route changes or a box code is questioned, and a field
+     # rendered without a value comes back empty under the person typing.
+     |> assign(:draft, %{})
      |> load_plan()}
   end
 
@@ -74,6 +80,14 @@ defmodule EstoqueOSWeb.ReturnLive.Index do
   #
   # A suggestion, never a decision — things do come back in different boxes than
   # they left in, which is the premise of this screen.
+  # The same rule the box count applies: only a role that plans may ask for the
+  # expected figure, because it is theirs to answer for.
+  defp may_reveal?(assigns) do
+    Scope.effective_role(assigns.current_scope) in User.roles_that_plan()
+  end
+
+  defp draft(assigns, index), do: assigns.draft[to_string(index)]
+
   defp default_box_code(line, boxes, suggestions) do
     if came_home?(line, boxes) do
       line.box_code
@@ -122,6 +136,12 @@ defmodule EstoqueOSWeb.ReturnLive.Index do
         <:subtitle>
           {gettext("Count what came back and say which box it went into.")}
         </:subtitle>
+        <:actions>
+          <.reveal_expected
+            available?={may_reveal?(assigns) and not @revealed?}
+            revealed?={@revealed?}
+          />
+        </:actions>
       </.header>
 
       <form id="route-form" phx-change="route" class="field-row mt-4">
@@ -158,7 +178,13 @@ defmodule EstoqueOSWeb.ReturnLive.Index do
 
       <.box_options id="return-boxes" boxes={@boxes} />
 
-      <form :if={@lines != []} id="return-form" phx-submit="receive" class="mt-6">
+      <form
+        :if={@lines != []}
+        id="return-form"
+        phx-submit="receive"
+        phx-change="draft"
+        class="mt-6"
+      >
         <.panel title={gettext("Boxes coming back")} flush>
           <.data_table
             rows={Enum.with_index(@lines)}
@@ -177,7 +203,17 @@ defmodule EstoqueOSWeb.ReturnLive.Index do
             <:col :let={{line, _index}} label={gettext("Left in")}>
               {line.box_code || "—"}
             </:col>
-            <:col :let={{line, _index}} label={gettext("Ledger says")} align={:right}>
+            <!-- Only when a manager asked for it. This column used to be here
+                 always, with the number *also* typed into the field beside it —
+                 on the one screen where the ledger is least worth trusting,
+                 because after a mission it is a hypothesis. Counting with the
+                 answer written in the box measures nothing. -->
+            <:col
+              :let={{line, _index}}
+              :if={@revealed?}
+              label={gettext("Ledger says")}
+              align={:right}
+            >
               {quantity(line.expected)}
             </:col>
             <:col :let={{line, index}} label={gettext("Came back")} align={:right} field={:inline}>
@@ -188,14 +224,10 @@ defmodule EstoqueOSWeb.ReturnLive.Index do
                 name={"lines[#{index}][expected]"}
                 value={quantity(line.expected)}
               />
-              <input
-                type="text"
+              <.count_field
                 name={"lines[#{index}][quantity]"}
-                value={quantity(line.expected)}
-                inputmode="decimal"
-                data-numeric
-                class="input input-sm input-bordered w-24 text-right"
-                aria-label={gettext("Quantity that came back")}
+                value={draft(assigns, index)}
+                label={gettext("Quantity of %{product} that came back", product: line.product)}
               />
             </:col>
             <:col :let={{line, index}} label={gettext("Into box")} field={:block}>
@@ -210,6 +242,8 @@ defmodule EstoqueOSWeb.ReturnLive.Index do
             </:col>
           </.data_table>
         </.panel>
+
+        <.blank_note />
 
         <.check
           name="consume_missing"
@@ -251,6 +285,27 @@ defmodule EstoqueOSWeb.ReturnLive.Index do
   end
 
   @impl true
+  # The manager's exception, and only theirs. Taking it is remembered for as
+  # long as the screen lasts and written into the movement's notes, so a count
+  # made with the answer in view is never later read as a blind one.
+  def handle_event("reveal", _params, socket) do
+    if may_reveal?(socket.assigns) do
+      {:noreply, assign(socket, :revealed?, true)}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  # Keeps what has been typed across a repaint. Writes nothing.
+  def handle_event("draft", %{"lines" => lines}, socket) do
+    typed =
+      Map.new(lines, fn {index, fields} -> {index, fields["quantity"]} end)
+
+    {:noreply, assign(socket, :draft, Map.merge(socket.assigns.draft, typed))}
+  end
+
+  def handle_event("draft", _params, socket), do: {:noreply, socket}
+
   def handle_event("route", params, socket) do
     {:noreply,
      socket
@@ -320,6 +375,14 @@ defmodule EstoqueOSWeb.ReturnLive.Index do
 
       {:error, :nothing_returned} ->
         {:noreply, put_flash(socket, :error, gettext("Nothing to receive."))}
+
+      {:error, :nothing_counted} ->
+        {:noreply,
+         put_flash(
+           socket,
+           :error,
+           gettext("Count at least one line. A blank line is not counted, and does not move.")
+         )}
 
       {:error, :same_location} ->
         {:noreply,
