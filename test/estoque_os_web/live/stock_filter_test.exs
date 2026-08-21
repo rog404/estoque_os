@@ -84,14 +84,13 @@ defmodule EstoqueOSWeb.StockFilterTest do
     end
   end
 
-  # The values the rendered droplist would actually send, read off the page
-  # rather than typed here. The three checkboxes became one "Situação" list, and
-  # this is what keeps the test asking the DOM what it offers instead of
-  # assuming.
+  # The values the rendered chips would actually send, read off the page rather
+  # than typed here. The group has been three checkboxes, then one droplist, and
+  # is now a row of chips; asking the DOM what it offers survives all three.
   defp situation_values(html) do
-    [panel] = Regex.run(~r/<select[^>]*name="situation\[\]".*?<\/select>/s, html)
-
-    Regex.scan(~r/value="([^"]*)"/, panel) |> Enum.map(fn [_, v] -> v end)
+    ~r/name="situation\[\]"[^>]*value="([^"]*)"/
+    |> Regex.scan(html)
+    |> Enum.map(fn [_, value] -> value end)
   end
 
   test "searches by product name", %{conn: conn} do
@@ -189,6 +188,30 @@ defmodule EstoqueOSWeb.StockFilterTest do
 
     assert filtered =~ "Atadura doada"
     refute filtered =~ "Eletrodo ECG adulto"
+  end
+
+  test "each applied filter is a label that drops on its own", %{
+    conn: conn,
+    warehouse: warehouse
+  } do
+    {:ok, view, _html} = live(conn, ~p"/stock")
+
+    filtered =
+      filter(view, %{"location_id" => [to_string(warehouse.id)], "situation" => ["controlled"]})
+
+    assert filtered =~ "Fentanila"
+    refute filtered =~ "Compressa de gaze"
+
+    # Dropping the situation leaves the location where it was: the chip undoes
+    # one answer, not the whole panel.
+    left =
+      view
+      |> element(~s{button[phx-value-kind="situation"][phx-value-value="controlled"]})
+      |> render_click()
+
+    assert left =~ "Fentanila"
+    assert left =~ "Eletrodo ECG adulto"
+    refute left =~ "Compressa de gaze"
   end
 
   test "a link may still turn a filter on from the address bar", %{conn: conn} do

@@ -19,7 +19,7 @@ defmodule EstoqueOSWeb.StockLive.Index do
   Reporting only. The spreadsheet import posts adjustments and stays with
   operators, as does the upload validation that feeds it.
   """
-  def viewer_events, do: ~w(search filter page sort clear_filters)
+  def viewer_events, do: ~w(search filter page sort clear_filters drop_filter)
 
   import EstoqueOS.Coercion
 
@@ -102,6 +102,30 @@ defmodule EstoqueOSWeb.StockLive.Index do
     |> Enum.count(& &1)
   end
 
+  # The filters that are on, in one list the row of chips can render: the kind
+  # is what dropping it has to undo, the value is which one of that kind, and
+  # the label is the word the operator picked it by.
+  defp applied_filters(assigns) do
+    locations =
+      for id <- assigns.location_ids,
+          location = Enum.find(assigns.locations, &(&1.id == id)),
+          do: {"location", id, location.name}
+
+    situations =
+      for value <- assigns.situations,
+          {^value, label} <- situations(),
+          do: {"situation", value, label}
+
+    segment =
+      if assigns.segment && not assigns.segment_locked?,
+        do: [{"segment", assigns.segment, segment_label(assigns.segment)}],
+        else: []
+
+    search = if assigns.search != "", do: [{"search", "", assigns.search}], else: []
+
+    search ++ locations ++ situations ++ segment
+  end
+
   defp filtering?(assigns) do
     assigns.search != "" or assigns.location_ids != [] or assigns.situations != [] or
       (assigns.segment != nil and not assigns.segment_locked?)
@@ -171,40 +195,43 @@ defmodule EstoqueOSWeb.StockLive.Index do
                  search box, which is what the width is for. The count stays: a
                  narrowed list must never look like the whole stock. -->
             <summary
-              class="btn btn-square"
+              class="btn btn-square relative"
               aria-label={gettext("Filters")}
               title={gettext("Filters")}
             >
               <.icon name="hero-adjustments-horizontal" class="size-5" />
-              <span :if={active_filters(assigns) > 0} class="badge badge-primary badge-xs">
+              <!-- Off the corner rather than beside the icon: inside a square
+                   button the count squeezed the icon it belongs to. -->
+              <span
+                :if={active_filters(assigns) > 0}
+                class="badge badge-primary badge-xs absolute -top-1.5 -right-1.5"
+              >
                 {active_filters(assigns)}
               </span>
             </summary>
 
             <div class="dropdown-content z-50 mt-2 w-72 rounded-box bg-base-100 shadow-lg border border-base-300 p-4 space-y-2">
-              <!-- A droplist you can pick several from, rather than one
-                   checkbox per place. With three locations the checkboxes were
-                   fine; with a warehouse, an annex, transit and a mission site
-                   per trip, the panel was taller than the phone it opens on.
-                   Nothing selected means everywhere, which is what an empty
+              <!-- Chips you tick, not a list you drag-select. A `<select
+                   multiple>` asks for a modifier key nobody holds on a phone,
+                   and it shows the chosen ones only by highlight; these stay
+                   readable as labels, one tap each, and several at a time.
+                   Nothing ticked means everywhere, which is what an empty
                    filter should mean. -->
-              <label class="fieldset w-full">
-                <span class="label">{gettext("Location")}</span>
-                <select
-                  name="location_id[]"
-                  multiple
-                  size={min(length(@locations), 5)}
-                  class="select select-bordered w-full"
-                >
-                  <option
-                    :for={location <- @locations}
-                    value={location.id}
-                    selected={location.id in @location_ids}
-                  >
-                    {location.name}
-                  </option>
-                </select>
-              </label>
+              <fieldset class="fieldset w-full">
+                <legend class="label">{gettext("Location")}</legend>
+                <div class="flex flex-wrap gap-1.5">
+                  <label :for={location <- @locations} class="chip-check">
+                    <input
+                      type="checkbox"
+                      name="location_id[]"
+                      value={location.id}
+                      checked={location.id in @location_ids}
+                      class="sr-only"
+                    />
+                    <span>{location.name}</span>
+                  </label>
+                </div>
+              </fieldset>
 
               <!-- Not rendered for a role that has only one stock. The gate is
                    `segment/2`, which ignores whatever arrives; this is only
@@ -223,29 +250,27 @@ defmodule EstoqueOSWeb.StockLive.Index do
                 </select>
               </label>
 
-              <!-- One list instead of a column of checkboxes, and it grew two
-                   entries in the move. Already-expired is now its own answer:
-                   the expiring window is ninety days, so it swallowed the thing
-                   somebody actually came looking for. And below-the-minimum,
-                   which the overview could name and this screen could not
-                   filter by. -->
-              <label class="fieldset w-full">
-                <span class="label">{gettext("Situation")}</span>
-                <select
-                  name="situation[]"
-                  multiple
-                  size="5"
-                  class="select select-bordered w-full"
-                >
-                  <option
-                    :for={{value, label} <- situations()}
-                    value={value}
-                    selected={value in @situations}
-                  >
-                    {label}
-                  </option>
-                </select>
-              </label>
+              <!-- The same chips, and the group grew two entries when it stopped
+                   being three loose checkboxes. Already-expired is now its own
+                   answer: the expiring window is ninety days, so it swallowed
+                   the thing somebody actually came looking for. And
+                   below-the-minimum, which the overview could name and this
+                   screen could not filter by. -->
+              <fieldset class="fieldset w-full">
+                <legend class="label">{gettext("Situation")}</legend>
+                <div class="flex flex-wrap gap-1.5">
+                  <label :for={{value, label} <- situations()} class="chip-check">
+                    <input
+                      type="checkbox"
+                      name="situation[]"
+                      value={value}
+                      checked={value in @situations}
+                      class="sr-only"
+                    />
+                    <span>{label}</span>
+                  </label>
+                </div>
+              </fieldset>
 
               <.button variant="primary" class="btn-block">{gettext("Apply filters")}</.button>
 
@@ -261,9 +286,28 @@ defmodule EstoqueOSWeb.StockLive.Index do
           </details>
         </form>
 
-        <p :if={filtering?(assigns)} class="text-sm text-base-content/80 basis-full">
-          {gettext("%{count} position(s) match", count: @total)}
-        </p>
+        <!-- What is on, as labels, outside the panel that set them. A count of
+             active filters on a closed button says how many; it never says
+             which, and "which" is the question somebody asks when the list is
+             shorter than they expected. Each one drops on its own. -->
+        <div :if={filtering?(assigns)} class="flex flex-wrap items-center gap-1.5 basis-full">
+          <button
+            :for={{kind, value, label} <- applied_filters(assigns)}
+            type="button"
+            phx-click="drop_filter"
+            phx-value-kind={kind}
+            phx-value-value={value}
+            class="chip-drop"
+          >
+            <span>{label}</span>
+            <.icon name="hero-x-mark" class="size-3.5" />
+            <span class="sr-only">{gettext("Remove filter")}</span>
+          </button>
+
+          <span class="text-sm text-base-content/80">
+            {gettext("%{count} position(s) match", count: @total)}
+          </span>
+        </div>
       </.toolbar>
 
       <p :if={@capped} class="alert alert-warning">
@@ -496,6 +540,16 @@ defmodule EstoqueOSWeb.StockLive.Index do
     {:noreply, socket |> assign(:sort, sort) |> assign(:page, 1) |> load_rows()}
   end
 
+  # One filter off, the rest as they were. Re-opening the panel to untick a
+  # chip and pressing Apply again is three taps for what the chip says in one.
+  def handle_event("drop_filter", %{"kind" => kind, "value" => value}, socket) do
+    {:noreply,
+     socket
+     |> drop_filter(kind, value)
+     |> assign(:page, 1)
+     |> load_rows()}
+  end
+
   def handle_event("clear_filters", _params, socket) do
     {:noreply,
      socket
@@ -513,6 +567,22 @@ defmodule EstoqueOSWeb.StockLive.Index do
   # segment is not a filter they chose and can drop — it is the only stock they
   # have — so a `segment=` in the address or in a form they hand-crafted is
   # ignored rather than obeyed.
+  defp drop_filter(socket, "search", _value), do: assign(socket, :search, "")
+
+  defp drop_filter(socket, "location", value) do
+    update(socket, :location_ids, &List.delete(&1, to_id(value)))
+  end
+
+  defp drop_filter(socket, "situation", value) do
+    update(socket, :situations, &List.delete(&1, value))
+  end
+
+  # The role always wins here too: a marketing user cannot drop the only stock
+  # they have, and `segment/2` is what says so.
+  defp drop_filter(socket, "segment", _value), do: assign(socket, :segment, segment(socket, nil))
+
+  defp drop_filter(socket, _kind, _value), do: socket
+
   # The situations a row can be filtered by, in the order somebody looks for
   # them: what is already lost, what is about to be, what the law watches, what
   # a mission will be short of, and what arrived without its paperwork.

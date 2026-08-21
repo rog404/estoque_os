@@ -376,19 +376,66 @@ body {
   margin-bottom: 0;
 }
 
-/* daisyUI's `.select` is an `inline-flex` row, which is right for the one-line
-   control it was written for and wrong the moment the select takes `multiple`:
-   the options become flex items and lay themselves out side by side, four
-   places overlapping in the width of one. A list of places is a list. */
-select.select[multiple] {
-  display: block;
-  white-space: normal;
-  padding-inline: 0.25rem;
+/* ==========================================================================
+   CHIPS THAT ARE ALSO CHECKBOXES
+
+   A filter that takes several answers at once. The native `<select multiple>`
+   wants a modifier key held down — there is no such key on the phone this is
+   used from — and it says what is chosen only by highlighting a row inside a
+   scrolling box. A chip says it as a word, takes one tap, and reads the same
+   whether one or four are on.
+
+   The input is the checkbox, kept in the accessibility tree with `sr-only`
+   rather than `display: none`, so the keyboard still reaches it and the label
+   still announces its state. `:has(:checked)` paints the chip around it.
+   ========================================================================== */
+.chip-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.625rem;
+  border: 1px solid var(--color-base-300);
+  border-radius: 999px;
+  background: var(--color-base-100);
+  font-size: 0.8125rem;
+  line-height: 1.25;
+  cursor: pointer;
+  user-select: none;
 }
 
-select.select[multiple] option {
-  padding: 0.25rem 0.5rem;
-  border-radius: var(--radius-field);
+.chip-check:hover {
+  border-color: color-mix(in oklch, var(--color-primary) 45%, var(--color-base-300));
+}
+
+.chip-check:has(:checked) {
+  border-color: var(--color-primary);
+  background: color-mix(in oklch, var(--color-primary) 12%, var(--color-base-100));
+  color: color-mix(in oklch, var(--color-primary) 80%, var(--color-base-content));
+  font-weight: 500;
+}
+
+.chip-check:has(:focus-visible) {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* The same chip after the fact: what is filtering the list right now, outside
+   the panel that set it, with the × that drops that one and leaves the rest. */
+.chip-drop {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0.55rem;
+  border: 1px solid color-mix(in oklch, var(--color-primary) 35%, var(--color-base-300));
+  border-radius: 999px;
+  background: color-mix(in oklch, var(--color-primary) 10%, var(--color-base-100));
+  font-size: 0.8125rem;
+  line-height: 1.25;
+}
+
+.chip-drop:hover {
+  border-color: var(--color-error);
+  background: color-mix(in oklch, var(--color-error) 10%, var(--color-base-100));
 }
 
 /* ==========================================================================
