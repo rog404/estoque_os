@@ -45,7 +45,7 @@ defmodule EstoqueOSWeb.LoadOutLiveTest do
   test "offers the boxes, and names the unboxed as something that cannot go", %{conn: conn} do
     {:ok, _view, html} = live(conn, ~p"/load-out")
 
-    assert html =~ "Derrubada de carga"
+    assert html =~ "Enviar carga"
     assert html =~ "LO01"
     assert html =~ "300"
     assert html =~ "Tudo vem selecionado"

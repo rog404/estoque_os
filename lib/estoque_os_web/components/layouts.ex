@@ -388,14 +388,19 @@ defmodule EstoqueOSWeb.Layouts do
             icon: "hero-arrow-up-tray",
             roles: ~w(admin manager marketing)
           },
+          # Named for what the person is about to do. "Derrubada de carga" is
+          # what the operation calls it on the phone and it stays the movement's
+          # name in the ledger, but as a menu entry beside "Retorno de missão" it
+          # was two nouns for the two ends of one act, and nobody could tell
+          # which screen sent and which received.
           %{
-            label: gettext("Load-out"),
+            label: gettext("Send a load"),
             path: ~p"/load-out",
             icon: "hero-truck",
             roles: ~w(admin manager logistics)
           },
           %{
-            label: gettext("Mission return"),
+            label: gettext("Receive a load"),
             path: ~p"/returns",
             icon: "hero-arrow-uturn-left",
             roles: ~w(admin manager logistics)
@@ -467,6 +472,17 @@ defmodule EstoqueOSWeb.Layouts do
             path: ~p"/reports/sales",
             icon: "hero-banknotes",
             roles: ~w(admin manager marketing auditor)
+          },
+          # "Quem está com a carga?" — asked on the phone, and until the shipment
+          # was a record the system holding the stock could not answer it.
+          # The four roles the surgical operation is made of, like the boxes and
+          # the missions: a load on the road is going to or coming from one of
+          # those, and the marketing stock does not travel.
+          %{
+            label: gettext("In transit"),
+            path: ~p"/reports/transit",
+            icon: "hero-truck",
+            roles: ~w(admin manager logistics auditor)
           },
           %{
             label: gettext("Audit report"),

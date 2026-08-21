@@ -11,6 +11,7 @@ defmodule EstoqueOSWeb.LoadOutLive.Index do
 
   import EstoqueOS.Coercion
 
+  alias EstoqueOS.Catalog
   alias EstoqueOS.Outbound
 
   alias EstoqueOS.Inventory.Locations
@@ -30,11 +31,15 @@ defmodule EstoqueOSWeb.LoadOutLive.Index do
 
     {:ok,
      socket
-     |> assign(:page_title, gettext("Load-out"))
+     |> assign(:page_title, gettext("Send a load"))
+     |> assign(:carriers, Catalog.list_carriers())
      |> assign(:locations, locations)
      |> assign(:source_id, source && source.id)
      |> assign(:destination_id, default_destination(locations, source))
      |> assign(:result, nil)
+     |> assign(:carrier, "")
+     |> assign(:waybill, "")
+     |> assign(:expected_arrival, nil)
      |> load_plan()}
   end
 
@@ -70,7 +75,7 @@ defmodule EstoqueOSWeb.LoadOutLive.Index do
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope} current_path={assigns[:current_path]}>
       <.header>
-        {gettext("Load-out")}
+        {gettext("Send a load")}
         <:subtitle>
           {gettext("Everything is selected by default — uncheck what stays behind.")}
         </:subtitle>
@@ -110,6 +115,52 @@ defmodule EstoqueOSWeb.LoadOutLive.Index do
           </select>
         </label>
       </form>
+
+      <!-- Who has the load, and under what number. The ledger could always say
+           stock was in transit and nothing more — not with whom, not since when,
+           not expected where — so "quem está com a carga?" had no answer in the
+           system that holds the stock. Optional, because a volunteer's car is
+           not a carrier and refusing the trip over a missing name would lose
+           the trip. -->
+      <.toolbar class="mt-4">
+        <label class="fieldset grow min-w-56">
+          <span class="label">{gettext("Carrier")}</span>
+          <input
+            type="text"
+            name="carrier"
+            form="load-form"
+            list="carriers"
+            value={@carrier}
+            placeholder={gettext("who is carrying it")}
+            class="input input-bordered w-full"
+            autocomplete="off"
+          />
+          <datalist id="carriers">
+            <option :for={carrier <- @carriers} value={carrier.legal_name}></option>
+          </datalist>
+        </label>
+        <label class="fieldset">
+          <span class="label">{gettext("Waybill")}</span>
+          <input
+            type="text"
+            name="waybill"
+            form="load-form"
+            value={@waybill}
+            placeholder={gettext("conhecimento de transporte")}
+            class="input input-bordered w-56"
+          />
+        </label>
+        <label class="fieldset">
+          <span class="label">{gettext("Expected arrival")}</span>
+          <input
+            type="date"
+            name="expected_arrival"
+            form="load-form"
+            value={@expected_arrival}
+            class="input input-bordered"
+          />
+        </label>
+      </.toolbar>
 
       <p :if={@plan.boxes == [] and @plan.loose == []} class="mt-8 opacity-70">
         {gettext("There is nothing to send from here.")}
@@ -230,11 +281,19 @@ defmodule EstoqueOSWeb.LoadOutLive.Index do
       |> Enum.reject(fn {_lot_id, value} -> String.trim(value) in ["", "0"] end)
       |> Map.new()
 
+    # A name typed here resolves to the carrier that already has it, case
+    # insensitively — otherwise "STRALOG" today and "Stralog" next month are two
+    # carriers and the transit report can be asked nothing about either.
+    {:ok, carrier} = Catalog.resolve_carrier(params["carrier"])
+
     attrs = %{
       source_location_id: socket.assigns.source_id,
       destination_location_id: socket.assigns.destination_id,
       box_ids: Map.get(params, "box_ids", []),
       picks: picks,
+      carrier_id: carrier && carrier.id,
+      waybill: params["waybill"],
+      expected_arrival: params["expected_arrival"],
       user_id: socket.assigns.current_scope.user.id
     }
 
@@ -243,6 +302,10 @@ defmodule EstoqueOSWeb.LoadOutLive.Index do
         {:noreply,
          socket
          |> assign(:result, Map.put(result, :loose_lines, map_size(picks)))
+         |> assign(:carrier, "")
+         |> assign(:waybill, "")
+         |> assign(:expected_arrival, nil)
+         |> assign(:carriers, Catalog.list_carriers())
          |> put_flash(:info, gettext("Load sent."))
          |> load_plan()}
 
