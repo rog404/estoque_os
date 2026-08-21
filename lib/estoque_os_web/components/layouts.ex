@@ -442,6 +442,15 @@ defmodule EstoqueOSWeb.Layouts do
         label: gettext("Reports"),
         icon: "hero-chart-bar",
         items: [
+          # The marketing stock's own report, and it lives here rather than in a
+          # menu of its own: a sale is a movement like any other, and this is
+          # where movements are read.
+          %{
+            label: gettext("Sales"),
+            path: ~p"/reports/sales",
+            icon: "hero-banknotes",
+            roles: ~w(admin manager marketing auditor)
+          },
           %{
             label: gettext("Audit report"),
             path: ~p"/reports/audit",

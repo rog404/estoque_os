@@ -86,6 +86,7 @@ defmodule EstoqueOSWeb.Movement do
   def destination_label("pre_and_post"), do: gettext("Pre and post")
   def destination_label("triage"), do: gettext("Triage")
   def destination_label("disposal"), do: gettext("Disposal")
+  def destination_label("sale"), do: gettext("Sale")
   def destination_label(nil), do: nil
 
   @doc "From where to where, for the movements that travel."

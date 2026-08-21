@@ -682,6 +682,94 @@ defmodule EstoqueOS.Reports do
     end)
   end
 
+  ## Sales
+
+  @doc """
+  What was sold in a period: how much left, what it brought in, what it had
+  cost.
+
+  A sale is a `manual_out` to the `sale` destination, so this reads the same
+  ledger as everything else — there is no second book. Revenue comes from the
+  price on the entry, which is what the buyer paid; cost comes from the average
+  the lot entered at, which is what the ONG paid. Margin is the subtraction, and
+  it is only as honest as the second number: a line drawn from a donated lot has
+  no cost at all, so `unpriced` counts those rather than calling them free.
+  """
+  def sales(from, to, opts \\ []) do
+    {from, to} = period(from, to)
+    costs = Inventory.average_unit_costs()
+
+    TransactionEntry
+    |> join(:inner, [e], t in Transaction, on: t.id == e.transaction_id)
+    |> join(:inner, [e], l in Lot, on: l.id == e.lot_id)
+    |> join(:inner, [e, t, l], p in Product, on: p.id == l.product_id)
+    |> where([e, t], t.type == "manual_out" and t.destination == "sale")
+    |> where([e, t], t.occurred_at >= ^from and t.occurred_at <= ^to)
+    |> segment_scope(opts[:segment])
+    |> order_by([e, t, l, p], asc: p.name)
+    |> select([e, t, l, p], %{
+      product_id: p.id,
+      product: p.name,
+      unit: p.stock_unit,
+      lot_id: l.id,
+      # Signed in the ledger, and a sale is negative. Flipped once, here, so
+      # every reader below counts upwards.
+      quantity: fragment("-(?)", e.quantity),
+      sale_unit_price: e.sale_unit_price
+    })
+    |> Repo.all()
+    |> Enum.map(fn row ->
+      unit_cost = costs[row.lot_id]
+
+      row
+      |> Map.put(:unit_cost, unit_cost)
+      |> Map.put(:revenue, mult(row.sale_unit_price, row.quantity))
+      |> Map.put(:cost, mult(unit_cost, row.quantity))
+    end)
+    |> Enum.group_by(& &1.product_id)
+    |> Enum.map(fn {_id, rows} -> merge_sale_rows(rows) end)
+    |> Enum.sort_by(& &1.revenue, &(Decimal.compare(&1, &2) != :lt))
+  end
+
+  @doc """
+  The three numbers a sales report is read for, plus the one that says how much
+  to trust the third.
+  """
+  def sales_totals(rows) do
+    revenue = sum(rows, & &1.revenue)
+    cost = sum(rows, & &1.cost)
+
+    %{
+      quantity: sum(rows, & &1.quantity),
+      revenue: revenue,
+      cost: cost,
+      margin: Decimal.sub(revenue, cost),
+      unpriced: rows |> Enum.map(& &1.unpriced) |> Enum.sum()
+    }
+  end
+
+  defp merge_sale_rows([first | _rest] = rows) do
+    %{
+      product_id: first.product_id,
+      product: first.product,
+      unit: first.unit,
+      quantity: sum(rows, & &1.quantity),
+      revenue: sum(rows, & &1.revenue),
+      cost: sum(rows, & &1.cost),
+      # Lines whose lot never carried a cost — a donation, usually. Counted
+      # rather than treated as zero, which would report the whole sale as
+      # margin.
+      unpriced: Enum.count(rows, &is_nil(&1.unit_cost))
+    }
+  end
+
+  defp mult(nil, _quantity), do: Decimal.new(0)
+  defp mult(price, quantity), do: Decimal.mult(price, quantity)
+
+  defp sum(rows, fun) do
+    rows |> Enum.map(fun) |> Enum.reduce(Decimal.new(0), &Decimal.add/2)
+  end
+
   ## Audit trail
 
   @doc """

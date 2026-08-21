@@ -16,6 +16,11 @@ defmodule EstoqueOS.Inventory.TransactionEntry do
   schema "transaction_entries" do
     field :quantity, :decimal
     field :unit_cost, :decimal
+    # What the buyer paid, when this line was a sale. A different question from
+    # `unit_cost`, which is what the ONG paid — average cost and stock value are
+    # both derived from that one, so a sale price living in it would quietly
+    # rewrite the value of everything.
+    field :sale_unit_price, :decimal
 
     belongs_to :transaction, Transaction
     belongs_to :lot, Lot
@@ -28,7 +33,7 @@ defmodule EstoqueOS.Inventory.TransactionEntry do
   @doc false
   def changeset(entry, attrs) do
     entry
-    |> cast(attrs, [:quantity, :unit_cost, :lot_id, :box_id, :location_id])
+    |> cast(attrs, [:quantity, :unit_cost, :sale_unit_price, :lot_id, :box_id, :location_id])
     |> validate_required([:quantity, :lot_id, :location_id])
     |> validate_quantity_is_not_zero()
     |> validate_number(:unit_cost, greater_than: 0)

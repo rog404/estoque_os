@@ -244,8 +244,19 @@ defmodule EstoqueOS.Outbound do
     cond do
       is_nil(location_id) -> {:error, :missing_location}
       lines == [] -> {:error, :nothing_to_issue}
+      sale_without_price?(lines, attrs) -> {:error, :missing_sale_price}
       true -> do_issue_many(lines, location_id, attrs)
     end
+  end
+
+  # A sale is the one destination that carries a number, and it is the number
+  # the whole record exists for: "quanto o marketing vendeu" cannot be answered
+  # afterwards from a line that never said. Refused rather than posted with a
+  # blank, because the goods are gone either way and the price is not
+  # recoverable once they are.
+  defp sale_without_price?(lines, attrs) do
+    field(attrs, :destination) == "sale" and
+      Enum.any?(lines, &is_nil(to_decimal(field(&1, :sale_unit_price))))
   end
 
   defp do_issue_many(lines, location_id, attrs) do
@@ -267,7 +278,9 @@ defmodule EstoqueOS.Outbound do
             {:halt, {:error, {:insufficient_stock, %{missing: missing, item: product_id}}}}
 
           {:ok, picks} ->
-            {:cont, {:ok, entries ++ Enum.map(picks, &entry_for/1)}}
+            price = to_decimal(field(line, :sale_unit_price))
+
+            {:cont, {:ok, entries ++ Enum.map(picks, &entry_for(&1, price))}}
         end
       end
     end)
@@ -290,12 +303,18 @@ defmodule EstoqueOS.Outbound do
     end
   end
 
-  defp entry_for(pick) do
+  # One basket line can become several entries — FEFO splits it across lots —
+  # and the price rides on each of them. Per entry rather than per line, because
+  # that is the grain the ledger stores and the grain a report has to read: a
+  # sale of ten shirts drawn from two lots is two rows, and both were sold at
+  # the same price.
+  defp entry_for(pick, sale_unit_price) do
     %{
       lot_id: pick.lot_id,
       location_id: pick.location_id,
       box_id: pick.box_id,
-      quantity: Decimal.negate(pick.take)
+      quantity: Decimal.negate(pick.take),
+      sale_unit_price: sale_unit_price
     }
   end
 
