@@ -385,10 +385,31 @@ body {
    scrolling box. A chip says it as a word, takes one tap, and reads the same
    whether one or four are on.
 
+   `--chip` is the colour of the *kind* of filter, set by a `tone-` class on the
+   group, so places and situations are told apart before they are read. Every
+   rule below paints with the variable and never with a fixed colour.
+
    The input is the checkbox, kept in the accessibility tree with `sr-only`
    rather than `display: none`, so the keyboard still reaches it and the label
    still announces its state. `:has(:checked)` paints the chip around it.
    ========================================================================== */
+.tone-primary { --chip: var(--color-primary); }
+.tone-info { --chip: var(--color-info); }
+.tone-accent { --chip: var(--color-accent); }
+.tone-warning { --chip: var(--color-warning); }
+.tone-success { --chip: var(--color-success); }
+
+/* Seven rows or so, then it scrolls. A warehouse, an annex, transit and a
+   mission site per trip is a list that grows without end, and a panel taller
+   than the phone it opens on is a panel with an Apply button nobody reaches. */
+.chip-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+  max-height: 11rem;
+  overflow-y: auto;
+}
+
 .chip-check {
   display: inline-flex;
   align-items: center;
@@ -404,31 +425,33 @@ body {
 }
 
 .chip-check:hover {
-  border-color: color-mix(in oklch, var(--color-primary) 45%, var(--color-base-300));
+  border-color: color-mix(in oklch, var(--chip, var(--color-primary)) 45%, var(--color-base-300));
 }
 
 .chip-check:has(:checked) {
-  border-color: var(--color-primary);
-  background: color-mix(in oklch, var(--color-primary) 12%, var(--color-base-100));
-  color: color-mix(in oklch, var(--color-primary) 80%, var(--color-base-content));
+  border-color: var(--chip, var(--color-primary));
+  background: color-mix(in oklch, var(--chip, var(--color-primary)) 14%, var(--color-base-100));
+  color: color-mix(in oklch, var(--chip, var(--color-primary)) 75%, var(--color-base-content));
   font-weight: 500;
 }
 
 .chip-check:has(:focus-visible) {
-  outline: 2px solid var(--color-primary);
+  outline: 2px solid var(--chip, var(--color-primary));
   outline-offset: 2px;
 }
 
 /* The same chip after the fact: what is filtering the list right now, outside
-   the panel that set it, with the × that drops that one and leaves the rest. */
+   the panel that set it, wearing its group's colour, with the × that drops that
+   one and leaves the rest. */
 .chip-drop {
   display: inline-flex;
   align-items: center;
   gap: 0.3rem;
   padding: 0.2rem 0.55rem;
-  border: 1px solid color-mix(in oklch, var(--color-primary) 35%, var(--color-base-300));
+  border: 1px solid color-mix(in oklch, var(--chip, var(--color-primary)) 40%, var(--color-base-300));
   border-radius: 999px;
-  background: color-mix(in oklch, var(--color-primary) 10%, var(--color-base-100));
+  background: color-mix(in oklch, var(--chip, var(--color-primary)) 12%, var(--color-base-100));
+  color: color-mix(in oklch, var(--chip, var(--color-primary)) 75%, var(--color-base-content));
   font-size: 0.8125rem;
   line-height: 1.25;
 }
@@ -436,6 +459,7 @@ body {
 .chip-drop:hover {
   border-color: var(--color-error);
   background: color-mix(in oklch, var(--color-error) 10%, var(--color-base-100));
+  color: var(--color-base-content);
 }
 
 /* ==========================================================================

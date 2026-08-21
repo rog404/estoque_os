@@ -102,6 +102,14 @@ defmodule EstoqueOSWeb.StockLive.Index do
     |> Enum.count(& &1)
   end
 
+  # One colour per kind of filter, in one place, so the chips inside the panel
+  # and the chips outside it cannot drift apart. The kind is what the colour
+  # says — not the urgency of the value, which the row itself already says.
+  defp filter_tone("location"), do: "info"
+  defp filter_tone("situation"), do: "warning"
+  defp filter_tone("segment"), do: "accent"
+  defp filter_tone(_kind), do: "primary"
+
   # The filters that are on, in one list the row of chips can render: the kind
   # is what dropping it has to undo, the value is which one of that kind, and
   # the label is the word the operator picked it by.
@@ -211,66 +219,44 @@ defmodule EstoqueOSWeb.StockLive.Index do
             </summary>
 
             <div class="dropdown-content z-50 mt-2 w-72 rounded-box bg-base-100 shadow-lg border border-base-300 p-4 space-y-2">
-              <!-- Chips you tick, not a list you drag-select. A `<select
-                   multiple>` asks for a modifier key nobody holds on a phone,
-                   and it shows the chosen ones only by highlight; these stay
-                   readable as labels, one tap each, and several at a time.
+              <!-- One control per kind of answer, and the colour is the kind:
+                   places are one tone, situations another, the stock a third.
                    Nothing ticked means everywhere, which is what an empty
                    filter should mean. -->
-              <fieldset class="fieldset w-full">
-                <legend class="label">{gettext("Location")}</legend>
-                <div class="flex flex-wrap gap-1.5">
-                  <label :for={location <- @locations} class="chip-check">
-                    <input
-                      type="checkbox"
-                      name="location_id[]"
-                      value={location.id}
-                      checked={location.id in @location_ids}
-                      class="sr-only"
-                    />
-                    <span>{location.name}</span>
-                  </label>
-                </div>
-              </fieldset>
+              <.filter_chips
+                name="location_id[]"
+                label={gettext("Location")}
+                tone={filter_tone("location")}
+                searchable_from={8}
+                options={Enum.map(@locations, &{&1.id, &1.name})}
+                selected={Enum.map(@location_ids, &to_string/1)}
+              />
 
               <!-- Not rendered for a role that has only one stock. The gate is
                    `segment/2`, which ignores whatever arrives; this is only
                    about not offering a choice that does not exist. -->
-              <label :if={not @segment_locked?} class="fieldset w-full">
-                <span class="label">{gettext("Stock")}</span>
-                <select name="segment" class="select w-full">
-                  <option value="">{gettext("Every stock")}</option>
-                  <option
-                    :for={segment <- Product.segments()}
-                    value={segment}
-                    selected={segment == @segment}
-                  >
-                    {segment_label(segment)}
-                  </option>
-                </select>
-              </label>
+              <.filter_chips
+                :if={not @segment_locked?}
+                name="segment"
+                label={gettext("Stock")}
+                tone={filter_tone("segment")}
+                options={Enum.map(Product.segments(), &{&1, segment_label(&1)})}
+                selected={List.wrap(@segment)}
+              />
 
-              <!-- The same chips, and the group grew two entries when it stopped
-                   being three loose checkboxes. Already-expired is now its own
-                   answer: the expiring window is ninety days, so it swallowed
-                   the thing somebody actually came looking for. And
-                   below-the-minimum, which the overview could name and this
-                   screen could not filter by. -->
-              <fieldset class="fieldset w-full">
-                <legend class="label">{gettext("Situation")}</legend>
-                <div class="flex flex-wrap gap-1.5">
-                  <label :for={{value, label} <- situations()} class="chip-check">
-                    <input
-                      type="checkbox"
-                      name="situation[]"
-                      value={value}
-                      checked={value in @situations}
-                      class="sr-only"
-                    />
-                    <span>{label}</span>
-                  </label>
-                </div>
-              </fieldset>
+              <!-- The group grew two entries when it stopped being three loose
+                   checkboxes. Already-expired is now its own answer: the
+                   expiring window is ninety days, so it swallowed the thing
+                   somebody actually came looking for. And below-the-minimum,
+                   which the overview could name and this screen could not
+                   filter by. -->
+              <.filter_chips
+                name="situation[]"
+                label={gettext("Situation")}
+                tone={filter_tone("situation")}
+                options={situations()}
+                selected={@situations}
+              />
 
               <.button variant="primary" class="btn-block">{gettext("Apply filters")}</.button>
 
@@ -291,18 +277,14 @@ defmodule EstoqueOSWeb.StockLive.Index do
              which, and "which" is the question somebody asks when the list is
              shorter than they expected. Each one drops on its own. -->
         <div :if={filtering?(assigns)} class="flex flex-wrap items-center gap-1.5 basis-full">
-          <button
+          <.filter_pill
             :for={{kind, value, label} <- applied_filters(assigns)}
-            type="button"
+            label={label}
+            tone={filter_tone(kind)}
             phx-click="drop_filter"
             phx-value-kind={kind}
             phx-value-value={value}
-            class="chip-drop"
-          >
-            <span>{label}</span>
-            <.icon name="hero-x-mark" class="size-3.5" />
-            <span class="sr-only">{gettext("Remove filter")}</span>
-          </button>
+          />
 
           <span class="text-sm text-base-content/80">
             {gettext("%{count} position(s) match", count: @total)}
@@ -620,7 +602,9 @@ defmodule EstoqueOSWeb.StockLive.Index do
   # ignored rather than obeyed.
   defp segment(socket, asked) do
     case Scope.segment(socket.assigns.current_scope) do
-      nil -> if asked in Product.segments(), do: asked
+      # Both stocks ticked is every stock, which is what no filter already
+      # means — the chips can say it two ways, and the query only has one.
+      nil -> if is_binary(asked) and asked in Product.segments(), do: asked
       forced -> forced
     end
   end
