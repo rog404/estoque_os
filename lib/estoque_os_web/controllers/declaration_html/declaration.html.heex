@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{@page_title} — {@declaration.recipient_name}</title>
+    <style>
+      /* Black on white, hairlines, no filled headings. This page is printed on
+         a warehouse inkjet, often a dozen times a week, and a shaded table head
+         costs more ink than the whole rest of the document. */
+      @page { size: A4; margin: 16mm 14mm; }
+      * { box-sizing: border-box; }
+      body {
+        font-family: Georgia, "Times New Roman", serif;
+        color: #111;
+        line-height: 1.45;
+        margin: 0;
+        padding: 16mm 14mm;
+        max-width: 210mm;
+      }
+      header { display: flex; justify-content: space-between; align-items: baseline; border-bottom: 1.5px solid #111; padding-bottom: 6px; }
+      header h1 { font-size: 14pt; margin: 0; letter-spacing: .01em; }
+      header p { margin: 0; font-size: 8.5pt; color: #333; text-align: right; }
+      .fields { display: flex; gap: 0; margin: 14px 0 18px; border: 1px solid #111; }
+      .fields div { flex: 1; padding: 5px 8px; border-right: 1px solid #999; }
+      .fields div:last-child { border-right: 0; }
+      .fields span { display: block; font-size: 7.5pt; text-transform: uppercase; letter-spacing: .06em; color: #555; }
+      .fields strong { font-size: 10.5pt; font-weight: normal; }
+      .parties { display: flex; gap: 20px; margin-bottom: 14px; font-size: 10pt; }
+      .parties section { flex: 1; }
+      .parties h3 { font-size: 8pt; text-transform: uppercase; letter-spacing: .06em; color: #555; margin: 0 0 3px; border-bottom: .5px solid #bbb; padding-bottom: 2px; }
+      .parties p { margin: 0; }
+      h2 { font-size: 12.5pt; text-align: center; margin: 18px 0 12px; text-transform: uppercase; letter-spacing: .08em; }
+      p.statement { font-size: 9.5pt; text-align: justify; margin: 12px 0 16px; }
+      table { width: 100%; border-collapse: collapse; font-size: 9pt; }
+      th, td { border: .5px solid #999; padding: 3px 6px; text-align: left; vertical-align: top; }
+      th { font-size: 7.5pt; text-transform: uppercase; letter-spacing: .04em; border-bottom-width: 1px; }
+      td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+      tfoot td { font-weight: bold; border-top-width: 1px; }
+      .note { font-size: 8.5pt; color: #333; margin-top: 6px; }
+      .total { text-align: right; font-size: 11pt; margin-top: 10px; }
+      .signatures { display: flex; gap: 40px; margin-top: 40px; page-break-inside: avoid; }
+      .signatures div { flex: 1; text-align: center; }
+      .signatures .line { border-top: .8px solid #111; margin-bottom: 3px; padding-top: 3px; }
+      .signatures p { margin: 0; font-size: 8.5pt; }
+      footer { margin-top: 28px; border-top: .5px solid #bbb; padding-top: 6px; font-size: 8pt; color: #444; text-align: center; }
+      .print-bar { margin-bottom: 14px; }
+      .print-bar button { font: inherit; padding: 6px 14px; cursor: pointer; }
+      .print-bar a { margin-left: 12px; font-size: 10pt; }
+      /* Repeating the head on page two is what makes a two-page load list
+         readable; the certificates never needed it because they fit. */
+      thead { display: table-header-group; }
+      tr { page-break-inside: avoid; }
+      @media print { .print-bar { display: none; } body { padding: 0; } }
+    </style>
+  </head>
+  <body>
+    <div class="print-bar">
+      <button onclick="window.print()">Imprimir / salvar em PDF</button>
+      <a href={~p"/shipments/#{@shipment.id}/declaracao"}>Voltar</a>
+    </div>
+
+    <header>
+      <h1>{@organization[:name]}</h1>
+      <p>
+        CNPJ {@organization[:document]}<br />{@organization[:address]}
+      </p>
+    </header>
+
+    <div class="fields">
+      <div>
+        <span>Data</span>
+        <strong>{date(@declaration.issued_on)}</strong>
+      </div>
+      <div>
+        <span>Cód. agendamento</span>
+        <strong>{@declaration.scheduling_code || "—"}</strong>
+      </div>
+      <div>
+        <span>Nota fiscal</span>
+        <strong>{@declaration.invoice_number || "—"}</strong>
+      </div>
+      <div>
+        <span>Referência</span>
+        <strong>{@declaration.reference || "—"}</strong>
+      </div>
+    </div>
+
+    <div class="parties">
+      <section>
+        <h3>Remetente</h3>
+        <p>{@organization[:name]}</p>
+        <p>CNPJ {@organization[:document]}</p>
+        <p>{@organization[:address]}</p>
+      </section>
+      <section>
+        <h3>Destinatário — transporte terrestre</h3>
+        <p>{@declaration.recipient_name}</p>
+        <p :if={@declaration.recipient_document}>
+          CNPJ {EstoqueOS.Outbound.TransportDeclaration.format_document(
+            @declaration.recipient_document
+          )}
+        </p>
+        <p :if={@declaration.recipient_address}>{@declaration.recipient_address}</p>
+        <p :if={@declaration.recipient_postal_code}>
+          CEP {@declaration.recipient_postal_code}
+        </p>
+      </section>
+    </div>
+
+    <h2>Declaração de conteúdo</h2>
+
+    <p class="statement">
+      Declaro para os devidos fins e sob as penas da lei que, nesta data, a {@organization[:name]},
+      inscrita sob o CNPJ nº {@organization[:document]}, sita à {@organization[:address]}, {@organization[
+        :tax_note
+      ]} entrega para fins de utilização os itens abaixo discriminados a destinatário
+      qualificado, sem valor comercial, que não ferem o privilégio postal da União ou de
+      terceiros, e não se trata de carga perigosa (inflamável, tóxico, corrosivo, oxidante,
+      explosivo, venenoso, substância infecciosa, radioativo, material magnético), podendo ser
+      também transportados sem apresentar risco significativo à saúde e à segurança, e não
+      estando classificados de acordo com os critérios de periculosidade da seção 3 do manual
+      de cargas perigosas da IATA.
+    </p>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Item</th>
+          <th>Lote</th>
+          <th>Validade</th>
+          <th>Volume</th>
+          <th class="num">Qtd.</th>
+          <th class="num">Valor</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr :for={row <- @contents}>
+          <td>{row.product}</td>
+          <td>{row.lot_number || "—"}</td>
+          <td>{date(row.expires_on)}</td>
+          <td>{row.box || "avulso"}</td>
+          <td class="num">{quantity(row.quantity)} {row.unit}</td>
+          <td class="num">{(row.total && money(row.total)) || "—"}</td>
+        </tr>
+      </tbody>
+      <tfoot>
+        <tr>
+          <td colspan="4">Total</td>
+          <td class="num">{quantity(@totals.quantity)}</td>
+          <td class="num">{money(@totals.value)}</td>
+        </tr>
+      </tfoot>
+    </table>
+
+    <p class="total">
+      <strong>Valor total: {money(@totals.value)}</strong>
+    </p>
+
+    <p :if={@totals.unvalued > 0} class="note">
+      {@totals.unvalued} item(ns) recebido(s) como doação, sem valor informado no registro de
+      entrada, e por isso não somado(s) ao valor declarado acima.
+    </p>
+
+    <p :if={@shipment.carrier} class="note">
+      Transportadora: {EstoqueOS.Catalog.Carrier.name(@shipment.carrier)}
+      <span :if={@shipment.waybill}>
+        · conhecimento {@shipment.waybill}
+      </span>
+    </p>
+
+    <div class="signatures">
+      <div>
+        <div class="line"></div>
+        <p>{@organization[:name]}</p>
+        <p>Responsável pelo envio</p>
+      </div>
+      <div>
+        <div class="line"></div>
+        <p>{@declaration.recipient_name}</p>
+        <p>Nome legível, documento e assinatura</p>
+      </div>
+    </div>
+
+    <footer>
+      {@organization[:address]} · CNPJ {@organization[:document]} · {@organization[:contact]}
+    </footer>
+  </body>
+</html>

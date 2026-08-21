@@ -139,6 +139,17 @@ defmodule EstoqueOSWeb.TransitLive.Index do
             </div>
           </:col>
 
+          <!-- The paper the carrier asks for, from the load it is about. Always
+               rendered so the row keeps its height, and only a writer gets it:
+               filling one in is an act, not a reading. -->
+          <:col :let={row} label={gettext("Declaration")}>
+            <.write_gate may={@role_may_write?} allowed={@writable?} reason={@write_block}>
+              <.link navigate={~p"/shipments/#{row.shipment.id}/declaracao"} class="btn btn-xs">
+                {gettext("Declaration")}
+              </.link>
+            </.write_gate>
+          </:col>
+
           <:col :let={row} label={gettext("Expected")} group>
             <span class={row.late? && "text-error font-medium"}>
               {date(row.shipment.expected_arrival)}

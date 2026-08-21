@@ -205,6 +205,7 @@ msgstr ""
 #: lib/estoque_os_web/live/invoice_live/show.ex:526
 #: lib/estoque_os_web/live/product_live/show.ex:245
 #: lib/estoque_os_web/live/receipt_live/show.ex:305
+#: lib/estoque_os_web/live/shipment_live/declaration.ex:153
 #: lib/estoque_os_web/live/user_live/reset_password.ex:86
 #: lib/estoque_os_web/live/user_live/reset_password.ex:136
 #: lib/estoque_os_web/live/user_live/settings.ex:107
@@ -419,6 +420,7 @@ msgstr ""
 #: lib/estoque_os_web/live/product_live/show.ex:399
 #: lib/estoque_os_web/live/product_live/show.ex:438
 #: lib/estoque_os_web/live/return_live/index.ex:225
+#: lib/estoque_os_web/live/shipment_live/declaration.ex:183
 #: lib/estoque_os_web/live/stock_live/index.ex:369
 #, elixir-autogen, elixir-format
 msgid "Lot"
@@ -488,6 +490,7 @@ msgstr ""
 #: lib/estoque_os_web/live/mission_live/show.ex:201
 #: lib/estoque_os_web/live/return_live/index.ex:221
 #: lib/estoque_os_web/live/sales_report_live/index.ex:157
+#: lib/estoque_os_web/live/shipment_live/declaration.ex:178
 #: lib/estoque_os_web/live/stock_live/index.ex:353
 #, elixir-autogen, elixir-format
 msgid "Product"
@@ -582,6 +585,7 @@ msgid "This item could not be confirmed."
 msgstr ""
 
 #: lib/estoque_os_web/live/invoice_live/index.ex:67
+#: lib/estoque_os_web/live/shipment_live/declaration.ex:190
 #: lib/estoque_os_web/live/stock_live/index.ex:445
 #, elixir-autogen, elixir-format
 msgid "Total"
@@ -635,6 +639,7 @@ msgstr ""
 #: lib/estoque_os_web/live/product_live/show.ex:307
 #: lib/estoque_os_web/live/receipt_live/show.ex:294
 #: lib/estoque_os_web/live/receipt_live/show.ex:467
+#: lib/estoque_os_web/live/shipment_live/declaration.ex:184
 #, elixir-autogen, elixir-format
 msgid "Box"
 msgstr ""
@@ -688,6 +693,7 @@ msgstr ""
 #: lib/estoque_os_web/live/product_live/show.ex:400
 #: lib/estoque_os_web/live/product_live/show.ex:455
 #: lib/estoque_os_web/live/sales_report_live/index.ex:164
+#: lib/estoque_os_web/live/shipment_live/declaration.ex:186
 #: lib/estoque_os_web/live/stock_live/index.ex:420
 #, elixir-autogen, elixir-format
 msgid "Quantity"
@@ -809,6 +815,7 @@ msgid "unknown"
 msgstr ""
 
 #: lib/estoque_os_web/live/home_live/index.ex:517
+#: lib/estoque_os_web/live/shipment_live/declaration.ex:195
 #, elixir-autogen, elixir-format
 msgid "%{count} line(s)"
 msgstr ""
@@ -1755,7 +1762,7 @@ msgstr ""
 msgid "Unchecked, the missing goods stay on the mission's books."
 msgstr ""
 
-#: lib/estoque_os/outbound.ex:702
+#: lib/estoque_os/outbound.ex:798
 #, elixir-autogen, elixir-format
 msgid "Used during the mission (did not come back)"
 msgstr ""
@@ -1788,6 +1795,7 @@ msgstr ""
 
 #: lib/estoque_os_web/live/issue_live/index.ex:342
 #: lib/estoque_os_web/live/issue_live/list.ex:147
+#: lib/estoque_os_web/live/shipment_live/declaration.ex:58
 #, elixir-autogen, elixir-format
 msgid "Recipient"
 msgstr ""
@@ -2652,6 +2660,7 @@ msgid "Missions"
 msgstr ""
 
 #: lib/estoque_os_web/live/mission_live/index.ex:52
+#: lib/estoque_os_web/live/shipment_live/declaration.ex:67
 #, elixir-autogen, elixir-format
 msgid "Name"
 msgstr ""
@@ -3808,6 +3817,7 @@ msgstr ""
 
 #: lib/estoque_os_web/live/issue_live/index.ex:161
 #: lib/estoque_os_web/live/issue_live/index.ex:533
+#: lib/estoque_os_web/live/shipment_live/declaration.ex:184
 #, elixir-autogen, elixir-format
 msgid "loose"
 msgstr ""
@@ -4647,7 +4657,7 @@ msgstr ""
 msgid "Every load that left has been received."
 msgstr ""
 
-#: lib/estoque_os_web/live/transit_live/index.ex:142
+#: lib/estoque_os_web/live/transit_live/index.ex:153
 #, elixir-autogen, elixir-format
 msgid "Expected"
 msgstr ""
@@ -4658,6 +4668,7 @@ msgid "Expected arrival"
 msgstr ""
 
 #: lib/estoque_os_web/components/layouts.ex:485
+#: lib/estoque_os_web/live/shipment_live/declaration.ex:46
 #: lib/estoque_os_web/live/transit_live/index.ex:31
 #: lib/estoque_os_web/live/transit_live/index.ex:50
 #, elixir-autogen, elixir-format
@@ -4701,7 +4712,7 @@ msgstr ""
 msgid "conhecimento de transporte"
 msgstr ""
 
-#: lib/estoque_os_web/live/transit_live/index.ex:150
+#: lib/estoque_os_web/live/transit_live/index.ex:161
 #, elixir-autogen, elixir-format
 msgid "overdue"
 msgstr ""
@@ -4863,17 +4874,17 @@ msgstr ""
 msgid "It arrived"
 msgstr ""
 
-#: lib/estoque_os_web/live/transit_live/index.ex:169
+#: lib/estoque_os_web/live/transit_live/index.ex:180
 #, elixir-autogen, elixir-format
 msgid "Load delivered at %{place}."
 msgstr ""
 
-#: lib/estoque_os_web/live/transit_live/index.ex:178
+#: lib/estoque_os_web/live/transit_live/index.ex:189
 #, elixir-autogen, elixir-format
 msgid "That arrival could not be recorded."
 msgstr ""
 
-#: lib/estoque_os_web/live/transit_live/index.ex:175
+#: lib/estoque_os_web/live/transit_live/index.ex:186
 #, elixir-autogen, elixir-format
 msgid "This load has nothing sitting in transit."
 msgstr ""
@@ -5061,4 +5072,112 @@ msgstr ""
 #: lib/estoque_os_web/live/location_live/index.ex:283
 #, elixir-autogen, elixir-format
 msgid "That location could not be deactivated."
+msgstr ""
+
+#: lib/estoque_os_web/live/shipment_live/declaration.ex:205
+#, elixir-autogen, elixir-format
+msgid "%{count} line(s) arrived as a donation and carry no cost, so they are not in the declared value."
+msgstr ""
+
+#: lib/estoque_os_web/live/shipment_live/declaration.ex:49
+#, elixir-autogen, elixir-format
+msgid "%{from} to %{to}, left on %{date}"
+msgstr ""
+
+#: lib/estoque_os_web/live/shipment_live/declaration.ex:174
+#, elixir-autogen, elixir-format
+msgid "A declaration is about goods, and this shipment moved none."
+msgstr ""
+
+#: lib/estoque_os_web/live/shipment_live/declaration.ex:90
+#, elixir-autogen, elixir-format
+msgid "Address"
+msgstr ""
+
+#: lib/estoque_os_web/live/shipment_live/declaration.ex:77
+#, elixir-autogen, elixir-format
+msgid "CNPJ"
+msgstr ""
+
+#: lib/estoque_os_web/live/shipment_live/declaration.ex:233
+#, elixir-autogen, elixir-format
+msgid "Check the fields marked in red."
+msgstr ""
+
+#: lib/estoque_os_web/controllers/declaration_controller.ex:38
+#: lib/estoque_os_web/live/shipment_live/declaration.ex:34
+#: lib/estoque_os_web/live/shipment_live/declaration.ex:47
+#, elixir-autogen, elixir-format
+msgid "Content declaration"
+msgstr ""
+
+#: lib/estoque_os_web/live/shipment_live/declaration.ex:113
+#, elixir-autogen, elixir-format
+msgid "Date"
+msgstr ""
+
+#: lib/estoque_os_web/live/transit_live/index.ex:145
+#: lib/estoque_os_web/live/transit_live/index.ex:148
+#, elixir-autogen, elixir-format
+msgid "Declaration"
+msgstr ""
+
+#: lib/estoque_os_web/live/shipment_live/declaration.ex:227
+#, elixir-autogen, elixir-format
+msgid "Declaration saved."
+msgstr ""
+
+#: lib/estoque_os_web/controllers/declaration_controller.ex:26
+#, elixir-autogen, elixir-format
+msgid "Fill the declaration in before printing it."
+msgstr ""
+
+#: lib/estoque_os_web/live/shipment_live/declaration.ex:132
+#, elixir-autogen, elixir-format
+msgid "Invoice number"
+msgstr ""
+
+#: lib/estoque_os_web/live/shipment_live/declaration.ex:99
+#, elixir-autogen, elixir-format
+msgid "Postcode"
+msgstr ""
+
+#: lib/estoque_os_web/live/shipment_live/declaration.ex:164
+#, elixir-autogen, elixir-format
+msgid "Print / save as PDF"
+msgstr ""
+
+#: lib/estoque_os_web/live/shipment_live/declaration.ex:141
+#, elixir-autogen, elixir-format
+msgid "Reference"
+msgstr ""
+
+#: lib/estoque_os_web/live/shipment_live/declaration.ex:154
+#, elixir-autogen, elixir-format
+msgid "Save declaration"
+msgstr ""
+
+#: lib/estoque_os_web/live/shipment_live/declaration.ex:123
+#, elixir-autogen, elixir-format
+msgid "Scheduling code"
+msgstr ""
+
+#: lib/estoque_os_web/live/shipment_live/declaration.ex:173
+#, elixir-autogen, elixir-format
+msgid "This load has no lines."
+msgstr ""
+
+#: lib/estoque_os_web/live/shipment_live/declaration.ex:169
+#, elixir-autogen, elixir-format
+msgid "What is travelling"
+msgstr ""
+
+#: lib/estoque_os_web/live/shipment_live/declaration.ex:110
+#, elixir-autogen, elixir-format
+msgid "What the carrier asks for"
+msgstr ""
+
+#: lib/estoque_os_web/live/shipment_live/declaration.ex:60
+#, elixir-autogen, elixir-format
+msgid "Who receives the goods, as their registration reads. It is written on the declaration and kept with this load, not on the location — a hospital renamed next month must not rewrite a paper already signed."
 msgstr ""

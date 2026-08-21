@@ -262,5 +262,6 @@ if config_env() == :prod do
     name: System.get_env("ORGANIZATION_NAME") || Keyword.fetch!(organization, :name),
     document: System.get_env("ORGANIZATION_DOCUMENT") || Keyword.fetch!(organization, :document),
     address: System.get_env("ORGANIZATION_ADDRESS") || Keyword.fetch!(organization, :address),
-    contact: System.get_env("ORGANIZATION_CONTACT") || Keyword.fetch!(organization, :contact)
+    contact: System.get_env("ORGANIZATION_CONTACT") || Keyword.fetch!(organization, :contact),
+    tax_note: System.get_env("ORGANIZATION_TAX_NOTE") || Keyword.fetch!(organization, :tax_note)
 end
