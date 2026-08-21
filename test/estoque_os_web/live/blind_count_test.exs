@@ -38,12 +38,20 @@ defmodule EstoqueOSWeb.BlindCountTest do
     %{box: box, lot: lot}
   end
 
+  # `refute html =~ "..."` matches markup as happily as text, so everything this
+  # file asserts is *absent* reads the page with the tags gone.
+  defp text(html), do: String.replace(html, ~r{<[^>]*>}s, " ")
+
   test "does not reveal the expected quantity while counting", %{conn: conn, box: box} do
     {:ok, view, _html} = live(conn, ~p"/boxes/#{box.id}/count")
 
     # Scoped to the sheet itself: the page chrome is full of "100" in class names
-    # like bg-base-100, and a page-wide refute would fail on the nav.
-    sheet = view |> element("#count-form") |> render()
+    # like bg-base-100, and a page-wide refute would fail on the nav. Scoping is
+    # not enough on its own — the sheet writes the lot id into `id="row-100"`
+    # and `name="counts[100]"`, so on the run where the database handed out id
+    # 100 this failed on markup that leaks nothing. Read as the counter reads
+    # it, with the tags gone.
+    sheet = text(view |> element("#count-form") |> render())
 
     assert sheet =~ "Gaze estéril"
     assert sheet =~ "L-777"
@@ -65,14 +73,14 @@ defmodule EstoqueOSWeb.BlindCountTest do
 
     render_submit(element(view, "#count-form"), %{"counts" => %{"#{lot.id}" => "98"}})
 
-    sheet = view |> element("#recount-form") |> render()
+    # Tags stripped for the same reason as above, and for "-2", which also
+    # lives inside the class `w-28`: a refute that matches markup passes on a
+    # screen that leaked and fails on one that did not.
+    sheet = text(view |> element("#recount-form") |> render())
 
     assert sheet =~ "Gaze estéril"
     refute sheet =~ "100"
-
-    # Read as the counter reads it: "-2" also lives inside the class `w-28`,
-    # and matching that would let this test pass on a screen that leaked.
-    refute String.replace(sheet, ~r{<[^>]*>}s, " ") =~ "-2"
+    refute sheet =~ "-2"
 
     # And nothing has been written.
     assert Decimal.equal?(Inventory.balance(box_id: box.id), Decimal.new(100))
@@ -142,7 +150,7 @@ defmodule EstoqueOSWeb.BlindCountTest do
     render_submit(element(view, "#recount-form"), %{"counts" => %{"#{lot.id}" => "100"}})
     html = render_submit(element(view, "#commit-form"))
 
-    refute html =~ "sinalizada para o gestor"
+    refute text(html) =~ "sinalizada para o gestor"
     assert Decimal.equal?(Inventory.balance(box_id: box.id), Decimal.new(100))
   end
 
