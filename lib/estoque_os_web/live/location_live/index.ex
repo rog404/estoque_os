@@ -20,12 +20,37 @@ defmodule EstoqueOSWeb.LocationLive.Index do
   defp load_locations(socket) do
     socket
     |> assign(:locations, Locations.list_locations())
+    |> assign(:inactive, Locations.list_inactive_locations())
     |> assign(:overview, Locations.location_overview())
     |> assign(:editing, nil)
   end
 
   defp overview(assigns, location) do
-    Map.get(assigns.overview, location.id, %{boxes: 0, known_value: Decimal.new(0)})
+    Map.get(assigns.overview, location.id, %{
+      boxes: 0,
+      loose: Decimal.new(0),
+      known_value: Decimal.new(0)
+    })
+  end
+
+  # Retiring a place hides it from every picker, so it may only happen once
+  # nothing is standing there — in a box or loose on the floor.
+  defp retirable?(assigns, location) do
+    counts = overview(assigns, location)
+
+    counts.boxes == 0 and Decimal.compare(counts.loose, 0) != :gt
+  end
+
+  # And the reason says which of the two it is, because the fix is different:
+  # boxes are moved, loose stock is written off or entered into a box.
+  defp retirement_block(assigns, location) do
+    counts = overview(assigns, location)
+
+    cond do
+      counts.boxes > 0 -> gettext("Move or deactivate its boxes first.")
+      Decimal.compare(counts.loose, 0) == :gt -> gettext("It still holds loose stock.")
+      true -> nil
+    end
   end
 
   @impl true
@@ -134,8 +159,8 @@ defmodule EstoqueOSWeb.LocationLive.Index do
                   title={gettext("Deactivate %{name}?", name: location.name)}
                   confirm_label={gettext("Deactivate")}
                   tone={:danger}
-                  disabled={overview(assigns, location).boxes > 0}
-                  reason={gettext("Move or deactivate its boxes first.")}
+                  disabled={not retirable?(assigns, location)}
+                  reason={retirement_block(assigns, location)}
                 >
                   <:consequence>
                     {gettext(
@@ -147,12 +172,39 @@ defmodule EstoqueOSWeb.LocationLive.Index do
             </.write_gate>
 
             <form
-              :if={overview(assigns, location).boxes == 0}
+              :if={retirable?(assigns, location)}
               id={"deactivate-form-#{location.id}"}
               phx-submit="deactivate"
               phx-value-id={location.id}
               class="hidden"
             />
+          </:col>
+        </.data_table>
+      </.panel>
+
+      <!-- Only when there is one. A mission that ran last year runs again, and
+           the name is unique — so the way back has to be this row rather than a
+           second location typed in with the same name, which the database
+           refuses and which would split the history in two if it did not. -->
+      <.panel :if={@inactive != []} title={gettext("Deactivated")} flush>
+        <.data_table rows={@inactive} row_id={&"inactive-location-#{&1.id}"}>
+          <:col :let={location} label={gettext("Location")} emphasis={:identity}>
+            {location.name}
+          </:col>
+
+          <:col :let={location} label={gettext("Kind")}>{kind_label(location.kind)}</:col>
+
+          <:col :let={location} label={gettext("Actions")} hide_label_on_card={true}>
+            <.write_gate may={@role_may_write?} allowed={@writable?} reason={@write_block}>
+              <button
+                type="button"
+                phx-click="reactivate"
+                phx-value-id={location.id}
+                class="btn btn-sm"
+              >
+                {gettext("Reactivate")}
+              </button>
+            </.write_gate>
           </:col>
         </.data_table>
       </.panel>
@@ -205,29 +257,40 @@ defmodule EstoqueOSWeb.LocationLive.Index do
   end
 
   # Guarded here too, not only in the markup: hiding the trigger is presentation,
-  # and the boxes could have arrived between render and click.
+  # and the boxes could have arrived between render and click. The context
+  # answers, so the screen and a hand-made event get the same answer — and the
+  # answer now covers stock lying loose at the place, not only its boxes.
   def handle_event("deactivate", %{"id" => id}, socket) do
     location = Locations.get_location!(id)
 
-    case Locations.list_boxes(location.id) do
-      [] ->
-        {:ok, _} = Locations.deactivate_location(location)
-
+    case Locations.deactivate_location(location) do
+      {:ok, _location} ->
         {:noreply,
          socket
          |> put_flash(:info, gettext("%{name} was deactivated.", name: location.name))
          |> load_locations()}
 
-      boxes ->
+      {:error, :not_empty} ->
         {:noreply,
-         put_flash(
-           socket,
+         socket
+         |> put_flash(
            :error,
-           gettext("%{name} still holds %{count} box(es). Move them first.",
-             name: location.name,
-             count: length(boxes)
-           )
-         )}
+           gettext("%{name} still holds stock. Empty it first.", name: location.name)
+         )
+         |> load_locations()}
+
+      {:error, _changeset} ->
+        {:noreply, put_flash(socket, :error, gettext("That location could not be deactivated."))}
     end
+  end
+
+  def handle_event("reactivate", %{"id" => id}, socket) do
+    location = Locations.get_location!(id)
+    {:ok, _} = Locations.reactivate_location(location)
+
+    {:noreply,
+     socket
+     |> put_flash(:info, gettext("%{name} is back in use.", name: location.name))
+     |> load_locations()}
   end
 end

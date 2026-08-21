@@ -22,8 +22,16 @@ defmodule EstoqueOSWeb.BoxLive.Index do
      |> assign(:locations, Locations.list_locations())
      |> assign(:by_hand, Enum.filter(Locations.list_locations(), &by_hand?/1))
      |> assign(:form, to_form(Locations.change_box(%EstoqueOS.Inventory.Box{})))
+     |> assign(:search, "")
      |> load_boxes()}
   end
+
+  @doc """
+  Events a viewer may send. Everything else on this screen is refused.
+
+  Searching narrows a list and writes nothing.
+  """
+  def viewer_events, do: ~w(search)
 
   # In the order somebody should work through them, not alphabetically. The
   # guided list this replaces was a second page ranking the same boxes; a list
@@ -35,9 +43,31 @@ defmodule EstoqueOSWeb.BoxLive.Index do
     rows =
       Locations.list_boxes_with_contents()
       |> Enum.map(&Map.put(&1, :priority, priorities[&1.box.id]))
+      |> Enum.filter(&matches?(&1, socket.assigns.search))
       |> Enum.sort_by(&queue_order/1)
 
     assign(socket, :rows, rows)
+  end
+
+  # The code written on the box in marker pen, or where it is standing. Both,
+  # because the two questions asked in front of a shelf are "where is AN01" and
+  # "what is at the São Paulo office", and typing is faster than reading a
+  # hundred rows either way.
+  defp matches?(_row, ""), do: true
+
+  defp matches?(%{box: box}, search) do
+    term = normalize(search)
+
+    String.contains?(normalize(box.code), term) or
+      String.contains?(normalize(box.location.name), term)
+  end
+
+  defp normalize(value) do
+    value
+    |> String.trim()
+    |> String.downcase()
+    |> :unicode.characters_to_nfd_binary()
+    |> String.replace(~r/[\x{0300}-\x{036f}]/u, "")
   end
 
   # Highest score first; among boxes the score cannot separate — an empty box
@@ -89,13 +119,37 @@ defmodule EstoqueOSWeb.BoxLive.Index do
         </form>
       </.write_gate>
 
+      <form id="box-search" phx-change="search" class="mt-4">
+        <label class="input flex items-center gap-2 w-full max-w-md">
+          <.icon name="hero-magnifying-glass" class="size-5 opacity-60" />
+          <span class="sr-only">{gettext("Search")}</span>
+          <input
+            type="search"
+            name="search"
+            value={@search}
+            placeholder={gettext("Box code or location")}
+            class="grow"
+            phx-debounce="300"
+          />
+        </label>
+      </form>
+
       <!-- No title: the page header two lines up already says "Caixas", and
            stacking the same word over its own column labels was most of what
            made this area read as clutter. -->
       <.panel flush>
         <.data_table rows={@rows} row_id={&"box-#{&1.box.id}"}>
           <:empty>
+            <!-- Two different facts, and the same empty table said only the
+                 first: a warehouse with a hundred boxes and a search that
+                 matched none of them is not a warehouse without boxes. -->
             <.empty
+              :if={@search != ""}
+              title={gettext("No box matches that.")}
+              note={gettext("Search by the code written on the box, or by where it is standing.")}
+            />
+            <.empty
+              :if={@search == ""}
               title={gettext("No box registered yet.")}
               note={
                 gettext(
@@ -213,6 +267,10 @@ defmodule EstoqueOSWeb.BoxLive.Index do
   end
 
   @impl true
+  def handle_event("search", params, socket) do
+    {:noreply, socket |> assign(:search, params["search"] || "") |> load_boxes()}
+  end
+
   def handle_event("create", %{"code" => code, "location_id" => location_id}, socket) do
     case Locations.create_box(%{code: code, location_id: location_id}) do
       {:ok, box} ->

@@ -32,6 +32,20 @@ defmodule EstoqueOS.Inventory.Locations do
   end
 
   @doc """
+  The retired ones, for the screen that can bring one back.
+
+  A separate function rather than an option on `list_locations/0`: every caller
+  of that one is filling a picker, and a picker must never offer a place that
+  was deliberately taken out of the operation.
+  """
+  def list_inactive_locations do
+    Location
+    |> where([l], l.active == false)
+    |> order_by([l], asc: l.kind, asc: l.name)
+    |> Repo.all()
+  end
+
+  @doc """
   The place a load sits while somebody else is driving it.
 
   There is one, and the load-out needs it by kind rather than by name: "Trânsito"
@@ -87,6 +101,17 @@ defmodule EstoqueOS.Inventory.Locations do
         end
       end)
 
+    # What is on the floor rather than in a box. The screen needs it to say why
+    # a location cannot be retired: "mova as caixas" is the wrong instruction
+    # for a place whose stock was never in one.
+    loose =
+      StockSnapshot
+      |> where([s], is_nil(s.box_id) and s.quantity != 0)
+      |> group_by([s], s.location_id)
+      |> select([s], {s.location_id, sum(s.quantity)})
+      |> Repo.all()
+      |> Map.new()
+
     Location
     |> select([l], l.id)
     |> Repo.all()
@@ -94,6 +119,7 @@ defmodule EstoqueOS.Inventory.Locations do
       {id,
        %{
          boxes: Map.get(boxes, id, 0),
+         loose: Map.get(loose, id, Decimal.new(0)),
          known_value: Map.get(values, id, Decimal.new(0))
        }}
     end)
@@ -108,7 +134,42 @@ defmodule EstoqueOS.Inventory.Locations do
   therefore out of every picker, while the history stays readable.
   """
   def deactivate_location(%Location{} = location) do
-    location |> Location.changeset(%{active: false}) |> Repo.update()
+    if empty?(location) do
+      location |> Location.changeset(%{active: false}) |> Repo.update()
+    else
+      # Not a validation on the changeset: what makes a location retirable is a
+      # fact about the ledger, not about the row. Refused here so a
+      # hand-crafted event cannot retire a place that still holds goods and
+      # take that stock out of every picker with it.
+      {:error, :not_empty}
+    end
+  end
+
+  @doc """
+  Puts a retired location back into the operation.
+
+  The mission that ran last year runs again, and re-registering it under the
+  same name is not possible — the name is unique, and the row that owns it is
+  the one holding all the history. So the way back is this, not a second row.
+  """
+  def reactivate_location(%Location{} = location) do
+    location |> Location.changeset(%{active: true}) |> Repo.update()
+  end
+
+  @doc """
+  Whether a location holds nothing at all: no active box, no stock loose on its
+  floor.
+
+  Boxes alone were the old question, and stock can sit at a location without
+  one — every manual entry with the box field left blank puts it there.
+  """
+  def empty?(%Location{} = location), do: empty?(location.id)
+
+  def empty?(location_id) do
+    not Repo.exists?(from b in Box, where: b.location_id == ^location_id and b.active) and
+      not Repo.exists?(
+        from s in StockSnapshot, where: s.location_id == ^location_id and s.quantity != 0
+      )
   end
 
   @doc """

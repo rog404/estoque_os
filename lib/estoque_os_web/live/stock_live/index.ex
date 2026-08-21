@@ -446,7 +446,11 @@ defmodule EstoqueOSWeb.StockLive.Index do
             <.amount value={money(row.total)} />
           </:col>
 
-          <:foot span={4}>
+          <!-- Five, which is every column before the quantity: product, lot,
+               expiry, flags and where. It was four, so the total under it sat
+               one column to the left of the numbers it totals — under "onde"
+               with money on, and under the quantity heading with money off. -->
+          <:foot span={5}>
             {gettext("%{count} stored lot(s) on this page", count: length(@rows))}
           </:foot>
           <:foot align={:right}>{quantity(@total_quantity)}</:foot>

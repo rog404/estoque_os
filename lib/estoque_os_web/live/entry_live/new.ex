@@ -219,8 +219,14 @@ defmodule EstoqueOSWeb.EntryLive.New do
                 </option>
               </select>
             </label>
-            <.check name="controlled" label={gettext("controlled")} />
+            <!-- Neither question is asked about the marketing stock, and the
+                 answer to both is always no: a shirt is not a controlled drug
+                 and does not expire. Asked anyway, they are two ticks the
+                 person has to *not* tick, every time, and a tick that only ever
+                 has one right answer is a trap rather than a question. -->
+            <.check :if={@segment != "marketing"} name="controlled" label={gettext("controlled")} />
             <.check
+              :if={@segment != "marketing"}
               name="expiry_expected"
               label={gettext("has an expiry date")}
               checked={@expiry_expected}
@@ -515,13 +521,19 @@ defmodule EstoqueOSWeb.EntryLive.New do
   # The second submit is the confirmation: the warning listed what it found, and
   # the operator sent the same name back anyway. Nothing to click twice.
   def handle_event("create_product", params, socket) do
+    segment = segment_for_new_product(socket)
+
+    # The form does not render either tick for marketing, so the answer cannot
+    # arrive from it — and must not be read from a submission that was
+    # hand-made either. Decided here, from the stock, which is where the rule
+    # actually lives.
     attrs = %{
       name: String.trim(params["name"] || ""),
       stock_unit: blank_to_default(params["stock_unit"], "UN"),
-      controlled: params["controlled"] == "true",
-      expiry_expected: params["expiry_expected"] == "true",
+      controlled: segment != "marketing" and params["controlled"] == "true",
+      expiry_expected: segment != "marketing" and params["expiry_expected"] == "true",
       lot_expected: params["lot_expected"] == "true",
-      segment: segment_for_new_product(socket)
+      segment: segment
     }
 
     confirmed? = socket.assigns.similar != []
