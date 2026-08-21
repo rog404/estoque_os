@@ -46,16 +46,51 @@ defmodule EstoqueOSWeb.UserLive.SettingsTest do
       assert %{"error" => "Você precisa entrar para acessar esta página."} = flash
     end
 
-    test "redirects if user is not in sudo mode", %{conn: conn} do
-      {:ok, conn} =
-        conn
-        |> log_in_user(user_fixture(),
-          token_authenticated_at: DateTime.add(DateTime.utc_now(:second), -11, :minute)
-        )
-        |> live(~p"/users/settings")
-        |> follow_redirect(conn, ~p"/users/log-in")
+    # This used to redirect to the login page, and it was reported as a bug —
+    # ten minutes after signing in, "Configurações" answered with a login form
+    # while every other screen still worked, so the app looked like it had
+    # forgotten you at random. Nothing here is secret: it is your own address
+    # and two empty forms.
+    test "opens after the sudo window, with the changes held back", %{conn: conn} do
+      old =
+        DateTime.utc_now(:second) |> DateTime.add(-25, :minute)
 
-      assert conn.resp_body =~ "Você precisa se autenticar novamente para acessar esta página."
+      {:ok, _lv, html} =
+        conn
+        |> log_in_user(user_fixture(), token_authenticated_at: old)
+        |> live(~p"/users/settings")
+
+      assert html =~ "Configurações da conta"
+      assert html =~ "precisa de uma entrada recente"
+
+      # The buttons are there and disabled, which is how every other guarded
+      # control in this app behaves.
+      assert html =~ "disabled"
+    end
+
+    # The other half of the same bug: the window could lapse between opening the
+    # screen and pressing the button, and `true = sudo_mode?(user)` raised a
+    # MatchError. A crashed LiveView explains nothing to somebody who just typed
+    # a password.
+    test "refuses the change instead of crashing when the window has lapsed", %{conn: conn} do
+      old = DateTime.utc_now(:second) |> DateTime.add(-25, :minute)
+
+      {:ok, lv, _html} =
+        conn
+        |> log_in_user(user_fixture(), token_authenticated_at: old)
+        |> live(~p"/users/settings")
+
+      html =
+        lv
+        |> form("#password_form", %{
+          "user" => %{
+            "password" => "nova-senha-longa-123",
+            "password_confirmation" => "nova-senha-longa-123"
+          }
+        })
+        |> render_submit()
+
+      assert html =~ "Saia e entre de novo"
     end
   end
 

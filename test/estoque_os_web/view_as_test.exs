@@ -18,6 +18,7 @@ defmodule EstoqueOSWeb.ViewAsTest do
   import EstoqueOS.InventoryFixtures
 
   alias EstoqueOS.Inventory
+  alias EstoqueOS.Inventory.Transaction
   alias EstoqueOS.Repo
 
   setup %{conn: conn} do
@@ -89,33 +90,32 @@ defmodule EstoqueOSWeb.ViewAsTest do
       assert html =~ "Entrada manual"
     end
 
-    test "and cannot record anything from it", %{conn: conn} do
-      conn = post(conn, ~p"/users/view-as", %{"role" => "logistics"})
-      {:ok, view, _html} = live(conn, ~p"/load-out")
-
-      before = Repo.aggregate(EstoqueOS.Inventory.Transaction, :count)
-
-      # Straight at the event, because that is how a write would actually be
-      # attempted: the button is not rendered, and a button nobody rendered has
-      # never been what stops anything.
-      html = render_click(view, "send", %{})
-
-      assert html =~ "não tem permissão"
-      assert Repo.aggregate(EstoqueOS.Inventory.Transaction, :count) == before
-    end
-
     # Every transaction records who made it, and one made under a borrowed role
-    # would name the wrong role. `operator?/1` is what says no, and it says no
-    # on the screens the role works in exactly as it does on the stock list.
-    test "is refused the write events on each screen it may now open", %{conn: conn} do
+    # would name the wrong role. `operator?/1` is what says no, and it says no on
+    # the screens the role works in exactly as it does on the stock list.
+    #
+    # One test over the screens rather than one test per screen: three copies of
+    # this said the same sentence about three paths, and the third would have
+    # been forgotten the day a fourth screen appeared. The event is sent
+    # straight at the socket because that is how a write would actually be
+    # attempted — the button is not rendered, and a button nobody rendered has
+    # never been what stops anything.
+    test "is refused the write on every screen it may now open", %{conn: conn} do
       conn = post(conn, ~p"/users/view-as", %{"role" => "manager"})
 
-      for {path, event} <- [{~p"/entry", "enter"}, {~p"/issue", "issue"}] do
+      for {path, event} <- [
+            {~p"/load-out", "send"},
+            {~p"/entry", "enter"},
+            {~p"/issue", "issue"}
+          ] do
         {:ok, view, _html} = live(conn, path)
-        before = Repo.aggregate(EstoqueOS.Inventory.Transaction, :count)
+        before = Repo.aggregate(Transaction, :count)
 
-        assert render_click(view, event, %{}) =~ "não tem permissão"
-        assert Repo.aggregate(EstoqueOS.Inventory.Transaction, :count) == before
+        assert render_click(view, event, %{}) =~ "não tem permissão",
+               "#{path} did not refuse #{event}"
+
+        assert Repo.aggregate(Transaction, :count) == before,
+               "#{path} wrote to the ledger under a borrowed role"
       end
     end
 

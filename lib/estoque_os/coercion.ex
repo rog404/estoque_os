@@ -44,6 +44,61 @@ defmodule EstoqueOS.Coercion do
   def field(attrs, key) when is_list(attrs) and is_atom(key), do: Keyword.get(attrs, key)
 
   @doc """
+  Nothing typed, as `nil` — including a field holding only spaces.
+
+  This existed as a private copy in eight modules, in three different
+  behaviours: one did not handle `nil`, one did not trim, one trimmed. So `" "`
+  was a blank on five screens and a value on a sixth, which is not a decision
+  anybody made — it is what happens when the same four lines get rewritten
+  eight times.
+
+  A form always sends every field it renders, so `""` is what an untouched
+  input looks like and `" "` is what a nervous thumb looks like. Both are
+  nothing.
+  """
+  def blank_to_nil(nil), do: nil
+
+  def blank_to_nil(value) when is_binary(value) do
+    case String.trim(value) do
+      "" -> nil
+      trimmed -> trimmed
+    end
+  end
+
+  def blank_to_nil(value), do: value
+
+  @doc """
+  A date from a form value, keeping what was already there when the field is
+  blank or malformed.
+
+  Three report screens each had their own copy: a date input posts "" while
+  somebody is retyping it, and a period that collapsed to nil mid-keystroke
+  emptied the report under them. The fallback is what makes the field usable, so
+  it is part of the function rather than something each caller remembers.
+
+      iex> parse_date("2026-08-21", ~D[2026-01-01])
+      ~D[2026-08-21]
+
+      iex> parse_date("", ~D[2026-01-01])
+      ~D[2026-01-01]
+
+      iex> parse_date("not a date", ~D[2026-01-01])
+      ~D[2026-01-01]
+  """
+  def parse_date(nil, fallback), do: fallback
+  def parse_date("", fallback), do: fallback
+
+  def parse_date(value, fallback) when is_binary(value) do
+    case Date.from_iso8601(value) do
+      {:ok, date} -> date
+      {:error, _reason} -> fallback
+    end
+  end
+
+  def parse_date(%Date{} = date, _fallback), do: date
+  def parse_date(_value, fallback), do: fallback
+
+  @doc """
   An id from a form value. Blank means "none", not zero.
 
       iex> to_id("42")

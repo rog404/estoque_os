@@ -17,6 +17,8 @@ defmodule EstoqueOSWeb.AuditReportLive.Index do
   """
   def viewer_events, do: ~w(period filter)
 
+  import EstoqueOS.Coercion, only: [parse_date: 2]
+
   alias EstoqueOS.Reports
   alias EstoqueOSWeb.Movement
 
@@ -265,15 +267,5 @@ defmodule EstoqueOSWeb.AuditReportLive.Index do
      |> assign(:to, parse_date(params["to"], socket.assigns.to))
      |> assign(:type, params["type"] || "")
      |> load_report()}
-  end
-
-  defp parse_date(nil, fallback), do: fallback
-  defp parse_date("", fallback), do: fallback
-
-  defp parse_date(value, fallback) do
-    case Date.from_iso8601(value) do
-      {:ok, date} -> date
-      {:error, _} -> fallback
-    end
   end
 end

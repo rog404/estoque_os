@@ -601,18 +601,11 @@ defmodule EstoqueOSWeb.StockLive.Index do
 
   defp locked?(socket), do: Scope.segment(socket.assigns.current_scope) != nil
 
-  # What the page may ask for, and the role always wins. A marketing user's
-  # segment is not a filter they chose and can drop — it is the only stock they
-  # have — so a `segment=` in the address or in a form they hand-crafted is
-  # ignored rather than obeyed.
-  defp segment(socket, asked) do
-    case Scope.segment(socket.assigns.current_scope) do
-      # Both stocks ticked is every stock, which is what no filter already
-      # means — the chips can say it two ways, and the query only has one.
-      nil -> if is_binary(asked) and asked in Product.segments(), do: asked
-      forced -> forced
-    end
-  end
+  # The role always wins: a marketing user's segment is not a filter they chose
+  # and can drop, it is the only stock they have. `Scope.segment/2` is the one
+  # copy of that rule, and it also answers the chips: ticking both stocks sends
+  # a list, which is not a segment, which is every stock.
+  defp segment(socket, asked), do: Scope.segment(socket.assigns.current_scope, asked)
 
   defp flip(:asc), do: :desc
   defp flip(:desc), do: :asc

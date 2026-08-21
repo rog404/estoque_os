@@ -48,23 +48,30 @@ defmodule EstoqueOSWeb.KitLiveTest do
 
   describe "index" do
     test "shows how many kits the stock covers and what holds it back", %{conn: conn} do
-      {:ok, _view, html} = live(conn, ~p"/kits")
+      {:ok, view, html} = live(conn, ~p"/kits")
 
       assert html =~ "Kit Paciente"
       assert html =~ "kits possíveis"
-      # 6 pens cap it at 6 kits.
-      assert html =~ "6"
       assert html =~ "limitado por: Caneta de eletrocautério"
+
+      # Scoped to the element that states it. `assert html =~ "6"` passed
+      # whether or not the feature worked: a bare digit is in every
+      # `oklch(96.5%`, every `w-6`, every id on the page. Six pens cap it at six
+      # kits, and that is what this asserts.
+      assert has_element?(view, "p", "6 kits possíveis")
     end
   end
 
   describe "show" do
     test "lists components with what the stock covers", %{conn: conn, kit: kit} do
-      {:ok, _view, html} = live(conn, ~p"/kits/#{kit}")
+      {:ok, view, html} = live(conn, ~p"/kits/#{kit}")
 
       assert html =~ "Avental EG"
-      assert html =~ "40"
-      assert html =~ "10"
+
+      # 40 gowns on the shelf, 4 per kit, so this line covers 10 kits. Both
+      # numbers scoped to their column: as bare `=~` they matched the stylesheet.
+      assert has_element?(view, ~s([data-label="Em estoque"]), "40")
+      assert has_element?(view, ~s([data-label="Cobre"]), "10")
     end
 
     test "assembling converts the components into the kit's own product", %{
@@ -180,9 +187,10 @@ defmodule EstoqueOSWeb.KitLiveTest do
       html = view |> element("#review-form") |> render_submit(%{"quantity" => "2"})
 
       assert html =~ "o que precisa"
-      # 2 kits need 8 gowns and 2 pens.
-      assert html =~ "8"
       assert html =~ box.code
+
+      # 2 kits need 8 gowns. Scoped, because "8" alone is in half the CSS.
+      assert has_element?(view, ~s([data-label="Necessário"]), "8")
       refute html =~ "id=\"review-form\""
     end
 
