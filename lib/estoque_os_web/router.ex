@@ -257,6 +257,7 @@ defmodule EstoqueOSWeb.Router do
       live "/kits/:id", KitLive.Show, :show
       live "/receipts/:id", ReceiptLive.Show, :show
       live "/reports/audit", AuditReportLive.Index, :index
+      live "/reports/transit", TransitLive.Index, :index
       live "/missions", MissionLive.Index, :index
       live "/missions/:id", MissionLive.Show, :show
     end

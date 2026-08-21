@@ -83,7 +83,7 @@ defmodule EstoqueOSWeb.ViewAsTest do
       conn = post(conn, ~p"/users/view-as", %{"role" => "logistics"})
 
       assert {:ok, _view, html} = live(conn, ~p"/load-out")
-      assert html =~ "Derrubada de carga"
+      assert html =~ "Enviar carga"
 
       assert {:ok, _view, html} = live(conn, ~p"/entry")
       assert html =~ "Entrada manual"

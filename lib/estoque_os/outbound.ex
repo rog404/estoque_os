@@ -24,6 +24,7 @@ defmodule EstoqueOS.Outbound do
   alias EstoqueOS.Inventory
   alias EstoqueOS.Inventory.{Box, Lot, StockSnapshot}
   alias EstoqueOS.Missions
+  alias EstoqueOS.Outbound.Shipment
   alias EstoqueOS.Repo
 
   @doc """
@@ -141,16 +142,148 @@ defmodule EstoqueOS.Outbound do
 
           {:ok, count}
         end)
+        |> Multi.run(:shipment, fn _repo, %{transaction: transaction} ->
+          # Every load that leaves is a shipment, whether or not anybody was
+          # hired to carry it. The alternative — a shipment only when a carrier
+          # is named — would leave the volunteer's car trips invisible on the
+          # one screen that exists to say what is out there.
+          %Shipment{}
+          |> Shipment.changeset(%{
+            from_location_id: source_id,
+            to_location_id: destination_id,
+            carrier_id: to_id(field(attrs, :carrier_id)),
+            waybill: blank_to_nil(field(attrs, :waybill)),
+            expected_arrival: field(attrs, :expected_arrival),
+            mission_id: mission_at(destination_id),
+            notes: field(attrs, :notes),
+            sent_transaction_id: transaction.id
+          })
+          |> Repo.insert()
+        end)
         |> Repo.transaction()
         |> case do
           {:ok, changes} ->
-            {:ok, %{transaction: changes.transaction, boxes_moved: changes.boxes}}
+            {:ok,
+             %{
+               transaction: changes.transaction,
+               boxes_moved: changes.boxes,
+               shipment: changes.shipment
+             }}
 
           {:error, _step, reason, _changes} ->
             {:error, reason}
         end
     end
   end
+
+  ## Shipments
+
+  @doc """
+  Loads still out there, the ones that left longest ago first.
+
+  The order is the point: a load that left three weeks ago is the one worth a
+  phone call, and "quem está com a carga" is the question this answers.
+  """
+  def open_shipments(opts \\ []) do
+    Shipment
+    |> where([s], is_nil(s.received_at))
+    |> order_by([s], asc: s.shipped_on, asc: s.id)
+    |> maybe_carrier(opts[:carrier_id])
+    |> preload([:carrier, :from_location, :to_location, :mission])
+    |> Repo.all()
+    |> Enum.map(&decorate_shipment/1)
+  end
+
+  @doc "One shipment, with everything the transit report and the paperwork need."
+  def get_shipment!(id) do
+    Shipment
+    |> Repo.get!(id)
+    |> Repo.preload([
+      :carrier,
+      :from_location,
+      :to_location,
+      :mission,
+      :received_by,
+      sent_transaction: [entries: [lot: :product]]
+    ])
+    |> decorate_shipment()
+  end
+
+  defp maybe_carrier(query, nil), do: query
+  defp maybe_carrier(query, id), do: where(query, [s], s.carrier_id == ^id)
+
+  # How long it has been on the road, and whether it is late. Both derived: a
+  # stored "late" would be wrong by tomorrow.
+  defp decorate_shipment(%Shipment{} = shipment) do
+    today = Date.utc_today()
+
+    %{
+      shipment: shipment,
+      days_out: Date.diff(today, shipment.shipped_on),
+      late?: shipment.expected_arrival != nil and Date.before?(shipment.expected_arrival, today)
+    }
+  end
+
+  @doc """
+  Receives a shipment: the goods arrive, and the load stops being open.
+
+  The movement is the ordinary return — the same lines, the same boxes, the same
+  "what did not come back was used" — and this only brackets it. Refused if the
+  shipment is already closed, because a load received twice would post its
+  contents twice.
+  """
+  def receive_shipment(%Shipment{} = shipment, attrs) do
+    if Shipment.open?(shipment) do
+      attrs =
+        attrs
+        |> Map.put(:source_location_id, shipment.to_location_id)
+        |> Map.put_new(:destination_location_id, shipment.from_location_id)
+
+      case receive_return(attrs) do
+        {:ok, result} -> close_shipment(shipment, result, attrs)
+        {:error, reason} -> {:error, reason}
+      end
+    else
+      {:error, :already_received}
+    end
+  end
+
+  defp close_shipment(shipment, result, attrs) do
+    transaction = result[:return] || result[:consumed]
+
+    if is_nil(transaction) do
+      # Nothing came back and nothing was written off: the two together say the
+      # load evaporated, which is not something to record quietly.
+      {:error, :nothing_received}
+    else
+      do_close_shipment(shipment, transaction, result, attrs)
+    end
+  end
+
+  defp do_close_shipment(shipment, transaction, result, attrs) do
+    shipment
+    |> Shipment.receipt_changeset(%{
+      received_at: DateTime.utc_now(:second),
+      received_by_id: field(attrs, :user_id),
+      received_transaction_id: transaction.id
+    })
+    |> Repo.update()
+    |> case do
+      {:ok, shipment} -> {:ok, Map.put(result, :shipment, shipment)}
+      {:error, changeset} -> {:error, changeset}
+    end
+  end
+
+  defp blank_to_nil(nil), do: nil
+
+  defp blank_to_nil(value) when is_binary(value) do
+    case String.trim(value) do
+      "" -> nil
+      trimmed -> trimmed
+    end
+  end
+
+  defp blank_to_nil(value), do: value
 
   defp box_entries([], _source_id, _destination_id), do: []
 

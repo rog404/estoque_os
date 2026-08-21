@@ -13,6 +13,7 @@ defmodule EstoqueOS.Catalog do
   import EstoqueOS.Coercion
 
   alias EstoqueOS.Catalog.{
+    Carrier,
     Product,
     ProductChange,
     ProductGroup,
@@ -502,6 +503,43 @@ defmodule EstoqueOS.Catalog do
   defp segment_scope(query, nil), do: query
   defp segment_scope(query, ""), do: query
   defp segment_scope(query, segment), do: where(query, [..., p], p.segment == ^segment)
+
+  ## Carriers
+
+  @doc "Carriers still in use, by the name a person would look for."
+  def list_carriers do
+    Carrier
+    |> where([c], c.active)
+    |> order_by([c], asc: c.legal_name)
+    |> Repo.all()
+  end
+
+  @doc """
+  The carrier by that name, creating it the first time it is seen.
+
+  Case-insensitively, and that is the whole point: "STRALOG" typed today and
+  "Stralog" typed next month are one carrier, or the transit report can be asked
+  nothing about either of them.
+  """
+  def resolve_carrier(name) do
+    case String.trim(to_string(name)) do
+      "" ->
+        {:ok, nil}
+
+      name ->
+        case Repo.one(
+               from c in Carrier,
+                 where: fragment("lower(?)", c.legal_name) == ^String.downcase(name)
+             ) do
+          nil -> %Carrier{} |> Carrier.changeset(%{legal_name: name}) |> Repo.insert()
+          carrier -> {:ok, carrier}
+        end
+    end
+  end
+
+  def create_carrier(attrs) do
+    %Carrier{} |> Carrier.changeset(attrs) |> Repo.insert()
+  end
 
   def create_product_group(attrs) do
     %ProductGroup{} |> ProductGroup.changeset(attrs) |> Repo.insert()
