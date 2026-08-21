@@ -33,7 +33,12 @@ config :estoque_os, :organization,
   name: "Operação Sorriso do Brasil",
   document: "00.000.000/0000-00",
   address: "São Paulo — SP",
-  contact: "contato@exemplo.org"
+  contact: "contato@exemplo.org",
+  # The clause the transport declaration reads out between the address and the
+  # goods. It is a statement about *this* organisation's tax situation, which
+  # belongs to the deployment and not to a template: the state, the decree and
+  # the article all change with where the ONG is registered.
+  tax_note: "isenta de ICMS conforme o artigo 9º do decreto 45.490/00,"
 
 # How many days ahead the dashboard warns about expiring stock. Individual
 # products may override it.

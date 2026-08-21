@@ -105,6 +105,9 @@ defmodule EstoqueOSWeb.Router do
       live "/boxes/:id/count", BoxLive.Count, :count
       live "/returns", ReturnLive.Index, :index
       live "/load-out", LoadOutLive.Index, :index
+      # The paper that travels with a load. Written by whoever sends it, which
+      # is this same group of roles.
+      live "/shipments/:id/declaracao", ShipmentLive.Declaration, :edit
     end
 
     # Taking goods in by hand, which both stocks do the same way. Its own
@@ -180,6 +183,15 @@ defmodule EstoqueOSWeb.Router do
     ]
 
     get "/issues/:id/termo/:kind", CertificateController, :certificate
+  end
+
+  # The printed declaration. A controller rather than a LiveView for the same
+  # reason as the certificates: this page exists to become paper, and paper does
+  # not need a socket.
+  scope "/", EstoqueOSWeb do
+    pipe_through [:browser, :require_authenticated_user, :require_password_not_pending]
+
+    get "/shipments/:id/declaracao/imprimir", DeclarationController, :print
   end
 
   # Standing in another role's shoes. Guarded inside the controller rather than

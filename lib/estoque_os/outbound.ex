@@ -24,7 +24,7 @@ defmodule EstoqueOS.Outbound do
   alias EstoqueOS.Inventory
   alias EstoqueOS.Inventory.{Box, Locations, Lot, StockSnapshot, TransactionEntry}
   alias EstoqueOS.Missions
-  alias EstoqueOS.Outbound.Shipment
+  alias EstoqueOS.Outbound.{Shipment, TransportDeclaration}
   alias EstoqueOS.Repo
 
   @doc """
@@ -361,6 +361,102 @@ defmodule EstoqueOS.Outbound do
     |> Repo.all()
     |> Enum.reject(&is_nil/1)
     |> Enum.uniq()
+  end
+
+  ## Transport declaration
+
+  @doc """
+  What a load is carrying, as the declaration prints it.
+
+  Read from the movement that sent it, which is the only honest source: the
+  paper has to say what actually left, and the ledger is what knows. The
+  positive side of the load-out is the one that names the goods — the negative
+  side is the same goods leaving the warehouse.
+  """
+  def shipment_contents(%Shipment{} = shipment) do
+    costs = Inventory.average_unit_costs()
+
+    TransactionEntry
+    |> join(:inner, [e], l in Lot, on: l.id == e.lot_id)
+    |> join(:inner, [e, l], p in Product, on: p.id == l.product_id)
+    |> join(:left, [e, l, p], b in Box, on: b.id == e.box_id)
+    |> where([e], e.transaction_id == ^shipment.sent_transaction_id)
+    |> where([e], e.quantity > 0)
+    # The order the paper is read in: by box, because the person checking the
+    # load is holding the boxes, and then by product inside each one.
+    |> order_by([e, l, p, b], asc: b.code, asc: p.name, asc: l.lot_number)
+    |> select([e, l, p, b], %{
+      product: p.name,
+      unit: p.stock_unit,
+      lot_id: l.id,
+      lot_number: l.lot_number,
+      expires_on: l.expires_on,
+      box: b.code,
+      quantity: e.quantity
+    })
+    |> Repo.all()
+    |> Enum.map(fn row ->
+      cost = costs[row.lot_id]
+
+      row
+      |> Map.put(:unit_cost, cost)
+      |> Map.put(:total, cost && Decimal.mult(cost, row.quantity))
+    end)
+  end
+
+  @doc """
+  What the load is worth, for the line the carrier's paperwork asks for.
+
+  Only the part whose cost is known. A donated lot carries no cost, and adding
+  it in as zero would declare a value that is not the goods' value — the screen
+  says how many lines are in that state so the number can be read for what it
+  is.
+  """
+  def contents_total(rows) do
+    %{
+      quantity: sum_by(rows, & &1.quantity),
+      value: rows |> Enum.map(& &1.total) |> Enum.reject(&is_nil/1) |> sum(),
+      unvalued: Enum.count(rows, &is_nil(&1.total))
+    }
+  end
+
+  defp sum_by(rows, fun), do: rows |> Enum.map(fun) |> sum()
+  defp sum(values), do: Enum.reduce(values, Decimal.new(0), &Decimal.add/2)
+
+  @doc "The declaration written for this load, if somebody wrote one."
+  def get_declaration(%Shipment{} = shipment) do
+    Repo.get_by(TransportDeclaration, shipment_id: shipment.id)
+  end
+
+  @doc """
+  Writes the declaration for a load, or rewrites the one already there.
+
+  One paper per load: reprinting fills the same one in again rather than
+  producing a second declaration for the same goods, which is the situation
+  where two documents disagree about what travelled.
+  """
+  def save_declaration(%Shipment{} = shipment, attrs) do
+    (get_declaration(shipment) || %TransportDeclaration{})
+    |> TransportDeclaration.changeset(Map.put(attrs, :shipment_id, shipment.id))
+    |> Repo.insert_or_update()
+  end
+
+  @doc "An empty declaration with what the load already knows filled in."
+  def declaration_draft(%Shipment{} = shipment) do
+    %TransportDeclaration{
+      shipment_id: shipment.id,
+      recipient_name: shipment.to_location && shipment.to_location.name,
+      issued_on: shipment.shipped_on || Date.utc_today(),
+      reference: reference_for(shipment)
+    }
+  end
+
+  # "2026/04" on the paper: the year and month the load left, which is what the
+  # ONG numbers these by.
+  defp reference_for(%Shipment{shipped_on: nil}), do: nil
+
+  defp reference_for(%Shipment{shipped_on: date}) do
+    "#{date.year}/#{String.pad_leading(to_string(date.month), 2, "0")}"
   end
 
   @doc """

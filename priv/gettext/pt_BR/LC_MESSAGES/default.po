@@ -205,6 +205,7 @@ msgstr "Senha atualizada com sucesso!"
 #: lib/estoque_os_web/live/invoice_live/show.ex:526
 #: lib/estoque_os_web/live/product_live/show.ex:245
 #: lib/estoque_os_web/live/receipt_live/show.ex:305
+#: lib/estoque_os_web/live/shipment_live/declaration.ex:153
 #: lib/estoque_os_web/live/user_live/reset_password.ex:86
 #: lib/estoque_os_web/live/user_live/reset_password.ex:136
 #: lib/estoque_os_web/live/user_live/settings.ex:107
@@ -419,6 +420,7 @@ msgstr "Item confirmado."
 #: lib/estoque_os_web/live/product_live/show.ex:399
 #: lib/estoque_os_web/live/product_live/show.ex:438
 #: lib/estoque_os_web/live/return_live/index.ex:225
+#: lib/estoque_os_web/live/shipment_live/declaration.ex:183
 #: lib/estoque_os_web/live/stock_live/index.ex:369
 #, elixir-autogen, elixir-format
 msgid "Lot"
@@ -488,6 +490,7 @@ msgstr "Lançada no estoque"
 #: lib/estoque_os_web/live/mission_live/show.ex:201
 #: lib/estoque_os_web/live/return_live/index.ex:221
 #: lib/estoque_os_web/live/sales_report_live/index.ex:157
+#: lib/estoque_os_web/live/shipment_live/declaration.ex:178
 #: lib/estoque_os_web/live/stock_live/index.ex:353
 #, elixir-autogen, elixir-format
 msgid "Product"
@@ -582,6 +585,7 @@ msgid "This item could not be confirmed."
 msgstr "Não foi possível confirmar este item."
 
 #: lib/estoque_os_web/live/invoice_live/index.ex:67
+#: lib/estoque_os_web/live/shipment_live/declaration.ex:190
 #: lib/estoque_os_web/live/stock_live/index.ex:445
 #, elixir-autogen, elixir-format
 msgid "Total"
@@ -635,6 +639,7 @@ msgstr "não informado"
 #: lib/estoque_os_web/live/product_live/show.ex:307
 #: lib/estoque_os_web/live/receipt_live/show.ex:294
 #: lib/estoque_os_web/live/receipt_live/show.ex:467
+#: lib/estoque_os_web/live/shipment_live/declaration.ex:184
 #, elixir-autogen, elixir-format
 msgid "Box"
 msgstr "Caixa"
@@ -688,6 +693,7 @@ msgstr "Escolha uma planilha primeiro."
 #: lib/estoque_os_web/live/product_live/show.ex:400
 #: lib/estoque_os_web/live/product_live/show.ex:455
 #: lib/estoque_os_web/live/sales_report_live/index.ex:164
+#: lib/estoque_os_web/live/shipment_live/declaration.ex:186
 #: lib/estoque_os_web/live/stock_live/index.ex:420
 #, elixir-autogen, elixir-format
 msgid "Quantity"
@@ -809,6 +815,7 @@ msgid "unknown"
 msgstr "desconhecido"
 
 #: lib/estoque_os_web/live/home_live/index.ex:517
+#: lib/estoque_os_web/live/shipment_live/declaration.ex:195
 #, elixir-autogen, elixir-format
 msgid "%{count} line(s)"
 msgstr "%{count} linha(s)"
@@ -1755,7 +1762,7 @@ msgstr "Digite uma quantidade maior que zero."
 msgid "Unchecked, the missing goods stay on the mission's books."
 msgstr "Desmarcado, o que falta continua nos registros da missão."
 
-#: lib/estoque_os/outbound.ex:702
+#: lib/estoque_os/outbound.ex:798
 #, elixir-autogen, elixir-format
 msgid "Used during the mission (did not come back)"
 msgstr "Consumido durante a missão (não voltou)"
@@ -1788,6 +1795,7 @@ msgstr "Termo de recebimento"
 
 #: lib/estoque_os_web/live/issue_live/index.ex:342
 #: lib/estoque_os_web/live/issue_live/list.ex:147
+#: lib/estoque_os_web/live/shipment_live/declaration.ex:58
 #, elixir-autogen, elixir-format
 msgid "Recipient"
 msgstr "Destinatário"
@@ -2652,6 +2660,7 @@ msgid "Missions"
 msgstr "Missões"
 
 #: lib/estoque_os_web/live/mission_live/index.ex:52
+#: lib/estoque_os_web/live/shipment_live/declaration.ex:67
 #, elixir-autogen, elixir-format
 msgid "Name"
 msgstr "Nome"
@@ -3808,6 +3817,7 @@ msgstr "em %{boxes}"
 
 #: lib/estoque_os_web/live/issue_live/index.ex:161
 #: lib/estoque_os_web/live/issue_live/index.ex:533
+#: lib/estoque_os_web/live/shipment_live/declaration.ex:184
 #, elixir-autogen, elixir-format
 msgid "loose"
 msgstr "solto"
@@ -4647,7 +4657,7 @@ msgstr "Todas as transportadoras"
 msgid "Every load that left has been received."
 msgstr "Toda carga que saiu já foi recebida."
 
-#: lib/estoque_os_web/live/transit_live/index.ex:142
+#: lib/estoque_os_web/live/transit_live/index.ex:153
 #, elixir-autogen, elixir-format
 msgid "Expected"
 msgstr "Previsto"
@@ -4658,6 +4668,7 @@ msgid "Expected arrival"
 msgstr "Chegada prevista"
 
 #: lib/estoque_os_web/components/layouts.ex:485
+#: lib/estoque_os_web/live/shipment_live/declaration.ex:46
 #: lib/estoque_os_web/live/transit_live/index.ex:31
 #: lib/estoque_os_web/live/transit_live/index.ex:50
 #, elixir-autogen, elixir-format
@@ -4701,7 +4712,7 @@ msgstr "levado pela equipe"
 msgid "conhecimento de transporte"
 msgstr "conhecimento de transporte"
 
-#: lib/estoque_os_web/live/transit_live/index.ex:150
+#: lib/estoque_os_web/live/transit_live/index.ex:161
 #, elixir-autogen, elixir-format
 msgid "overdue"
 msgstr "atrasada"
@@ -4863,17 +4874,17 @@ msgstr "Em qual caixa no %{location}"
 msgid "It arrived"
 msgstr "Chegou"
 
-#: lib/estoque_os_web/live/transit_live/index.ex:169
+#: lib/estoque_os_web/live/transit_live/index.ex:180
 #, elixir-autogen, elixir-format
 msgid "Load delivered at %{place}."
 msgstr "Carga entregue em %{place}."
 
-#: lib/estoque_os_web/live/transit_live/index.ex:178
+#: lib/estoque_os_web/live/transit_live/index.ex:189
 #, elixir-autogen, elixir-format
 msgid "That arrival could not be recorded."
 msgstr "Não foi possível registrar a chegada."
 
-#: lib/estoque_os_web/live/transit_live/index.ex:175
+#: lib/estoque_os_web/live/transit_live/index.ex:186
 #, elixir-autogen, elixir-format
 msgid "This load has nothing sitting in transit."
 msgstr "Esta carga não tem nada parado em trânsito."
@@ -5062,3 +5073,111 @@ msgstr "Reativar"
 #, elixir-autogen, elixir-format
 msgid "That location could not be deactivated."
 msgstr "Não foi possível desativar esse local."
+
+#: lib/estoque_os_web/live/shipment_live/declaration.ex:205
+#, elixir-autogen, elixir-format
+msgid "%{count} line(s) arrived as a donation and carry no cost, so they are not in the declared value."
+msgstr "%{count} linha(s) entraram como doação e não têm custo, então ficam fora do valor declarado."
+
+#: lib/estoque_os_web/live/shipment_live/declaration.ex:49
+#, elixir-autogen, elixir-format
+msgid "%{from} to %{to}, left on %{date}"
+msgstr "%{from} para %{to}, saiu em %{date}"
+
+#: lib/estoque_os_web/live/shipment_live/declaration.ex:174
+#, elixir-autogen, elixir-format
+msgid "A declaration is about goods, and this shipment moved none."
+msgstr "Uma declaração é sobre mercadoria, e esta carga não levou nenhuma."
+
+#: lib/estoque_os_web/live/shipment_live/declaration.ex:90
+#, elixir-autogen, elixir-format
+msgid "Address"
+msgstr "Endereço"
+
+#: lib/estoque_os_web/live/shipment_live/declaration.ex:77
+#, elixir-autogen, elixir-format
+msgid "CNPJ"
+msgstr "CNPJ"
+
+#: lib/estoque_os_web/live/shipment_live/declaration.ex:233
+#, elixir-autogen, elixir-format
+msgid "Check the fields marked in red."
+msgstr "Confira os campos marcados em vermelho."
+
+#: lib/estoque_os_web/controllers/declaration_controller.ex:38
+#: lib/estoque_os_web/live/shipment_live/declaration.ex:34
+#: lib/estoque_os_web/live/shipment_live/declaration.ex:47
+#, elixir-autogen, elixir-format
+msgid "Content declaration"
+msgstr "Declaração de conteúdo"
+
+#: lib/estoque_os_web/live/shipment_live/declaration.ex:113
+#, elixir-autogen, elixir-format
+msgid "Date"
+msgstr "Data"
+
+#: lib/estoque_os_web/live/transit_live/index.ex:145
+#: lib/estoque_os_web/live/transit_live/index.ex:148
+#, elixir-autogen, elixir-format
+msgid "Declaration"
+msgstr "Declaração"
+
+#: lib/estoque_os_web/live/shipment_live/declaration.ex:227
+#, elixir-autogen, elixir-format
+msgid "Declaration saved."
+msgstr "Declaração salva."
+
+#: lib/estoque_os_web/controllers/declaration_controller.ex:26
+#, elixir-autogen, elixir-format
+msgid "Fill the declaration in before printing it."
+msgstr "Preencha a declaração antes de imprimir."
+
+#: lib/estoque_os_web/live/shipment_live/declaration.ex:132
+#, elixir-autogen, elixir-format
+msgid "Invoice number"
+msgstr "Nota fiscal"
+
+#: lib/estoque_os_web/live/shipment_live/declaration.ex:99
+#, elixir-autogen, elixir-format
+msgid "Postcode"
+msgstr "CEP"
+
+#: lib/estoque_os_web/live/shipment_live/declaration.ex:164
+#, elixir-autogen, elixir-format
+msgid "Print / save as PDF"
+msgstr "Imprimir / salvar em PDF"
+
+#: lib/estoque_os_web/live/shipment_live/declaration.ex:141
+#, elixir-autogen, elixir-format
+msgid "Reference"
+msgstr "Referência"
+
+#: lib/estoque_os_web/live/shipment_live/declaration.ex:154
+#, elixir-autogen, elixir-format
+msgid "Save declaration"
+msgstr "Salvar declaração"
+
+#: lib/estoque_os_web/live/shipment_live/declaration.ex:123
+#, elixir-autogen, elixir-format
+msgid "Scheduling code"
+msgstr "Cód. agendamento"
+
+#: lib/estoque_os_web/live/shipment_live/declaration.ex:173
+#, elixir-autogen, elixir-format
+msgid "This load has no lines."
+msgstr "Esta carga não tem itens."
+
+#: lib/estoque_os_web/live/shipment_live/declaration.ex:169
+#, elixir-autogen, elixir-format
+msgid "What is travelling"
+msgstr "O que está viajando"
+
+#: lib/estoque_os_web/live/shipment_live/declaration.ex:110
+#, elixir-autogen, elixir-format
+msgid "What the carrier asks for"
+msgstr "O que a transportadora pede"
+
+#: lib/estoque_os_web/live/shipment_live/declaration.ex:60
+#, elixir-autogen, elixir-format
+msgid "Who receives the goods, as their registration reads. It is written on the declaration and kept with this load, not on the location — a hospital renamed next month must not rewrite a paper already signed."
+msgstr "Quem recebe a mercadoria, como está no cadastro dele. Fica escrito na declaração e guardado nesta carga, não no local — um hospital renomeado mês que vem não pode reescrever um papel já assinado."
