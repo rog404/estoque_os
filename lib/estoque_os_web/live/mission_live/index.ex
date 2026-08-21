@@ -128,7 +128,7 @@ defmodule EstoqueOSWeb.MissionLive.Index do
         params
         |> Map.take(~w(name starts_on ends_on tables notes))
         |> Map.put("location_id", location_id)
-        |> blank_to_nil()
+        |> blank_dates_to_nil()
         |> create(socket)
 
       {:error, message} ->
@@ -186,8 +186,10 @@ defmodule EstoqueOSWeb.MissionLive.Index do
       Date.compare(mission.ends_on, today) != :lt
   end
 
-  # An empty date input posts "", which is not the same as "no end date yet".
-  defp blank_to_nil(attrs) do
+  # A different animal from `Coercion.blank_to_nil/1`, and it used to share the
+  # name: this walks a *map* of form attrs. An empty date input posts "", which
+  # is not the same as "no end date yet".
+  defp blank_dates_to_nil(attrs) do
     Map.new(attrs, fn
       {key, ""} -> {key, nil}
       pair -> pair

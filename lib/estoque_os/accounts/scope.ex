@@ -17,6 +17,7 @@ defmodule EstoqueOS.Accounts.Scope do
   """
 
   alias EstoqueOS.Accounts.User
+  alias EstoqueOS.Catalog.Product
 
   defstruct user: nil, view_as: nil
 
@@ -75,6 +76,24 @@ defmodule EstoqueOS.Accounts.Scope do
   """
   def segment(%__MODULE__{} = scope), do: scope |> effective_role() |> User.segment()
   def segment(_scope), do: nil
+
+  @doc """
+  The stock this scope may see, given what a page asked for.
+
+  The rule is one sentence and it was written out five times: a role confined to
+  one stock gets that one whatever the address says, and everybody else gets
+  whatever they asked for as long as it is a real segment. Five copies of a
+  sentence about *who may see what* is four chances for one of them to drift,
+  and the drift would not look like a bug — it would look like a filter.
+  """
+  def segment(%__MODULE__{} = scope, asked) do
+    case segment(scope) do
+      nil -> if asked in Product.segments(), do: asked
+      forced -> forced
+    end
+  end
+
+  def segment(_scope, _asked), do: nil
 
   @doc "Whether this scope is standing in somebody else's shoes."
   def viewing_as?(%__MODULE__{view_as: role}) when is_binary(role), do: true

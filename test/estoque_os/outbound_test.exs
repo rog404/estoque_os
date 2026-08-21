@@ -76,35 +76,6 @@ defmodule EstoqueOS.OutboundTest do
     end
   end
 
-  describe "suggest_picks/3" do
-    test "takes the lot that expires first", %{
-      warehouse: warehouse,
-      product: product,
-      sooner: sooner,
-      later: later
-    } do
-      assert {:ok, [first, second]} = Outbound.suggest_picks(product.id, 60, warehouse.id)
-
-      assert first.lot_id == sooner.id
-      assert Decimal.equal?(first.take, Decimal.new(40))
-      assert second.lot_id == later.id
-      assert Decimal.equal?(second.take, Decimal.new(20))
-    end
-
-    test "does not raid the boxes for loose picks", %{
-      warehouse: warehouse,
-      product: product,
-      boxed_lot: boxed_lot
-    } do
-      assert {:insufficient_stock, picks, missing} =
-               Outbound.suggest_picks(product.id, 500, warehouse.id)
-
-      refute Enum.any?(picks, &(&1.lot_id == boxed_lot.id))
-      # Only the 140 loose units are available to pick by quantity.
-      assert Decimal.equal?(missing, Decimal.new(360))
-    end
-  end
-
   describe "load_out/1" do
     test "sends a box whole, contents and address", %{
       warehouse: warehouse,

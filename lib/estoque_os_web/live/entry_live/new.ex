@@ -75,12 +75,7 @@ defmodule EstoqueOSWeb.EntryLive.New do
      |> assign(:locked_segment, Scope.segment(socket.assigns.current_scope))}
   end
 
-  defp segment(socket, asked) do
-    case Scope.segment(socket.assigns.current_scope) do
-      nil -> if asked in Product.segments(), do: asked
-      forced -> forced
-    end
-  end
+  defp segment(socket, asked), do: Scope.segment(socket.assigns.current_scope, asked)
 
   # Which segment a product created from here is filed under. A screen narrowed
   # to one stock creates into that stock; an unnarrowed one creates into the

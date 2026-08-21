@@ -60,16 +60,6 @@ defmodule EstoqueOS.Outbound do
   defdelegate loose_stock(location_id), to: EstoqueOS.Inventory.Locations
 
   @doc """
-  Which lots to take for a quantity of a product, oldest expiry first.
-
-  Delegates to the ledger's FEFO ordering; the load-out screen uses it when
-  someone asks for "300 electrodes" instead of naming lots.
-  """
-  def suggest_picks(product_id, quantity, location_id) do
-    Inventory.suggest_fefo_picks(product_id, quantity, location_id: location_id, box_id: nil)
-  end
-
-  @doc """
   Sends boxes and loose stock from one location to another.
 
   Boxes change address and carry their contents. Only boxes travel: stock that is
@@ -194,21 +184,6 @@ defmodule EstoqueOS.Outbound do
     |> Enum.map(&decorate_shipment/1)
   end
 
-  @doc "One shipment, with everything the transit report and the paperwork need."
-  def get_shipment!(id) do
-    Shipment
-    |> Repo.get!(id)
-    |> Repo.preload([
-      :carrier,
-      :from_location,
-      :to_location,
-      :mission,
-      :received_by,
-      sent_transaction: [entries: [lot: :product]]
-    ])
-    |> decorate_shipment()
-  end
-
   defp maybe_carrier(query, nil), do: query
   defp maybe_carrier(query, id), do: where(query, [s], s.carrier_id == ^id)
 
@@ -273,17 +248,6 @@ defmodule EstoqueOS.Outbound do
       {:error, changeset} -> {:error, changeset}
     end
   end
-
-  defp blank_to_nil(nil), do: nil
-
-  defp blank_to_nil(value) when is_binary(value) do
-    case String.trim(value) do
-      "" -> nil
-      trimmed -> trimmed
-    end
-  end
-
-  defp blank_to_nil(value), do: value
 
   defp box_entries([], _source_id, _destination_id), do: []
 

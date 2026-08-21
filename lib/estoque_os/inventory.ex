@@ -188,9 +188,6 @@ defmodule EstoqueOS.Inventory do
 
   defp to_date(_value), do: nil
 
-  defp blank_to_nil(""), do: nil
-  defp blank_to_nil(value), do: value
-
   @doc """
   A manual issue that went to a donation, loaded for its certificate.
 

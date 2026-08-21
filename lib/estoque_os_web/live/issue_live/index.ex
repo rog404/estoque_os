@@ -9,11 +9,10 @@ defmodule EstoqueOSWeb.IssueLive.Index do
 
   use EstoqueOSWeb, :live_view
 
-  import EstoqueOS.Coercion, only: [to_decimal: 1, to_id: 1]
+  import EstoqueOS.Coercion, only: [to_decimal: 1, to_id: 1, blank_to_nil: 1]
 
   alias EstoqueOS.Accounts.Scope
   alias EstoqueOS.{Catalog, Inventory, Outbound}
-  alias EstoqueOS.Catalog.Product
   alias EstoqueOS.Inventory.Locations
   alias EstoqueOS.Inventory.Transaction
 
@@ -84,14 +83,7 @@ defmodule EstoqueOSWeb.IssueLive.Index do
   # it down, so the narrowing is a `where` in a query rather than a template
   # that renders fewer rows.
   defp assign_segment(socket, params) do
-    scope_segment = Scope.segment(socket.assigns.current_scope)
-    asked = params["segment"]
-
-    segment =
-      case scope_segment do
-        nil -> if asked in Product.segments(), do: asked
-        forced -> forced
-      end
+    segment = Scope.segment(socket.assigns.current_scope, params["segment"])
 
     socket |> assign(:segment, segment) |> load_here()
   end
@@ -567,10 +559,6 @@ defmodule EstoqueOSWeb.IssueLive.Index do
     </Layouts.app>
     """
   end
-
-  defp blank_to_nil(nil), do: nil
-  defp blank_to_nil(""), do: nil
-  defp blank_to_nil(value), do: value
 
   defp match_label(:gtin), do: gettext("GTIN")
   defp match_label(:supplier_code), do: gettext("supplier code")

@@ -21,7 +21,7 @@ defmodule EstoqueOSWeb.InvoiceLive.Show do
     do:
       ~w(search edit cancel_edit pick choose_new unpick preview_factor open_matches close_matches)
 
-  import EstoqueOS.Coercion, only: [to_decimal: 1]
+  import EstoqueOS.Coercion, only: [to_decimal: 1, blank_to_nil: 1]
 
   alias EstoqueOS.Accounts.Scope
   alias EstoqueOS.{Catalog, Invoices, Receiving}
@@ -920,14 +920,5 @@ defmodule EstoqueOSWeb.InvoiceLive.Show do
     }
     |> Enum.reject(fn {_key, value} -> is_nil(value) end)
     |> Map.new()
-  end
-
-  defp blank_to_nil(nil), do: nil
-
-  defp blank_to_nil(value) do
-    case String.trim(value) do
-      "" -> nil
-      trimmed -> trimmed
-    end
   end
 end
