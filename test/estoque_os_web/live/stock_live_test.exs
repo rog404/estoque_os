@@ -141,10 +141,10 @@ defmodule EstoqueOSWeb.StockLiveTest do
         ["Produto inexistente", "X", "Estoque Principal", 5]
       ])
 
-    {:ok, view, _html} = live(conn, ~p"/stock")
+    {:ok, view, _html} = live(conn, ~p"/reports/data")
 
     view
-    |> file_input("#import-form", :sheet, [
+    |> file_input("#spreadsheet-import-form", :sheet, [
       %{
         name: "contagem.xlsx",
         content: binary,
@@ -153,7 +153,7 @@ defmodule EstoqueOSWeb.StockLiveTest do
     ])
     |> render_upload("contagem.xlsx")
 
-    html = view |> element("#import-form") |> render_submit()
+    html = view |> element("#spreadsheet-import-form") |> render_submit()
 
     assert html =~ "Nada foi importado"
     assert html =~ "não está no catálogo"
@@ -167,10 +167,10 @@ defmodule EstoqueOSWeb.StockLiveTest do
         ["Eletrodo ECG adulto", "114391U02", "Estoque Principal", 287]
       ])
 
-    {:ok, view, _html} = live(conn, ~p"/stock")
+    {:ok, view, _html} = live(conn, ~p"/reports/data")
 
     view
-    |> file_input("#import-form", :sheet, [
+    |> file_input("#spreadsheet-import-form", :sheet, [
       %{
         name: "contagem.xlsx",
         content: binary,
@@ -179,7 +179,7 @@ defmodule EstoqueOSWeb.StockLiveTest do
     ])
     |> render_upload("contagem.xlsx")
 
-    html = view |> element("#import-form") |> render_submit()
+    html = view |> element("#spreadsheet-import-form") |> render_submit()
 
     assert html =~ "1 posição(ões) ajustada(s)"
     assert Decimal.equal?(Inventory.balance(lot_id: lot.id), Decimal.new(287))

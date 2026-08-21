@@ -360,14 +360,6 @@ defmodule EstoqueOSWeb.Layouts do
             path: ~p"/entry",
             icon: "hero-inbox-arrow-down",
             roles: ~w(admin manager marketing logistics)
-          },
-          # Not the logistics partner's: a spreadsheet import writes counts for
-          # the whole warehouse at once, without a box in anyone's hands.
-          %{
-            label: gettext("Import data"),
-            path: ~p"/stock/spreadsheet",
-            icon: "hero-table-cells",
-            roles: ~w(admin manager)
           }
         ]
       },
@@ -459,6 +451,17 @@ defmodule EstoqueOSWeb.Layouts do
           # The marketing stock's own report, and it lives here rather than in a
           # menu of its own: a sale is a movement like any other, and this is
           # where movements are read.
+          # Not an entry and not the logistics partner's: taking the whole stock
+          # out to a sheet and bringing a count back in is a reporting act, done
+          # sitting down, with no box in anyone's hands. It lived under Entradas
+          # and in a dropdown on the stock screen, which put "importar dados" one
+          # click away from a list anybody may read.
+          %{
+            label: gettext("Data"),
+            path: ~p"/reports/data",
+            icon: "hero-table-cells",
+            roles: ~w(admin manager)
+          },
           %{
             label: gettext("Sales"),
             path: ~p"/reports/sales",
@@ -599,7 +602,7 @@ defmodule EstoqueOSWeb.Layouts do
 
   # A group lights up for anything beneath it, so "/boxes/42" keeps Estoque
   # marked. It asks `matching_group/1` rather than testing its own items,
-  # because "/stock/spreadsheet" sits under Entradas while "/stock" sits under
+  # because "/reports/data" sits under Relatórios while "/stock" sits under
   # Estoque — testing item by item would light both.
   defp group_active?(nil, _group, _groups), do: false
 

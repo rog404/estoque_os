@@ -148,7 +148,7 @@ defmodule EstoqueOSWeb.Router do
         {EstoqueOSWeb.UserAuth, :guard_writes},
         {EstoqueOSWeb.UserAuth, :require_password_not_pending}
       ] do
-      live "/stock/spreadsheet", StockLive.Spreadsheet, :new
+      live "/reports/data", StockLive.Spreadsheet, :new
     end
 
     # Screens whose whole subject is money. An invoice is a document of prices,

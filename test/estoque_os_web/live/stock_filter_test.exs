@@ -69,10 +69,19 @@ defmodule EstoqueOSWeb.StockFilterTest do
   # value the browser never produces is a test that can pass while the screen is
   # broken — which is exactly what happened here: the checkboxes send "true" and
   # the view was reading "on".
+  # Two forms now, and they behave differently on purpose: the search answers as
+  # you type, the panel waits for "Aplicar". A test that drove both through one
+  # form would not notice if that stopped being true.
   defp filter(view, params) do
-    defaults = %{"search" => "", "location_id" => ""}
+    {search, panel} = Map.pop(params, "search")
 
-    view |> element("#filter-form") |> render_change(Map.merge(defaults, params))
+    if search, do: view |> element("#search-form") |> render_change(%{"search" => search})
+
+    if panel == %{} do
+      render(view)
+    else
+      view |> element("#filter-form") |> render_submit(panel)
+    end
   end
 
   # The value the rendered checkbox would actually send, read off the page
@@ -118,7 +127,7 @@ defmodule EstoqueOSWeb.StockFilterTest do
   test "filters by location", %{conn: conn, mission: mission} do
     {:ok, view, _html} = live(conn, ~p"/stock")
 
-    html = filter(view, %{"location_id" => "#{mission.id}"})
+    html = filter(view, %{"location_id" => ["#{mission.id}"]})
 
     assert html =~ "Compressa de gaze"
     refute html =~ "Eletrodo ECG adulto"
@@ -169,6 +178,46 @@ defmodule EstoqueOSWeb.StockFilterTest do
 
     assert cleared =~ "Eletrodo ECG adulto"
     assert cleared =~ "Compressa de gaze"
+  end
+
+  test "filters by several locations at once", %{
+    conn: conn,
+    warehouse: warehouse,
+    mission: mission
+  } do
+    {:ok, view, _html} = live(conn, ~p"/stock")
+
+    # One place at a time was two searches and a subtraction done in somebody's
+    # head, while the goods were on a truck between the two.
+    html = filter(view, %{"location_id" => ["#{warehouse.id}", "#{mission.id}"]})
+
+    assert html =~ "Eletrodo ECG adulto"
+    assert html =~ "Compressa de gaze"
+
+    one = filter(view, %{"location_id" => ["#{mission.id}"]})
+
+    assert one =~ "Compressa de gaze"
+    refute one =~ "Eletrodo ECG adulto"
+  end
+
+  test "the panel waits for Aplicar, and the search does not", %{conn: conn, mission: mission} do
+    {:ok, view, html} = live(conn, ~p"/stock")
+
+    # The panel carries no `phx-change`, and that absence is the whole
+    # guarantee: picking three filters used to be three reloads, two of them
+    # showing something nobody had asked for yet. LiveViewTest refuses to fire a
+    # change on a form without one, so it is asserted directly.
+    assert [filter_form] = Regex.run(~r{<form[^>]*id="filter-form"[^>]*>}, html)
+    refute filter_form =~ "phx-change"
+    assert filter_form =~ ~s(phx-submit="filter")
+
+    assert [search_form] = Regex.run(~r{<form[^>]*id="search-form"[^>]*>}, html)
+    assert search_form =~ ~s(phx-change="search")
+
+    applied =
+      view |> element("#filter-form") |> render_submit(%{"location_id" => ["#{mission.id}"]})
+
+    refute applied =~ "Eletrodo ECG adulto"
   end
 
   test "says so when nothing matches, without pretending stock is empty", %{conn: conn} do

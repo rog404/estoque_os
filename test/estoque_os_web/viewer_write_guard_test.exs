@@ -159,7 +159,9 @@ defmodule EstoqueOSWeb.ViewerWriteGuardTest do
     # Adding a `handle_event` without classifying it fails this test, which is the
     # point: the hole was one forgotten handler, not a wrong decision.
     @write_events %{
-      "stock_live/index" => ~w(validate import),
+      # The spreadsheet left this screen for `/reports/data`; what remains here
+      # reports, and `search` is a read like the rest of them.
+      "stock_live/index" => ~w(),
       "box_live/index" => ~w(create move),
       "box_live/show" => ~w(move verify rebox confirm_new_box cancel_new_box),
       "location_live/index" => ~w(create edit cancel_rename rename deactivate),

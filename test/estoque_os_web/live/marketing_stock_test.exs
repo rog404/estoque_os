@@ -103,7 +103,7 @@ defmodule EstoqueOSWeb.MarketingStockTest do
       filtered =
         view
         |> element("#filter-form")
-        |> render_change(%{"search" => "", "location_id" => "", "segment" => "medical"})
+        |> render_submit(%{"segment" => "medical"})
 
       refute text(filtered) =~ gauze.name
     end
@@ -148,7 +148,7 @@ defmodule EstoqueOSWeb.MarketingStockTest do
     end
 
     test "cannot open the load-out or a count", %{conn: conn} do
-      for path <- ~w(/conferences /audit /returns /load-out /stock/spreadsheet) do
+      for path <- ~w(/conferences /audit /returns /load-out /reports/data) do
         assert {:error, {:redirect, %{to: _}}} = live(conn, path),
                "#{path} opened for the marketing role"
       end
@@ -294,7 +294,7 @@ defmodule EstoqueOSWeb.MarketingStockTest do
       marketing =
         view
         |> element("#filter-form")
-        |> render_change(%{"search" => "", "location_id" => "", "segment" => "marketing"})
+        |> render_submit(%{"segment" => "marketing"})
 
       assert marketing =~ shirt.name
       refute text(marketing) =~ gauze.name
@@ -302,7 +302,7 @@ defmodule EstoqueOSWeb.MarketingStockTest do
       surgical =
         view
         |> element("#filter-form")
-        |> render_change(%{"search" => "", "location_id" => "", "segment" => "medical"})
+        |> render_submit(%{"segment" => "medical"})
 
       assert surgical =~ gauze.name
       refute text(surgical) =~ shirt.name

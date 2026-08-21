@@ -45,16 +45,15 @@ defmodule EstoqueOSWeb.AuthorizationTest do
     # The stock screen reports to everyone, so its own route cannot be the gate.
     # It carried a spreadsheet import that posts adjustments, reachable by
     # anyone who could read the page.
-    test "is not offered the spreadsheet on the stock screen", %{conn: conn} do
+    # The spreadsheet left the stock screen: it lives under Relatórios now, on
+    # a page of its own, behind the roles that plan. The stock list is a list.
+    test "is not offered the spreadsheet anywhere", %{conn: conn} do
       {:ok, _view, html} = live(conn, ~p"/stock")
 
       refute html =~ "import-form"
-    end
+      refute html =~ ~s(href="/reports/data")
 
-    test "may not import a count even by sending the event straight up", %{conn: conn} do
-      {:ok, view, _html} = live(conn, ~p"/stock")
-
-      assert render_hook(view, "import", %{}) =~ "permissão"
+      assert {:error, {:redirect, %{to: "/"}}} = live(conn, ~p"/reports/data")
     end
   end
 
@@ -75,10 +74,15 @@ defmodule EstoqueOSWeb.AuthorizationTest do
 
     # Pairs with the viewer's `refute`: without this, renaming the form would
     # make that test pass while proving nothing.
-    test "is offered the spreadsheet on the stock screen", %{conn: conn} do
+    test "reaches the spreadsheet under Relatórios", %{conn: conn} do
       {:ok, _view, html} = live(conn, ~p"/stock")
 
-      assert html =~ "import-form"
+      # Not on the stock screen itself — one home, and it is a reporting one.
+      refute html =~ "import-form"
+      assert html =~ ~s(href="/reports/data")
+
+      {:ok, _view, data} = live(conn, ~p"/reports/data")
+      assert data =~ "import-form" or data =~ "spreadsheet-import-form"
     end
   end
 
