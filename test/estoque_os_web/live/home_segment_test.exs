@@ -10,6 +10,7 @@ defmodule EstoqueOSWeb.HomeSegmentTest do
 
   use EstoqueOSWeb.ConnCase, async: true
 
+  import Ecto.Query, only: [from: 2]
   import Phoenix.LiveViewTest
   import EstoqueOS.CatalogFixtures
   import EstoqueOS.InventoryFixtures
@@ -86,6 +87,19 @@ defmodule EstoqueOSWeb.HomeSegmentTest do
       refute text(switched) =~ "Compressa de gaze"
     end
 
+    # The pace panels belong to the stock that is sold. On the surgical
+    # overview they would be three more things to scroll past on a screen meant
+    # to be read standing up, answering a question nobody plans a mission by.
+    test "only the marketing tab reads a selling pace", %{conn: conn} do
+      {:ok, _view, medical} = live(conn, ~p"/?segment=medical")
+      {:ok, _view, marketing} = live(conn, ~p"/?segment=marketing")
+
+      assert text(marketing) =~ "Mais vendidos"
+      assert text(marketing) =~ "Hora de repor"
+      refute text(medical) =~ "Mais vendidos"
+      assert text(medical) =~ "Abaixo do mínimo da missão"
+    end
+
     # Boxes and disputed counts belong to no segment, so the marketing tab
     # hides those panels rather than showing them empty — the same rule the
     # marketing role has always had.
@@ -95,6 +109,83 @@ defmodule EstoqueOSWeb.HomeSegmentTest do
 
       assert text(medical) =~ "Caixas para recontar"
       refute text(marketing) =~ "Caixas para recontar"
+    end
+  end
+
+  describe "the marketing overview" do
+    setup %{conn: conn}, do: register_and_log_in_as(%{conn: conn}, "marketing")
+
+    setup %{warehouse: warehouse, shirt: shirt} do
+      lot = lot_fixture(%{product_id: shirt.id})
+
+      {:ok, _} =
+        Inventory.post_transaction(%{
+          type: "purchase_in",
+          user_id: actor_id(),
+          entries: [
+            %{lot_id: lot.id, location_id: warehouse.id, quantity: Decimal.new(100)}
+          ]
+        })
+
+      {:ok, _} =
+        Inventory.post_transaction(%{
+          type: "manual_out",
+          destination: "sale",
+          user_id: actor_id(),
+          entries: [
+            %{
+              lot_id: lot.id,
+              location_id: warehouse.id,
+              quantity: Decimal.new(-30),
+              sale_unit_price: Decimal.new("35.00")
+            }
+          ]
+        })
+
+      :ok
+    end
+
+    test "speaks about selling rather than about missions", %{conn: conn} do
+      {:ok, _view, html} = live(conn, ~p"/")
+
+      page = text(html)
+
+      assert page =~ "Hora de repor"
+      refute page =~ "Abaixo do mínimo da missão"
+      assert page =~ "Produtos à venda"
+      refute page =~ "Catálogo"
+    end
+
+    # A shirt has no expiry date, so "nada vencendo" is not news on this tab —
+    # it is an empty panel sitting above the two panels this person opens the
+    # page for. A printed item that does carry a date still shows up.
+    test "the expiry panel only shows up when something is expiring", %{
+      conn: conn,
+      shirt: shirt
+    } do
+      {:ok, _view, close} = live(conn, ~p"/")
+
+      assert text(close) =~ "Vencendo em breve"
+
+      EstoqueOS.Repo.update_all(
+        from(l in EstoqueOS.Inventory.Lot, where: l.product_id == ^shirt.id),
+        set: [expires_on: nil]
+      )
+
+      {:ok, _view, far} = live(conn, ~p"/")
+
+      refute text(far) =~ "Vencendo em breve"
+    end
+
+    test "says what left, how long it lasts and what did not move", %{conn: conn} do
+      {:ok, _view, html} = live(conn, ~p"/")
+
+      page = text(html)
+
+      assert page =~ "Mais vendidos"
+      assert page =~ "Acaba primeiro"
+      assert page =~ "Parado"
+      assert page =~ "Vendido em 90 dias"
     end
   end
 

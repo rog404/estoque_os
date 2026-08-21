@@ -24,6 +24,11 @@ defmodule EstoqueOSWeb.HomeLive.Index do
   @preview 5
   @shortage_limit 12
 
+  # The window the marketing panels read their pace over. Fixed, and not a
+  # control: this screen answers "is anything wrong", and the report behind it
+  # — Sales — is where a period is chosen and argued with.
+  @sales_window 90
+
   @impl true
   def mount(_params, _session, socket) do
     {:ok,
@@ -57,8 +62,26 @@ defmodule EstoqueOSWeb.HomeLive.Index do
      # No screen goes deeper into shortages, so this one carries its own weight
      # rather than teasing five rows and stopping.
      |> assign(:below_minimum, Reports.below_minimum(limit: @shortage_limit, segment: segment))
-     |> assign_surgical_panels(segment)}
+     |> assign_surgical_panels(segment)
+     |> assign_sales_panels(segment)}
   end
+
+  # Only the stock that is sold has a pace to read. Asking the same question of
+  # the surgical stock would answer it — a mission consumes and the ledger
+  # records it — but "how many days of gauze are left at this rate" is not what
+  # anyone plans a mission by, and the panels would be three more things to
+  # scroll past on the screen that is supposed to be short.
+  defp assign_sales_panels(socket, "marketing") do
+    to = Date.utc_today()
+
+    assign(
+      socket,
+      :pace,
+      Reports.sales_pace(Date.add(to, -@sales_window), to, segment: "marketing", limit: @preview)
+    )
+  end
+
+  defp assign_sales_panels(socket, _segment), do: assign(socket, :pace, nil)
 
   # Boxes, disputed counts and kit readiness are the surgical operation asking
   # itself questions. A box is shared by both stocks and a count is about a box,
@@ -100,7 +123,7 @@ defmodule EstoqueOSWeb.HomeLive.Index do
     <Layouts.app flash={@flash} current_scope={@current_scope} current_path={assigns[:current_path]}>
       <.header>
         {gettext("Overview")}
-        <:subtitle>{gettext("What needs attention before the next mission.")}</:subtitle>
+        <:subtitle>{subtitle(@segment)}</:subtitle>
       </.header>
 
       <!-- The two stocks share a warehouse and almost nothing else: what is
@@ -122,7 +145,7 @@ defmodule EstoqueOSWeb.HomeLive.Index do
 
       <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <.stat
-          label={gettext("Catalog")}
+          label={catalog_label(@segment)}
           value={@summary.products}
           hint={gettext("active products")}
         />
@@ -133,7 +156,7 @@ defmodule EstoqueOSWeb.HomeLive.Index do
         />
         <.stat
           :if={@sees_money?}
-          label={gettext("Known value")}
+          label={value_label(@segment)}
           value={money(@summary.known_value)}
           money
           hint={gettext("donations without a value are not counted")}
@@ -151,6 +174,25 @@ defmodule EstoqueOSWeb.HomeLive.Index do
           hint={gettext("waiting for confirmation")}
           href={~p"/invoices"}
           tone={if @summary.invoices_pending > 0, do: :warn, else: :neutral}
+        />
+
+        <!-- What the shelf did, not what it holds. Only the stock that is sold
+             has this pair, and it is the pair the person who orders the next
+             print run reads first. -->
+        <.stat
+          :if={@pace}
+          label={gettext("Sold in %{days} days", days: sales_window())}
+          value={quantity(@pace.totals.quantity)}
+          hint={gettext("units out the door")}
+          href={~p"/reports/sales"}
+        />
+        <.stat
+          :if={@pace && @sees_money?}
+          label={gettext("Revenue in %{days} days", days: sales_window())}
+          value={money(@pace.totals.revenue)}
+          money
+          hint={gettext("what the sales brought in")}
+          href={~p"/reports/sales"}
         />
       </div>
 
@@ -229,7 +271,12 @@ defmodule EstoqueOSWeb.HomeLive.Index do
            stretched to match the tall one beside it, which is where the dead
            space under these lists came from. -->
       <div class="grid lg:grid-cols-2 gap-6 items-start">
-        <.panel title={gettext("Expiring soon")}>
+        <!-- Hidden on the marketing tab while it is empty, and only there: a
+             shirt has no expiry date, so "nada vencendo" is not news — it is an
+             empty panel in the best corner of the screen, above the two panels
+             that person actually opens this page for. A printed item that does
+             carry a date still shows up here the moment it is close. -->
+        <.panel :if={@segment != "marketing" or @expiring != []} title={gettext("Expiring soon")}>
           <p :if={@expiring == []} class="text-sm opacity-70">
             {gettext("Nothing expiring in the alert window.")}
           </p>
@@ -293,7 +340,11 @@ defmodule EstoqueOSWeb.HomeLive.Index do
           </ul>
         </.panel>
 
-        <.panel title={gettext("Below the mission minimum")}>
+        <!-- The same list under two names, because it is the same fact read by
+             two people: the coordinator is short for a mission, and marketing
+             has to have more made. "Missão" in the title of a panel about
+             shirts was the word that gave it away. -->
+        <.panel title={shortage_title(@segment)}>
           <p :if={@below_minimum == []} class="text-sm opacity-70">
             {gettext("Every product with a defined minimum is covered.")}
           </p>
@@ -315,6 +366,103 @@ defmodule EstoqueOSWeb.HomeLive.Index do
                 <p class="text-xs text-warning">
                   {gettext("%{count} missing", count: quantity(row.missing))}
                 </p>
+              </div>
+            </li>
+          </ul>
+        </.panel>
+
+        <!-- Which one leaves most, in units rather than in money: each shirt
+             size is its own product, so this list is also the answer to which
+             size to have made more of. -->
+        <.panel :if={@pace} title={gettext("Best sellers")}>
+          <p :if={@pace.best_sellers == []} class="text-sm opacity-70">
+            {gettext("Nothing was sold in the last %{days} days.", days: sales_window())}
+          </p>
+
+          <ul :if={@pace.best_sellers != []} class="divide-y divide-base-200">
+            <li
+              :for={row <- @pace.best_sellers}
+              class="py-2 flex items-baseline justify-between gap-3"
+            >
+              <div class="min-w-0">
+                <p class="truncate">
+                  <.link navigate={~p"/products/#{row.product_id}"} class="link link-hover">
+                    {row.product}
+                  </.link>
+                </p>
+              </div>
+              <div class="text-right shrink-0">
+                <p class="tabular-nums">{quantity(row.quantity)}</p>
+                <p :if={@sees_money?} class="text-xs opacity-60">{money(row.revenue)}</p>
+              </div>
+            </li>
+          </ul>
+
+          <.more
+            rows={@pace.best_sellers}
+            href={~p"/reports/sales"}
+            label={gettext("See the whole sales report")}
+          />
+        </.panel>
+
+        <!-- The number that says *when*, which "abaixo do mínimo" only says
+             after the fact. Days left at the pace of the window, so an order
+             can be placed while there is still something on the shelf. -->
+        <.panel :if={@pace} title={gettext("Runs out first")}>
+          <p :if={@pace.cover == []} class="text-sm opacity-70">
+            {gettext("Nothing on the shelf has sold in the last %{days} days.",
+              days: sales_window()
+            )}
+          </p>
+
+          <ul :if={@pace.cover != []} class="divide-y divide-base-200">
+            <li :for={row <- @pace.cover} class="py-2 flex items-baseline justify-between gap-3">
+              <div class="min-w-0">
+                <p class="truncate">
+                  <.link navigate={~p"/products/#{row.product_id}"} class="link link-hover">
+                    {row.product}
+                  </.link>
+                </p>
+                <p class="text-xs opacity-60">
+                  {gettext("%{count} sold in %{days} days",
+                    count: quantity(row.sold),
+                    days: sales_window()
+                  )}
+                </p>
+              </div>
+              <div class="text-right shrink-0">
+                <p class={["text-lg font-semibold tabular-nums", cover_class(row.days)]}>
+                  {row.days}
+                </p>
+                <p class="text-xs opacity-60">{gettext("day(s) left")}</p>
+              </div>
+            </li>
+          </ul>
+        </.panel>
+
+        <!-- What not to have printed again. Only what is actually on the shelf:
+             something that sold out is not sitting still, and listing it here
+             would read as a warning against the thing that works. -->
+        <.panel :if={@pace} title={gettext("Not moving")}>
+          <p :if={@pace.idle == []} class="text-sm opacity-70">
+            {gettext("Everything on the shelf sold at least once.")}
+          </p>
+
+          <ul :if={@pace.idle != []} class="divide-y divide-base-200">
+            <li :for={row <- @pace.idle} class="py-2 flex items-baseline justify-between gap-3">
+              <div class="min-w-0">
+                <p class="truncate">
+                  <.link navigate={~p"/products/#{row.product_id}"} class="link link-hover">
+                    {row.product}
+                  </.link>
+                </p>
+                <p class="text-xs opacity-60">
+                  {gettext("no sale in %{days} days", days: sales_window())}
+                </p>
+              </div>
+              <div class="text-right shrink-0">
+                <p class="tabular-nums">{quantity(row.quantity)}</p>
+                <p class="text-xs opacity-60">{gettext("on the shelf")}</p>
               </div>
             </li>
           </ul>
@@ -415,6 +563,29 @@ defmodule EstoqueOSWeb.HomeLive.Index do
     </div>
     """
   end
+
+  def sales_window, do: @sales_window
+
+  # The words each stock uses for the same tile. "Catálogo" is what the
+  # surgical operation calls its list of supplies; marketing calls the same
+  # thing what it is for, which is being sold.
+  defp catalog_label("marketing"), do: gettext("Products on sale")
+  defp catalog_label(_segment), do: gettext("Catalog")
+
+  defp value_label("marketing"), do: gettext("Value on the shelf")
+  defp value_label(_segment), do: gettext("Known value")
+
+  defp shortage_title("marketing"), do: gettext("Time to restock")
+  defp shortage_title(_segment), do: gettext("Below the mission minimum")
+
+  defp subtitle("marketing"), do: gettext("What the marketing stock needs today.")
+  defp subtitle(_segment), do: gettext("What needs attention before the next mission.")
+
+  # A week is the point where ordering still works: whatever is made has to be
+  # printed, delivered and put away before the shelf is empty.
+  defp cover_class(days) when days <= 7, do: "text-error"
+  defp cover_class(days) when days <= 21, do: "text-warning"
+  defp cover_class(_days), do: ""
 
   # Both stocks first, because the operation is one operation and the person
   # with the tabs is the one who has to see it whole before splitting it.
