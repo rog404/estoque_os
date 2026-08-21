@@ -98,6 +98,7 @@ defmodule EstoqueOSWeb.Router do
         {EstoqueOSWeb.UserAuth, :require_authenticated},
         {EstoqueOSWeb.UserAuth, {:require_role, ~w(admin manager logistics)}},
         {EstoqueOSWeb.UserAuth, :current_path},
+        {EstoqueOSWeb.UserAuth, :guard_writes},
         {EstoqueOSWeb.UserAuth, :require_password_not_pending}
       ] do
       live "/conferences", ConferenceLive.Index, :index
@@ -116,6 +117,7 @@ defmodule EstoqueOSWeb.Router do
         {EstoqueOSWeb.UserAuth, :require_authenticated},
         {EstoqueOSWeb.UserAuth, {:require_role, ~w(admin manager logistics marketing)}},
         {EstoqueOSWeb.UserAuth, :current_path},
+        {EstoqueOSWeb.UserAuth, :guard_writes},
         {EstoqueOSWeb.UserAuth, :require_password_not_pending}
       ] do
       live "/entry", EntryLive.New, :new
@@ -129,6 +131,7 @@ defmodule EstoqueOSWeb.Router do
         {EstoqueOSWeb.UserAuth, :require_authenticated},
         {EstoqueOSWeb.UserAuth, {:require_role, ~w(admin manager marketing)}},
         {EstoqueOSWeb.UserAuth, :current_path},
+        {EstoqueOSWeb.UserAuth, :guard_writes},
         {EstoqueOSWeb.UserAuth, :require_password_not_pending}
       ] do
       live "/issue", IssueLive.Index, :index
@@ -142,6 +145,7 @@ defmodule EstoqueOSWeb.Router do
         {EstoqueOSWeb.UserAuth, :require_authenticated},
         {EstoqueOSWeb.UserAuth, {:require_role, ~w(admin manager)}},
         {EstoqueOSWeb.UserAuth, :current_path},
+        {EstoqueOSWeb.UserAuth, :guard_writes},
         {EstoqueOSWeb.UserAuth, :require_password_not_pending}
       ] do
       live "/stock/spreadsheet", StockLive.Spreadsheet, :new
@@ -155,6 +159,7 @@ defmodule EstoqueOSWeb.Router do
         {EstoqueOSWeb.UserAuth, :require_authenticated},
         {EstoqueOSWeb.UserAuth, {:require_role, ~w(admin manager)}},
         {EstoqueOSWeb.UserAuth, :current_path},
+        {EstoqueOSWeb.UserAuth, :guard_writes},
         {EstoqueOSWeb.UserAuth, :require_password_not_pending}
       ] do
       live "/invoices/import", InvoiceLive.Import, :new

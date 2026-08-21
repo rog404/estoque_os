@@ -19,6 +19,15 @@ defmodule EstoqueOSWeb.EntryLive.New do
   alias EstoqueOS.Catalog.Product
   alias EstoqueOS.Inventory.Locations
 
+  @doc """
+  Events a viewer may send. Everything else on this screen is refused.
+
+  Finding a product, picking it, saying where it came from: none of that
+  writes. `enter` posts the entry, `create_product` adds to the catalog and
+  `confirm_new_box` creates a box.
+  """
+  def viewer_events, do: ~w(search pick origin clear cancel_new_box)
+
   @impl true
   def mount(_params, _session, socket) do
     locations = Locations.list_locations()

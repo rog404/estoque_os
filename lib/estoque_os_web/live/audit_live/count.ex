@@ -38,6 +38,16 @@ defmodule EstoqueOSWeb.AuditLive.Count do
 
   alias EstoqueOS.Inventory.Locations
 
+  @doc """
+  Events a viewer may send. Everything else on this screen is refused.
+
+  Counting is all draft until `commit`, which is the one event that posts
+  adjustments. Revealing the expected figure, checking a count and starting
+  over move nothing — they are how somebody standing in another role's shoes
+  can see what this screen actually does.
+  """
+  def viewer_events, do: ~w(reveal check recount start_over)
+
   @impl true
   def mount(%{"id" => id}, _session, socket) do
     box = Locations.get_box!(id)

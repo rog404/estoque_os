@@ -22,6 +22,15 @@ defmodule EstoqueOSWeb.IssueLive.Index do
   # on one screen and its raw key on the other.
   import EstoqueOSWeb.Movement, only: [destination_label: 1]
 
+  @doc """
+  Events a viewer may send. Everything else on this screen is refused.
+
+  The basket lives in the socket until `issue` posts it, so filling it and
+  emptying it move nothing. Searching, scanning and previewing the FEFO pick
+  are reads.
+  """
+  def viewer_events, do: ~w(search scan pick destination preview add drop clear_product)
+
   @impl true
   def mount(_params, _session, socket) do
     locations = Locations.list_locations()

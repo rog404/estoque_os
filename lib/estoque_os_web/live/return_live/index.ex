@@ -16,6 +16,14 @@ defmodule EstoqueOSWeb.ReturnLive.Index do
 
   alias EstoqueOS.Inventory.Locations
 
+  @doc """
+  Events a viewer may send. Everything else on this screen is refused.
+
+  Choosing the route reloads the list of what is still out there. `receive`
+  is the movement, and `confirm_new_box` creates a box.
+  """
+  def viewer_events, do: ~w(route cancel_new_box)
+
   @impl true
   def mount(_params, _session, socket) do
     locations = Locations.list_locations()

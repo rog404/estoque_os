@@ -9,6 +9,14 @@ defmodule EstoqueOSWeb.InvoiceLive.Import do
 
   @max_upload_size 8_000_000
 
+  @doc """
+  Events a viewer may send. Everything else on this screen is refused.
+
+  Validating an upload parses a file and writes nothing; `import` posts the
+  invoice and its stock.
+  """
+  def viewer_events, do: ~w(validate cancel)
+
   @impl true
   def mount(_params, _session, socket) do
     {:ok,

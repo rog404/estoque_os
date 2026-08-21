@@ -18,6 +18,7 @@ defmodule EstoqueOSWeb.ViewAsTest do
   import EstoqueOS.InventoryFixtures
 
   alias EstoqueOS.Inventory
+  alias EstoqueOS.Repo
 
   setup %{conn: conn} do
     warehouse = EstoqueOS.Inventory.Locations.default_location() || location_fixture()
@@ -70,13 +71,52 @@ defmodule EstoqueOSWeb.ViewAsTest do
       assert html =~ "Somente leitura"
     end
 
-    test "cannot reach a writing screen while wearing somebody else's role", %{conn: conn} do
+    # This used to refuse the *page*, and that was the wrong door to shut.
+    # "Ver como" existed to answer "what does this person see", and the screens
+    # a role actually works in are most of the answer — an admin who borrowed
+    # the logistics role got the overview and then "você não tem permissão" on
+    # everything else, which reads as a broken app rather than as a role.
+    #
+    # So the page opens and the *write* is what is refused, by the same hook
+    # that already refuses one on any read-only screen.
+    test "walks into a writing screen while wearing another role", %{conn: conn} do
       conn = post(conn, ~p"/users/view-as", %{"role" => "logistics"})
 
-      # Logistics may load out. The admin borrowing that role may not: every
-      # transaction records who made it, and this one would name the wrong role.
-      assert {:error, {:redirect, %{to: "/"}}} = live(conn, ~p"/load-out")
-      assert {:error, {:redirect, %{to: "/"}}} = live(conn, ~p"/entry")
+      assert {:ok, _view, html} = live(conn, ~p"/load-out")
+      assert html =~ "Derrubada de carga"
+
+      assert {:ok, _view, html} = live(conn, ~p"/entry")
+      assert html =~ "Entrada manual"
+    end
+
+    test "and cannot record anything from it", %{conn: conn} do
+      conn = post(conn, ~p"/users/view-as", %{"role" => "logistics"})
+      {:ok, view, _html} = live(conn, ~p"/load-out")
+
+      before = Repo.aggregate(EstoqueOS.Inventory.Transaction, :count)
+
+      # Straight at the event, because that is how a write would actually be
+      # attempted: the button is not rendered, and a button nobody rendered has
+      # never been what stops anything.
+      html = render_click(view, "send", %{})
+
+      assert html =~ "não tem permissão"
+      assert Repo.aggregate(EstoqueOS.Inventory.Transaction, :count) == before
+    end
+
+    # Every transaction records who made it, and one made under a borrowed role
+    # would name the wrong role. `operator?/1` is what says no, and it says no
+    # on the screens the role works in exactly as it does on the stock list.
+    test "is refused the write events on each screen it may now open", %{conn: conn} do
+      conn = post(conn, ~p"/users/view-as", %{"role" => "manager"})
+
+      for {path, event} <- [{~p"/entry", "enter"}, {~p"/issue", "issue"}] do
+        {:ok, view, _html} = live(conn, path)
+        before = Repo.aggregate(EstoqueOS.Inventory.Transaction, :count)
+
+        assert render_click(view, event, %{}) =~ "não tem permissão"
+        assert Repo.aggregate(EstoqueOS.Inventory.Transaction, :count) == before
+      end
     end
 
     test "is refused writes on a screen it is allowed to open", %{conn: conn} do
