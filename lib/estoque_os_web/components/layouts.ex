@@ -63,7 +63,12 @@ defmodule EstoqueOSWeb.Layouts do
             <.mark />
             <span class="min-w-0 leading-none">
               <span class="block text-base font-semibold truncate">{gettext("Estoque")}</span>
-              <span class="block text-[0.6875rem] uppercase tracking-[0.08em] opacity-60 truncate">
+              <!-- Hidden on a phone. At 390px the bar carries the mark, the
+                   organisation, the section, a bell with a count, the money eye,
+                   the menu and the account — and the bell's badge was landing on
+                   top of this line. The app's own name identifies it; the
+                   organisation's is not what you need while holding a box. -->
+              <span class="hidden sm:block text-[0.6875rem] uppercase tracking-[0.08em] opacity-60 truncate">
                 {gettext("Operação Sorriso")}
               </span>
             </span>

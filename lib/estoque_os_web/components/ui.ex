@@ -361,12 +361,20 @@ defmodule EstoqueOSWeb.UI do
   end
 
   # Colour is assigned by what the state *means to the operation*, not by how
-  # alarming the word sounds.
+  # alarming the word sounds — and now so is the *register*.
+  #
+  # Two registers, and the choice between them is the design decision, not the
+  # hue. A state that describes the goods (bought, donated, controlled,
+  # presumed, no box, in transit) is background: `is-quiet` paints it as a dot
+  # and a word, so the quantity beside it stays the loudest thing on the row.
+  # A state that means *something is wrong now* (expired, a count that
+  # disagreed twice, stock under a mission's minimum) keeps the fill, because
+  # an alarm that fires on nine rows in ten is not an alarm.
   #
   # Controlled is the one worth explaining: a Portaria 344 substance is not a
   # problem and not a warning — it is a legal class that changes who may touch
-  # the box. It gets solid ink and a lock, so it never reads as "something went
-  # wrong" and never blends into the amber of an expiry date.
+  # the box. Quiet, with ink for a dot rather than a hue, so it never reads as
+  # "something went wrong" and never blends into the amber of an expiry date.
   defp status_spec(:expired),
     do: %{class: "badge-error", icon: nil, label: gettext("expired")}
 
@@ -375,7 +383,7 @@ defmodule EstoqueOSWeb.UI do
 
   defp status_spec(:controlled),
     do: %{
-      class: "badge-neutral",
+      class: "is-quiet dot-neutral",
       icon: nil,
       label: gettext("controlled")
     }
@@ -388,13 +396,13 @@ defmodule EstoqueOSWeb.UI do
   # is enough.
   defp status_spec(:presumed),
     do: %{
-      class: "badge-outline",
+      class: "is-quiet dot-muted",
       icon: nil,
       label: gettext("presumed")
     }
 
   defp status_spec(:counted),
-    do: %{class: "badge-success", icon: nil, label: gettext("counted")}
+    do: %{class: "is-quiet dot-success", icon: nil, label: gettext("counted")}
 
   # A count that was made and not believed, so it is being asked for again. Not
   # an error and not the operator's fault: the first count disagreeing with the
@@ -404,12 +412,12 @@ defmodule EstoqueOSWeb.UI do
     do: %{class: "badge-warning", icon: nil, label: gettext("count again")}
 
   defp status_spec(:under_way),
-    do: %{class: "badge-info", icon: nil, label: gettext("under way")}
+    do: %{class: "is-quiet dot-info", icon: nil, label: gettext("under way")}
 
   # Loose stock is legitimate — it is what has not been put away yet — but it
   # cannot travel, so it is the operator's next job rather than an error.
   defp status_spec(:unboxed),
-    do: %{class: "badge-warning", icon: nil, label: gettext("no box")}
+    do: %{class: "is-quiet dot-warning", icon: nil, label: gettext("no box")}
 
   defp status_spec(:not_linked),
     do: %{
@@ -419,10 +427,10 @@ defmodule EstoqueOSWeb.UI do
     }
 
   defp status_spec(:in_transit),
-    do: %{class: "badge-info", icon: nil, label: gettext("in transit")}
+    do: %{class: "is-quiet dot-info", icon: nil, label: gettext("in transit")}
 
   defp status_spec(:complete),
-    do: %{class: "badge-success", icon: nil, label: gettext("complete")}
+    do: %{class: "is-quiet dot-success", icon: nil, label: gettext("complete")}
 
   defp status_spec(:below_minimum),
     do: %{
@@ -439,20 +447,45 @@ defmodule EstoqueOSWeb.UI do
     }
 
   defp status_spec(:donation),
-    do: %{class: "badge-accent", icon: nil, label: gettext("donation")}
+    do: %{class: "is-quiet dot-accent", icon: nil, label: gettext("donation")}
 
   # Ghost, unlike its opposite. Most of the warehouse was bought, and a badge
   # that is on nine rows in ten has stopped saying anything — what the eye is
   # actually looking for is the donation, which is the row with no price and
   # different paperwork.
   defp status_spec(:bought),
-    do: %{class: "badge-ghost", icon: nil, label: gettext("bought")}
+    do: %{class: "is-quiet dot-muted", icon: nil, label: gettext("bought")}
 
   defp status_spec(:unknown_value),
-    do: %{class: "badge-ghost", icon: nil, label: gettext("value not informed")}
+    do: %{class: "is-quiet dot-muted", icon: nil, label: gettext("value not informed")}
 
   defp status_spec(:pending),
     do: %{class: "badge-warning", icon: nil, label: gettext("pending")}
+
+  @doc """
+  A box code, the way the warehouse says it.
+
+  AN01. PR03. JP04 — written on corrugated cardboard in marker pen, shouted
+  across a room, read off a shelf from three metres away. It is the one
+  identifier this operation says out loud all day, and on screen it was plain
+  body text in the middle of a sentence.
+
+  One object, everywhere a box appears, so the thing you can point at on the
+  shelf looks like one thing on the screen too.
+
+  Loose stock passes `nil` and gets the same slot with the opposite treatment:
+  "sem caixa" is a real and temporary state — goods arrived and nobody has put
+  them away yet — not a missing value, and it is somebody's next job.
+  """
+  attr :code, :string, default: nil
+  attr :class, :any, default: nil
+
+  def box_code(assigns) do
+    ~H"""
+    <span :if={@code} class={["box-code", @class]}>{@code}</span>
+    <span :if={is_nil(@code)} class={["box-code is-none", @class]}>{gettext("no box")}</span>
+    """
+  end
 
   @doc """
   An amount of money, hideable from whoever is standing behind you.
@@ -595,7 +628,13 @@ defmodule EstoqueOSWeb.UI do
 
   def toolbar(assigns) do
     ~H"""
-    <div class={["panel px-3 py-3 flex flex-wrap items-center gap-2", @class]}>
+    <!-- Not a `panel` any more. A search box and two filters were sitting in the
+         same white sheet, with the same border and radius, as the table of real
+         stock underneath — so the page opened with two equal rectangles and
+         nothing said which one to read. The toolbar belongs to the page, not to
+         the data: it sits on the field, and the sheet below it is the only
+         thing with edges. -->
+    <div class={["px-1 py-1 flex flex-wrap items-center gap-2", @class]}>
       {render_slot(@inner_block)}
     </div>
     """

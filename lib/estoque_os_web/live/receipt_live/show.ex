@@ -453,7 +453,7 @@ defmodule EstoqueOSWeb.ReceiptLive.Show do
             </:col>
 
             <:col :let={line} :if={@receipt.status == "completed"} label={gettext("Box")}>
-              {(line.box && line.box.code) || "—"}
+              <.box_code code={line.box && line.box.code} />
             </:col>
 
             <!-- A difference is the expected number said backwards: told a line

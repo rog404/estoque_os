@@ -201,7 +201,7 @@ defmodule EstoqueOSWeb.ReturnLive.Index do
               </span>
             </:col>
             <:col :let={{line, _index}} label={gettext("Left in")}>
-              {line.box_code || "—"}
+              <.box_code code={line.box_code} />
             </:col>
             <!-- Only when a manager asked for it. This column used to be here
                  always, with the number *also* typed into the field beside it —

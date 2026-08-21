@@ -299,7 +299,7 @@ defmodule EstoqueOSWeb.HomeLive.Index do
           <ul :if={@stale_boxes != []} class="divide-y divide-base-200">
             <li :for={box <- @stale_boxes} class="py-2 flex items-baseline justify-between gap-3">
               <div>
-                <p class="font-medium">{box.box}</p>
+                <p><.box_code code={box.box} /></p>
                 <p class="text-xs opacity-60">{box.location}</p>
               </div>
               <div class="text-right">
