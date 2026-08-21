@@ -205,6 +205,86 @@ defmodule EstoqueOS.Inventory.Locations do
   def change_box(%Box{} = box, attrs \\ %{}), do: Box.changeset(box, attrs)
 
   @doc """
+  Stock at a location that is in no box, per lot, soonest expiry first.
+
+  A real and temporary state: goods arrived and nobody has boxed them yet. It is
+  temporary because loose stock cannot travel — nothing identifies it at the
+  other end and nothing brings it back — so a load-out refuses it, and this list
+  is what a person works through to make the load possible.
+  """
+  def loose_stock(location_id) do
+    StockSnapshot
+    |> join(:inner, [s], l in Lot, on: l.id == s.lot_id)
+    |> join(:inner, [s, l], p in Product, on: p.id == l.product_id)
+    |> where([s], s.location_id == ^location_id and is_nil(s.box_id) and s.quantity != 0)
+    |> order_by([s, l, p], asc_nulls_last: l.expires_on, asc: p.name)
+    |> select([s, l, p], %{
+      lot_id: l.id,
+      lot_number: l.lot_number,
+      expires_on: l.expires_on,
+      product_id: p.id,
+      product: p.name,
+      controlled: p.controlled,
+      quantity: s.quantity
+    })
+    |> Repo.all()
+  end
+
+  @doc """
+  Puts loose stock into a box, at the location the box is already at.
+
+  The question this answers — "how do I get a product with no box into one?" —
+  had no answer at all: `rebox/5` needs a box to take the goods *out* of, and
+  loose stock is exactly the stock that has none. So goods that arrived through
+  a manual entry with the box left blank, or through a spreadsheet count, sat
+  where no load-out would carry them and no screen would move them.
+
+  Mechanically it is the same movement as re-boxing and it is one for the same
+  reason: a `transfer` whose two entries share a location and differ only in the
+  box. Nothing leaves the room, so no balance at the location moves — only where
+  inside it the goods sit.
+
+  `last_verified_at` is left alone. Putting things into a box tells us nothing
+  about whether the count in it was right.
+  """
+  def put_in_box(%Box{} = box, lot_id, quantity, opts \\ []) do
+    lot_id = to_id(lot_id)
+    quantity = to_decimal(quantity)
+    available = Inventory.balance(lot_id: lot_id, location_id: box.location_id, box_id: nil)
+
+    cond do
+      is_nil(quantity) or Decimal.compare(quantity, 0) != :gt ->
+        {:error, :invalid_quantity}
+
+      Decimal.compare(quantity, available) == :gt ->
+        {:error, {:insufficient_stock, %{available: available}}}
+
+      true ->
+        Inventory.post_transaction(%{
+          type: "transfer",
+          source_location_id: box.location_id,
+          destination_location_id: box.location_id,
+          user_id: opts[:user_id],
+          notes: opts[:notes] || gettext("loose → %{box}", box: box.code),
+          entries: [
+            %{
+              lot_id: lot_id,
+              box_id: nil,
+              location_id: box.location_id,
+              quantity: Decimal.negate(quantity)
+            },
+            %{
+              lot_id: lot_id,
+              box_id: box.id,
+              location_id: box.location_id,
+              quantity: quantity
+            }
+          ]
+        })
+    end
+  end
+
+  @doc """
   Moves goods from one box into another at the same location.
 
   Re-boxing is an everyday warehouse act — two half-empty boxes become one, a

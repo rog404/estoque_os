@@ -33,6 +33,8 @@ defmodule EstoqueOSWeb.BoxLive.Show do
     # goods moved between locations, which is a different act with a different
     # name.
     |> assign(:siblings, Enum.reject(Locations.list_boxes(box.location_id), &(&1.id == box.id)))
+    # What is on the floor in the same room, waiting for a box.
+    |> assign(:loose, Locations.loose_stock(box.location_id))
   end
 
   @impl true
@@ -163,6 +165,57 @@ defmodule EstoqueOSWeb.BoxLive.Show do
         </.data_table>
       </.panel>
 
+      <!-- The answer to "how do I get a product with no box into one?", which
+           until now was "you cannot". Loose stock is a real and temporary state
+           — goods arrived and nobody has boxed them yet — and it is temporary
+           because a load-out refuses to carry it: nothing identifies it at the
+           other end and nothing brings it back. So this list is work, and it
+           belongs on the screen of the box somebody is holding. -->
+      <.panel
+        :if={@role_may_write? and @loose != []}
+        title={gettext("Loose here, with no box")}
+        note={gettext("It cannot travel until it is in one.")}
+        flush
+      >
+        <.data_table rows={@loose}>
+          <:col :let={row} label={gettext("Product")} emphasis={:identity}>
+            {row.product}
+            <.status :if={row.controlled} kind={:controlled} />
+          </:col>
+          <:col :let={row} label={gettext("Lot")}>{row.lot_number || gettext("unknown")}</:col>
+          <:col :let={row} label={gettext("Expiry")}>{date(row.expires_on)}</:col>
+          <:col :let={row} label={gettext("Loose")} align={:right} emphasis={:primary}>
+            {quantity(row.quantity)}
+          </:col>
+
+          <:col :let={row} label={gettext("Into this box")} field={:block} group>
+            <.write_gate may={true} allowed={@writable?} reason={@write_block}>
+              <form
+                id={"stow-#{row.lot_id}"}
+                phx-submit="stow"
+                phx-value-lot={row.lot_id}
+                class="flex flex-wrap items-center gap-2 justify-end"
+              >
+                <!-- The whole line, because putting away half of what is on the
+                     floor is the exception. Type less to send part of it. -->
+                <input
+                  type="text"
+                  name="quantity"
+                  value={quantity(row.quantity)}
+                  inputmode="decimal"
+                  data-numeric
+                  class="input input-sm input-bordered w-20 text-right"
+                  aria-label={gettext("How much of %{product} to put in", product: row.product)}
+                />
+                <button class="btn btn-sm" phx-disable-with={gettext("Storing...")}>
+                  {gettext("Put in %{box}", box: @box.code)}
+                </button>
+              </form>
+            </.write_gate>
+          </:col>
+        </.data_table>
+      </.panel>
+
       <.box_options id="sibling-boxes" boxes={@siblings} />
     </Layouts.app>
     """
@@ -212,6 +265,32 @@ defmodule EstoqueOSWeb.BoxLive.Show do
   end
 
   @impl true
+  def handle_event("stow", %{"lot" => lot_id} = params, socket) do
+    %{box: box, current_scope: scope} = socket.assigns
+
+    case Locations.put_in_box(box, lot_id, params["quantity"], user_id: scope.user.id) do
+      {:ok, _transaction} ->
+        {:noreply,
+         socket
+         |> assign_box(Locations.get_box!(box.id))
+         |> put_flash(:info, gettext("Stored in %{box}.", box: box.code))}
+
+      {:error, {:insufficient_stock, %{available: available}}} ->
+        {:noreply,
+         put_flash(
+           socket,
+           :error,
+           gettext("There is only %{available} loose here.", available: quantity(available))
+         )}
+
+      {:error, :invalid_quantity} ->
+        {:noreply, put_flash(socket, :error, gettext("Type a quantity greater than zero."))}
+
+      {:error, _reason} ->
+        {:noreply, put_flash(socket, :error, gettext("That could not be stored."))}
+    end
+  end
+
   def handle_event("rebox", %{"lot" => lot_id} = params, socket) do
     rebox(socket, lot_id, params, create: false)
   end
