@@ -188,7 +188,7 @@ defmodule EstoqueOSWeb.ViewerWriteGuardTest do
       "user_live/settings" => ~w(),
       # Planning, not stock: a minimum is argued with the ONG team, and only
       # admin and manager may set it. Refused to a viewer like any other write.
-      "product_live/show" => ~w(set_minimum stow),
+      "product_live/show" => ~w(deactivate reactivate set_minimum stow),
       "mission_live/index" => ~w(create),
       "mission_live/show" => ~w(reschedule)
     }

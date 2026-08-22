@@ -85,8 +85,9 @@ Built and working (SPEC phases 1–3): NF-e 4.00 import with match-and-confirm,
 append-only ledger with derived balances and FEFO, Excel export/count import,
 receiving conference with divergence report, box movement and transit,
 prioritized mini-audit, load-out, kit assembly/consumption, manual issue,
-mission returns with re-boxing, donations with printable certificates, and an
-auditor report.
+mission returns with re-boxing, donations with printable certificates, an
+auditor report, and catalog retirement — a product with no stock left can be
+taken out of every picker from its own page, with who did it on the record.
 
 Constraints that future work must preserve:
 

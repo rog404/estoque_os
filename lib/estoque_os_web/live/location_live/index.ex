@@ -183,9 +183,7 @@ defmodule EstoqueOSWeb.LocationLive.Index do
             <!-- Said on the row rather than by living in a second table: a
                  retired place is the same place, and what somebody looks for
                  when they come here is the name. -->
-            <span :if={not location.active} class="badge is-quiet ml-2">
-              {gettext("deactivated")}
-            </span>
+            <.status :if={not location.active} kind={:deactivated} class="ml-2" />
           </:col>
 
           <:col :let={location} label={gettext("Kind")}>{kind_label(location.kind)}</:col>

@@ -344,7 +344,8 @@ defmodule EstoqueOSWeb.UI do
       :bought,
       :unknown_value,
       :pending,
-      :stale
+      :stale,
+      :deactivated
     ]
 
   attr :detail, :string, default: nil, doc: "shown instead of the standard label"
@@ -464,6 +465,12 @@ defmodule EstoqueOSWeb.UI do
   # boxes in a real warehouse have gone a while without a count, so a fill here
   # would light up nine rows in ten and stop being read. It says which box to
   # pick up next, not that something is wrong.
+  # A place or a product taken out of the operation. Quiet, because it is not a
+  # problem: it is a row that still owns its history and still answers a recall,
+  # and the two screens that say it had each spelled it their own way.
+  defp status_spec(:deactivated),
+    do: %{class: "is-quiet dot-muted", icon: nil, label: gettext("deactivated")}
+
   defp status_spec(:stale),
     do: %{class: "is-quiet dot-muted", icon: nil, label: gettext("no recent count")}
 
