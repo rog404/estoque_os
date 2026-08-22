@@ -497,7 +497,7 @@ defmodule EstoqueOSWeb.HomeLive.Index do
           <ul :if={@activity != []} class="divide-y divide-base-200">
             <li :for={row <- @activity} class="py-2 flex items-baseline justify-between gap-3">
               <div class="min-w-0">
-                <p><Movement.movement_badge type={row.transaction.type} /></p>
+                <p><Movement.movement_badge movement={row.transaction} /></p>
                 <p :if={Movement.detail(row.transaction)} class="text-sm truncate">
                   {Movement.detail(row.transaction)}
                 </p>

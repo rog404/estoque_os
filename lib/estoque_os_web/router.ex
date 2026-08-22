@@ -242,6 +242,10 @@ defmodule EstoqueOSWeb.Router do
       live "/", HomeLive.Index, :index
       live "/stock", StockLive.Index, :index
       live "/issues", IssueLive.List, :index
+      # The mirror of the write-off log: what came in by hand, which the ledger
+      # files under the same types as an invoice and which therefore had no
+      # screen of its own.
+      live "/entries", EntryLive.List, :index
       live "/products/:id", ProductLive.Show, :show
 
       live "/users/settings", UserLive.Settings, :edit

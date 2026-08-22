@@ -15,7 +15,21 @@ defmodule EstoqueOSWeb.Movement do
   use Phoenix.Component
   use Gettext, backend: EstoqueOSWeb.Gettext
 
-  @doc "What kind of event this was."
+  @doc """
+  What kind of event this was, read from the movement itself.
+
+  A purchase without an invoice is somebody standing at the door with goods and
+  a receipt — the same ledger type, a different act. It was labelled "Nota
+  fiscal lançada" on every log, which sent whoever went looking for a manual
+  entry to the invoice list, where there was nothing to find.
+
+  The type alone cannot tell them apart; `invoice_id` can, and it is already on
+  the record.
+  """
+  def kind_label(%{type: "purchase_in", invoice_id: nil}), do: gettext("Manual entry")
+  def kind_label(%{type: type}), do: label(type)
+
+  @doc "What kind of event this was, from the type alone."
   def label("purchase_in"), do: gettext("Invoice posted")
   def label("donation_in"), do: gettext("Donation received")
   def label("transfer"), do: gettext("Transfer")
@@ -54,13 +68,21 @@ defmodule EstoqueOSWeb.Movement do
   The type as a coloured badge — `label/1` and `tone/1`, which are never wanted
   apart.
   """
-  attr :type, :string, required: true
+  attr :type, :string, default: nil, doc: "when only the type is known, as in a grouped report"
+  attr :movement, :map, default: nil, doc: "the transaction, which can tell an entry from a note"
   attr :class, :string, default: nil
 
   def movement_badge(assigns) do
+    assigns =
+      assign(
+        assigns,
+        :label,
+        if(assigns.movement, do: kind_label(assigns.movement), else: label(assigns.type))
+      )
+
     ~H"""
-    <span class={["badge badge-sm whitespace-nowrap", tone(@type), @class]}>
-      {label(@type)}
+    <span class={["badge badge-sm whitespace-nowrap", tone(@type || @movement.type), @class]}>
+      {@label}
     </span>
     """
   end
@@ -124,7 +146,7 @@ defmodule EstoqueOSWeb.Movement do
   end
 
   def detail(%{type: type} = transaction) when type in ~w(purchase_in donation_in) do
-    document(transaction)
+    document(transaction) || transaction.notes
   end
 
   def detail(%{type: type} = transaction) when type in ~w(kit_assembly kit_consumption) do

@@ -983,13 +983,18 @@ defmodule EstoqueOS.Reports do
     |> where([t], t.occurred_at >= ^from and t.occurred_at <= ^to)
     |> maybe_touching_segment(opts[:segment])
     |> maybe_of_type(opts[:type])
+    |> maybe_paperless(opts[:without_invoice])
     |> maybe_to_destination(opts[:destination])
     |> order_by([t], desc: t.occurred_at, desc: t.id)
     |> limit(^(opts[:limit] || 500))
     |> preload([:user, :source_location, :destination_location, invoice: :supplier])
     |> Repo.all()
     |> Repo.preload(
-      entries: from(e in TransactionEntry, order_by: [asc: e.id], preload: [lot: :product])
+      entries:
+        from(e in TransactionEntry,
+          order_by: [asc: e.id],
+          preload: [:location, lot: :product]
+        )
     )
     |> Enum.map(fn transaction ->
       %{
@@ -1024,7 +1029,16 @@ defmodule EstoqueOS.Reports do
 
   defp maybe_of_type(query, nil), do: query
   defp maybe_of_type(query, ""), do: query
+  defp maybe_of_type(query, types) when is_list(types), do: where(query, [t], t.type in ^types)
   defp maybe_of_type(query, type), do: where(query, [t], t.type == ^type)
+
+  # Goods taken in by hand, which the ledger files under the same types as an
+  # invoice: `purchase_in` for something bought without a nota, `donation_in`
+  # for something given. What separates them is the document — an entry made at
+  # the door has none — and asking for that is the whole reason this option
+  # exists.
+  defp maybe_paperless(query, true), do: where(query, [t], is_nil(t.invoice_id))
+  defp maybe_paperless(query, _), do: query
 
   # This is the filter the operation asked for by another name: "we need to know
   # which items were donated". Answering it was impossible while the destination

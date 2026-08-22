@@ -413,7 +413,7 @@ defmodule EstoqueOSWeb.ProductLive.Show do
             {datetime(entry.transaction.occurred_at)}
           </:col>
           <:col :let={entry} label={gettext("What")}>
-            <Movement.movement_badge type={entry.transaction.type} />
+            <Movement.movement_badge movement={entry.transaction} />
             <span :if={entry.transaction.reason_code} class="text-xs opacity-70">
               {Movement.reason_label(entry.transaction.reason_code)}
             </span>

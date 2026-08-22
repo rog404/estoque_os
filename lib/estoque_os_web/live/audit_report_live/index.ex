@@ -229,7 +229,7 @@ defmodule EstoqueOSWeb.AuditReportLive.Index do
           </:col>
 
           <:col :let={row} label={gettext("Type")}>
-            <Movement.movement_badge type={row.transaction.type} />
+            <Movement.movement_badge movement={row.transaction} />
             <span :if={row.transaction.reason_code} class="badge badge-warning badge-sm">
               {Movement.reason_label(row.transaction.reason_code)}
             </span>

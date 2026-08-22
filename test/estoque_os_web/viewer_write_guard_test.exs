@@ -162,6 +162,8 @@ defmodule EstoqueOSWeb.ViewerWriteGuardTest do
       # The spreadsheet left this screen for `/reports/data`; what remains here
       # reports, and `search` is a read like the rest of them.
       "stock_live/index" => ~w(),
+      # Reporting only, like the write-off log beside it.
+      "entry_live/list" => ~w(),
       # `search` narrows a list and is not here: it is declared as a viewer
       # event on the screen itself.
       "box_live/index" => ~w(create move),
