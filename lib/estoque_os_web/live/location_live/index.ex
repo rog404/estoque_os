@@ -256,6 +256,7 @@ defmodule EstoqueOSWeb.LocationLive.Index do
                     :if={location.active}
                     id={"deactivate-#{location.id}"}
                     form={"deactivate-form-#{location.id}"}
+                    class="w-full"
                     label={gettext("Deactivate")}
                     title={gettext("Deactivate %{name}?", name: location.name)}
                     confirm_label={gettext("Deactivate")}

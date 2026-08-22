@@ -257,6 +257,13 @@ it is an icon. The pair had one of each: a default-size "Desativar" beside a
 place was already retired. Two controls that swap in one slot are one control as
 far as the operator is concerned, and one control has one size.
 
+**And one width.** Both fill the slot — `class="w-full"`, which is why
+`commit_action/1` takes a `class` at all. Natural widths made a 110px
+"Desativar" and a 119px "Reativar" land on different edges as the list was
+filtered, which is the same flicker the fixed-width slot was introduced to
+stop; sizing the slot and then letting the buttons inside it be as wide as
+their words only moves the problem in one level.
+
 The icon-only row control was `btn-xs`, and `commit_action/1` — the one
 component that renders exactly that control — had always drawn it `btn-square
 btn-sm`. Two answers to one question, and the smaller one was a 24px target on
