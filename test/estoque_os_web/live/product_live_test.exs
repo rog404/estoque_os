@@ -290,4 +290,129 @@ defmodule EstoqueOSWeb.ProductLiveTest do
       refute has_element?(view, "#stow-#{loose.id}-#{warehouse.id}")
     end
   end
+
+  describe "taking a product out of the catalog" do
+    # The button is rendered and disabled, never absent: a hidden control cannot
+    # be told apart from a feature that does not exist, and the operator still
+    # needs to know what would make it work.
+    test "is refused while the product is on a shelf, and the reason says why", %{
+      conn: conn,
+      gauze: gauze
+    } do
+      {:ok, view, html} = live(conn, ~p"/products/#{gauze.id}")
+
+      assert has_element?(view, "button[data-confirm-open='deactivate-product'][disabled]")
+
+      # The reason lives in `title`, so it is an attribute and not text —
+      # stripping tags to look for it finds nothing, which is how this assertion
+      # failed the first time it was written.
+      assert html =~ "1 posição(ões) em estoque"
+      refute has_element?(view, "#deactivate-product-form")
+    end
+
+    test "goes through once the stock is gone", %{
+      conn: conn,
+      gauze: gauze,
+      lot: lot,
+      warehouse: warehouse,
+      box: box
+    } do
+      empty_out(lot, warehouse, box)
+
+      {:ok, view, _html} = live(conn, ~p"/products/#{gauze.id}")
+
+      refute has_element?(view, "button[data-confirm-open='deactivate-product'][disabled]")
+
+      html = view |> form("#deactivate-product-form") |> render_submit()
+
+      refute Repo.reload(gauze).active
+      assert text_of(html) =~ "saiu do catálogo"
+      assert text_of(html) =~ "desativado"
+    end
+
+    test "and comes back from the same screen", %{
+      conn: conn,
+      gauze: gauze,
+      lot: lot,
+      warehouse: warehouse,
+      box: box
+    } do
+      empty_out(lot, warehouse, box)
+      {:ok, _} = Catalog.deactivate_product(gauze)
+
+      {:ok, view, _html} = live(conn, ~p"/products/#{gauze.id}")
+
+      html = view |> element("button[phx-click='reactivate']") |> render_click()
+
+      assert Repo.reload(gauze).active
+      assert text_of(html) =~ "voltou para o catálogo"
+    end
+
+    # The catalog is what the catalog says, not what the shelves hold: the
+    # logistics operator records the second and never the first.
+    test "the logistics operator is not offered it", %{gauze: gauze} do
+      %{conn: conn} = register_and_log_in_logistics(%{conn: build_conn()})
+
+      {:ok, view, _html} = live(conn, ~p"/products/#{gauze.id}")
+
+      refute has_element?(view, "button[data-confirm-open='deactivate-product']")
+    end
+
+    # And refused on the event too, because the markup being absent is not a
+    # rule — a hand-crafted event arrives all the same.
+    test "and cannot send the event either", %{
+      gauze: gauze,
+      lot: lot,
+      warehouse: warehouse,
+      box: box
+    } do
+      empty_out(lot, warehouse, box)
+      %{conn: conn} = register_and_log_in_logistics(%{conn: build_conn()})
+
+      {:ok, view, _html} = live(conn, ~p"/products/#{gauze.id}")
+
+      render_hook(view, "deactivate", %{})
+
+      assert Repo.reload(gauze).active
+    end
+
+    # The question asked after a mission runs short is "who changed this", and
+    # the log had one sentence that assumed every row in it was the minimum.
+    test "the change log says what it was, not always the minimum", %{
+      conn: conn,
+      gauze: gauze,
+      lot: lot,
+      warehouse: warehouse,
+      box: box
+    } do
+      empty_out(lot, warehouse, box)
+      {:ok, _} = Catalog.deactivate_product(gauze)
+
+      {:ok, _view, html} = live(conn, ~p"/products/#{gauze.id}")
+
+      stripped = text_of(html)
+      assert stripped =~ "saiu do catálogo"
+      refute stripped =~ "mínimo true"
+    end
+  end
+
+  # Tags first: "300" lives inside `border-base-300` and a bare `=~` on the raw
+  # markup is a test that passes on luck.
+  defp text_of(html), do: String.replace(html, ~r{<[^>]*>}s, " ")
+
+  defp empty_out(lot, warehouse, box) do
+    {:ok, _} =
+      Inventory.post_transaction(%{
+        type: "manual_out",
+        user_id: actor_id(),
+        entries: [
+          %{
+            lot_id: lot.id,
+            location_id: warehouse.id,
+            box_id: box.id,
+            quantity: Decimal.new(-100)
+          }
+        ]
+      })
+  end
 end
