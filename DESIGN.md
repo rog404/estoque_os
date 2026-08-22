@@ -114,7 +114,11 @@ nothing. The page header was a tinted band and is now a line — the section is
 still named by colour on the rail, the rule and the nav underline, but a field
 of colour at the top of every screen competes with the data underneath it.
 Radii are tight (`box` 0.375rem, `field` 0.25rem): soft corners read as
-friendly, and this is a tool.
+friendly, and this is a tool. **Two radii, and they are both tokens** — a panel,
+a card, a tinted note and a drop zone all take `rounded-box`; an input, a select
+and a button take `radius-field` from daisyUI without being asked. Tailwind's own
+`rounded-lg` is 0.5rem, a third radius nobody decided on, and the invoice
+importer had three of them.
 
 daisyUI paints the root with `--root-bg`, and a painted root stops the body's
 background from propagating to the canvas. `--root-bg` is set to `base-200`
@@ -183,7 +187,8 @@ adding one is a decision made once, in `UI.status_spec/1`.
 |---|---|---|
 | `:expired` | error | |
 | `:expiring` | warning | |
-| `:controlled` | **neutral, solid** | A Portaria 344 substance is not a problem and not a warning — it is a legal class that changes who may touch the box. Seven screens had picked `badge-error` for it independently. |
+| `:controlled` | **neutral, quiet** | A Portaria 344 substance is not a problem and not a warning — it is a legal class that changes who may touch the box. Eight screens had picked `badge-error` for it independently; the eighth was the box list, which kept a private `reason_class/1` beside the vocabulary and painted every controlled item red. It renders `<.status kind={kind} detail={label} />` now, so a counted label — "3 item(s) controlado(s)" — still reads as the state it is. |
+| `:stale` | quiet, muted dot | A box that has gone a while without a count. Deliberately quiet: most boxes in a real warehouse are stale, and a fill that lights nine rows in ten stops being read. |
 | `:presumed` | outline | Never on the stock table — see below. |
 | `:counted` | success | |
 | `:in_kit`, `:in_transit`, `:under_way` | info | Movement, not trouble. |

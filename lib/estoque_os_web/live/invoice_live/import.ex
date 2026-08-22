@@ -76,7 +76,7 @@ defmodule EstoqueOSWeb.InvoiceLive.Import do
              what makes the invoice belong to the person who just uploaded it —
              at this moment not one line has a product yet, so "which stock is
              this" has no other answer to read. -->
-        <fieldset class="rounded-lg border border-base-300 p-4">
+        <fieldset class="rounded-box border border-base-300 p-4">
           <legend class="px-2 text-sm font-medium">{gettext("Stock")}</legend>
 
           <div role="tablist" class="tabs tabs-box w-fit">
@@ -102,7 +102,7 @@ defmodule EstoqueOSWeb.InvoiceLive.Import do
 
         <form id="upload-form" phx-submit="import" phx-change="validate">
           <label
-            class="flex flex-col items-center border-2 border-dashed border-base-300 hover:border-primary/60 rounded-lg p-10 text-center cursor-pointer transition-colors"
+            class="flex flex-col items-center border-2 border-dashed border-base-300 hover:border-primary/60 rounded-box p-10 text-center cursor-pointer transition-colors"
             phx-drop-target={@uploads.xml.ref}
           >
             <.icon name="hero-document-arrow-up" class="size-10 opacity-60" />
@@ -115,7 +115,7 @@ defmodule EstoqueOSWeb.InvoiceLive.Import do
 
           <div
             :for={entry <- @uploads.xml.entries}
-            class="mt-4 rounded-lg border border-base-300 p-3"
+            class="mt-4 rounded-box border border-base-300 p-3"
           >
             <div class="flex items-center gap-3">
               <.icon name="hero-document-text" class="size-5 opacity-60 shrink-0" />

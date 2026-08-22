@@ -184,12 +184,7 @@ defmodule EstoqueOSWeb.BoxLive.Index do
                  a ranking nobody understands, which is a ranking nobody
                  follows — and the page that used to explain it is gone. -->
             <div :if={reasons(row) != []} class="flex flex-wrap gap-1 mt-1">
-              <span
-                :for={{kind, label} <- reasons(row)}
-                class={["badge badge-sm", reason_class(kind)]}
-              >
-                {label}
-              </span>
+              <.status :for={{kind, label} <- reasons(row)} kind={kind} detail={label} />
             </div>
           </:col>
 
@@ -245,10 +240,6 @@ defmodule EstoqueOSWeb.BoxLive.Index do
   defp reasons(%{priority: priority}) do
     Enum.reject(priority.reasons, fn {kind, _label} -> kind == :never_counted end)
   end
-
-  defp reason_class(:controlled), do: "badge-error"
-  defp reason_class(:expiring), do: "badge-warning"
-  defp reason_class(_kind), do: "badge-ghost"
 
   defp stale_class(box) do
     if stale?(box), do: "text-warning", else: "opacity-70"

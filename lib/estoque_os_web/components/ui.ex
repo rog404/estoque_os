@@ -343,7 +343,8 @@ defmodule EstoqueOSWeb.UI do
       :donation,
       :bought,
       :unknown_value,
-      :pending
+      :pending,
+      :stale
     ]
 
   attr :detail, :string, default: nil, doc: "shown instead of the standard label"
@@ -458,6 +459,13 @@ defmodule EstoqueOSWeb.UI do
 
   defp status_spec(:unknown_value),
     do: %{class: "is-quiet dot-muted", icon: nil, label: gettext("value not informed")}
+
+  # Quiet on purpose, and the one state where that is the whole argument: most
+  # boxes in a real warehouse have gone a while without a count, so a fill here
+  # would light up nine rows in ten and stop being read. It says which box to
+  # pick up next, not that something is wrong.
+  defp status_spec(:stale),
+    do: %{class: "is-quiet dot-muted", icon: nil, label: gettext("no recent count")}
 
   defp status_spec(:pending),
     do: %{class: "badge-warning", icon: nil, label: gettext("pending")}
