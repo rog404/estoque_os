@@ -63,7 +63,8 @@ defmodule EstoqueOS.ReturnsTest do
                Outbound.issue(product.id, 30, %{
                  location_id: mission.id,
                  notes: "Triagem",
-                 user_id: actor_id()
+                 user_id: actor_id(),
+                 destination: "pacu"
                })
 
       assert transaction.type == "manual_out"
@@ -77,7 +78,12 @@ defmodule EstoqueOS.ReturnsTest do
       sooner: sooner,
       later: later
     } do
-      {:ok, _} = Outbound.issue(product.id, 120, %{location_id: mission.id, user_id: actor_id()})
+      {:ok, _} =
+        Outbound.issue(product.id, 120, %{
+          location_id: mission.id,
+          user_id: actor_id(),
+          destination: "pacu"
+        })
 
       assert Decimal.equal?(Inventory.balance(lot_id: sooner.id), Decimal.new(0))
       assert Decimal.equal?(Inventory.balance(lot_id: later.id), Decimal.new(30))
@@ -89,7 +95,11 @@ defmodule EstoqueOS.ReturnsTest do
       mission_box: box
     } do
       {:ok, transaction} =
-        Outbound.issue(product.id, 10, %{location_id: mission.id, user_id: actor_id()})
+        Outbound.issue(product.id, 10, %{
+          location_id: mission.id,
+          user_id: actor_id(),
+          destination: "pacu"
+        })
 
       assert [entry] = transaction.entries
       assert entry.box_id == box.id
@@ -98,7 +108,11 @@ defmodule EstoqueOS.ReturnsTest do
 
     test "refuses to issue more than there is", %{mission: mission, product: product} do
       assert {:error, {:insufficient_stock, %{missing: missing}}} =
-               Outbound.issue(product.id, 200, %{location_id: mission.id, user_id: actor_id()})
+               Outbound.issue(product.id, 200, %{
+                 location_id: mission.id,
+                 user_id: actor_id(),
+                 destination: "pacu"
+               })
 
       assert Decimal.equal?(missing, Decimal.new(50))
       assert Decimal.equal?(Inventory.balance(location_id: mission.id), Decimal.new(150))
@@ -106,7 +120,11 @@ defmodule EstoqueOS.ReturnsTest do
 
     test "refuses a quantity of zero", %{mission: mission, product: product} do
       assert {:error, :invalid_quantity} =
-               Outbound.issue(product.id, 0, %{location_id: mission.id, user_id: actor_id()})
+               Outbound.issue(product.id, 0, %{
+                 location_id: mission.id,
+                 user_id: actor_id(),
+                 destination: "pacu"
+               })
     end
   end
 

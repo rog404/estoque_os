@@ -75,7 +75,12 @@ defmodule EstoqueOSWeb.IssueReturnLiveTest do
       assert html =~ "Saindo juntos"
       assert Decimal.equal?(Inventory.balance(location_id: warehouse.id), Decimal.new(100))
 
-      html = view |> element("#basket-form") |> render_submit(%{"notes" => "Triagem"})
+      view |> form("#destination-form", %{"destination" => "triage"}) |> render_change()
+
+      html =
+        view
+        |> element("#basket-form")
+        |> render_submit(%{})
 
       assert html =~ "1 item(ns) baixado(s)"
       assert Decimal.equal?(Inventory.balance(location_id: warehouse.id), Decimal.new(70))
@@ -151,6 +156,7 @@ defmodule EstoqueOSWeb.IssueReturnLiveTest do
       view |> element("button", "Seringa 10ml") |> render_click()
       view |> element("#issue-form") |> render_submit(%{"quantity" => "5"})
 
+      view |> form("#destination-form", %{"destination" => "pacu"}) |> render_change()
       view |> element("#basket-form") |> render_submit(%{})
 
       assert Decimal.equal?(Inventory.balance(location_id: warehouse.id), Decimal.new(135))
@@ -170,6 +176,7 @@ defmodule EstoqueOSWeb.IssueReturnLiveTest do
       view |> element("button", "Eletrodo ECG adulto") |> render_click()
 
       view |> element("#issue-form") |> render_submit(%{"quantity" => "500"})
+      view |> form("#destination-form", %{"destination" => "pacu"}) |> render_change()
       html = view |> element("#basket-form") |> render_submit(%{})
 
       assert html =~ "faltam 400"

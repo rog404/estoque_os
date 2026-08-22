@@ -45,10 +45,14 @@ defmodule EstoqueOSWeb.IssueLive.Index do
      |> assign(:products, [])
      |> assign(:product, nil)
      |> assign(:box_options, [])
+     |> assign(:lot_options, [])
      |> assign(:picks, nil)
      |> assign(:quantity, "")
      |> assign(:sale_unit_price, "")
      |> assign(:destination, nil)
+     |> assign(:recipient_name, "")
+     |> assign(:recipient_tax_id, "")
+     |> assign(:notes, "")
      |> assign(:basket, [])
      |> load_here()}
   end
@@ -113,15 +117,23 @@ defmodule EstoqueOSWeb.IssueLive.Index do
       quantity: quantity,
       box_id: box_id,
       box_code: box_code,
+      lot_id: opts[:lot_id],
+      lot_number: opts[:lot_number],
       sale_unit_price: opts[:sale_unit_price]
     }
   end
 
-  # The stock that is sold. Marketing material leaves with a price on it;
-  # surgical supply is consumed or donated, and asking its price on the way out
-  # would be asking a question the operation does not have an answer to.
-  defp sellable?(%{segment: "marketing"}), do: true
-  defp sellable?(_product), do: false
+  # A price belongs to a sale, whoever is making it and whatever is being sold.
+  # It used to belong to the marketing *product*, which meant an admin selling a
+  # marketing item got the field and the same admin selling anything else did
+  # not — and the destination said "venda" on a movement that recorded no price.
+  defp sellable?(destination), do: destination == "sale"
+
+  # What this stock can leave for. Marketing material is sold or given away;
+  # there is no operating room in it, and a list of seven destinations where two
+  # apply is a list somebody picks wrong from in a hurry.
+  defp destinations_for("marketing"), do: ~w(sale donation)
+  defp destinations_for(_segment), do: Transaction.destinations()
 
   # Nothing to choose between when the product is all in one place — showing a
   # single-option picker would be a decision with no second option.
@@ -169,19 +181,57 @@ defmodule EstoqueOSWeb.IssueLive.Index do
     socket
     |> assign(:product, product)
     |> assign(:box_options, Inventory.box_quantities(product.id, socket.assigns.location_id))
+    |> assign(:lot_options, lot_options(product, socket.assigns.location_id))
     |> assign(:picks, nil)
     |> assign(:quantity, "")
     |> assign(:sale_unit_price, "")
+  end
+
+  # The lots of this product standing at this place, each with what is left.
+  # FEFO still answers on its own; this is the way to say "that print run, not
+  # the other one" — which is a real question for a shirt, where the expiry
+  # FEFO sorts by does not exist and the campaign the batch belongs to does.
+  defp lot_options(product, location_id) do
+    product.id
+    |> Inventory.lot_balances(location_id: location_id)
+    |> Enum.reject(&(Decimal.compare(&1.quantity, 0) != :gt))
+  end
+
+  defp lot_choice?(lot_options), do: length(lot_options) > 1
+
+  defp lot_label(%{lot_number: nil, quantity: quantity, expires_on: nil}) do
+    gettext("lot not stated — %{qty}", qty: quantity(quantity))
+  end
+
+  defp lot_label(%{lot_number: number, quantity: quantity, expires_on: nil}) do
+    gettext("lot %{lot} — %{qty}", lot: number, qty: quantity(quantity))
+  end
+
+  defp lot_label(%{lot_number: number, quantity: quantity, expires_on: expires_on}) do
+    gettext("lot %{lot} — %{qty} — expires %{expiry}",
+      lot: number || gettext("not stated"),
+      qty: quantity(quantity),
+      expiry: date(expires_on)
+    )
+  end
+
+  defp lot_number_for(lot_options, lot_id) do
+    case Enum.find(lot_options, &(&1.lot_id == lot_id)) do
+      nil -> nil
+      lot -> lot.lot_number
+    end
   end
 
   defp compute_picks(socket, params) do
     with %Decimal{} = amount <- to_decimal(params["quantity"]),
          :gt <- Decimal.compare(amount, 0) do
       box_id = to_id(params["box_id"])
+      lot_id = to_id(params["lot_id"])
 
       case Inventory.suggest_fefo_positions(socket.assigns.product.id, amount,
              location_id: socket.assigns.location_id,
-             box_id: box_id
+             box_id: box_id,
+             lot_id: lot_id
            ) do
         {:ok, picks} ->
           with_box_codes(picks, socket.assigns.box_options)
@@ -219,9 +269,75 @@ defmodule EstoqueOSWeb.IssueLive.Index do
       <.header>
         {gettext("Write off")}
         <:subtitle>
-          {gettext("Goods leaving without an invoice or a kit. FEFO picks the lot.")}
+          {gettext(
+            "Goods leaving without an invoice or a kit. FEFO picks the lot unless you say otherwise."
+          )}
         </:subtitle>
       </.header>
+
+      <!-- Decided before anything is picked, not after. Where the goods go is
+           what the price field depends on and what the whole movement is
+           recorded for, and asking for it under the basket meant a line was
+           already in the basket, priceless, by the time anyone said "venda". -->
+      <form id="destination-form" phx-change="destination" class="panel mt-4">
+        <div class="panel-body field-row">
+          <label class="fieldset">
+            <span class="label">{gettext("Where to")}</span>
+            <!-- Required, and no "não informado" to fall back on. Where the
+                 goods went is the whole point of recording that they left: a
+                 blank there is a hole nobody can fill afterwards, because the
+                 goods are gone and the person who carried them has moved on. -->
+            <select name="destination" class="select select-bordered" required>
+              <option value="" disabled selected={is_nil(@destination)}>
+                {gettext("choose one")}
+              </option>
+              <option
+                :for={destination <- destinations_for(@segment)}
+                value={destination}
+                selected={destination == @destination}
+              >
+                {destination_label(destination)}
+              </option>
+            </select>
+          </label>
+
+          <label :if={@destination == "donation"} class="fieldset">
+            <span class="label">{gettext("Recipient")}</span>
+            <input
+              type="text"
+              name="recipient_name"
+              value={@recipient_name}
+              placeholder={gettext("hospital or institution")}
+              class="input input-bordered w-64"
+              aria-label={gettext("Name of the hospital or institution")}
+            />
+          </label>
+
+          <label :if={@destination == "donation"} class="fieldset">
+            <span class="label">{gettext("Recipient CNPJ")}</span>
+            <input
+              type="text"
+              name="recipient_tax_id"
+              value={@recipient_tax_id}
+              inputmode="numeric"
+              placeholder={gettext("optional")}
+              class="input input-bordered w-52"
+              aria-label={gettext("CNPJ of the hospital or institution")}
+            />
+          </label>
+
+          <label class="fieldset grow">
+            <span class="label">{gettext("Note")}</span>
+            <input
+              type="text"
+              name="notes"
+              value={@notes}
+              placeholder={gettext("anything the destination does not already say")}
+              class="input input-bordered w-full"
+            />
+          </label>
+        </div>
+      </form>
 
       <form
         id="search-form"
@@ -290,6 +406,9 @@ defmodule EstoqueOSWeb.IssueLive.Index do
             <:col :let={{line, _i}} label={gettext("Product")} emphasis={:identity}>
               {line.product}
             </:col>
+            <:col :let={{line, _i}} label={gettext("Lot")} emphasis={:muted}>
+              {line.lot_number || gettext("FEFO — automatic")}
+            </:col>
             <:col :let={{line, _i}} label={gettext("Box")} emphasis={:muted}>
               {line.box_code || gettext("FEFO — automatic")}
             </:col>
@@ -324,55 +443,6 @@ defmodule EstoqueOSWeb.IssueLive.Index do
           </.data_table>
         </.panel>
 
-        <div class="field-row mt-4">
-          <label class="fieldset">
-            <span class="label">{gettext("Where to")}</span>
-            <select name="destination" class="select select-bordered">
-              <option value="">{gettext("not stated")}</option>
-              <option
-                :for={destination <- Transaction.destinations()}
-                value={destination}
-                selected={destination == @destination}
-              >
-                {destination_label(destination)}
-              </option>
-            </select>
-          </label>
-
-          <label :if={@destination == "donation"} class="fieldset">
-            <span class="label">{gettext("Recipient")}</span>
-            <input
-              type="text"
-              name="recipient_name"
-              placeholder={gettext("hospital or institution")}
-              class="input input-bordered w-64"
-              aria-label={gettext("Name of the hospital or institution")}
-            />
-          </label>
-
-          <label :if={@destination == "donation"} class="fieldset">
-            <span class="label">{gettext("Recipient CNPJ")}</span>
-            <input
-              type="text"
-              name="recipient_tax_id"
-              inputmode="numeric"
-              placeholder={gettext("optional")}
-              class="input input-bordered w-52"
-              aria-label={gettext("CNPJ of the hospital or institution")}
-            />
-          </label>
-
-          <label class="fieldset grow">
-            <span class="label">{gettext("Note")}</span>
-            <input
-              type="text"
-              name="notes"
-              placeholder={gettext("anything the destination does not already say")}
-              class="input input-bordered w-full"
-            />
-          </label>
-        </div>
-
         <div class="flex flex-wrap items-center gap-4 border-t border-base-300 pt-4 mt-4">
           <.commit_action
             id="confirm-issue"
@@ -389,7 +459,7 @@ defmodule EstoqueOSWeb.IssueLive.Index do
                 )}
               </p>
               <p class="text-sm">
-                {gettext("FEFO picks the lots: whatever expires first goes first.")}
+                {gettext("Lines with no lot chosen go FEFO: whatever expires first goes first.")}
               </p>
             </:consequence>
           </.commit_action>
@@ -414,6 +484,15 @@ defmodule EstoqueOSWeb.IssueLive.Index do
           <!-- FEFO already reaches for the box that expires first on its own —
                this is a way to say "somewhere else instead", not a step
                anyone has to take. Left blank, nothing here changes. -->
+          <!-- Left blank, FEFO decides as it always did. -->
+          <label :if={lot_choice?(@lot_options)} class="fieldset">
+            <span class="label">{gettext("Which lot")}</span>
+            <select name="lot_id" class="select select-bordered w-full">
+              <option value="">{gettext("Let the system choose (first to expire)")}</option>
+              <option :for={lot <- @lot_options} value={lot.lot_id}>{lot_label(lot)}</option>
+            </select>
+          </label>
+
           <label :if={box_choice?(@box_options)} class="fieldset">
             <span class="label">{gettext("Take it from")}</span>
             <select name="box_id" class="select select-bordered w-full">
@@ -464,7 +543,7 @@ defmodule EstoqueOSWeb.IssueLive.Index do
                  one — `phx-change` repaints this form on every keystroke, and a
                  field rendered without a value comes back empty under the
                  person typing into it. -->
-            <label :if={sellable?(@product)} class="fieldset">
+            <label :if={sellable?(@destination)} class="fieldset">
               <span class="label">{gettext("Sale price (unit)")}</span>
               <input
                 type="text"
@@ -617,8 +696,16 @@ defmodule EstoqueOSWeb.IssueLive.Index do
 
   # Only to reveal the CNPJ field when the destination is a donation; the rest of
   # the form keeps its own values in the DOM.
+  # The whole "where to" block, which is one form of its own now: the price
+  # field on a line depends on this answer, so it has to exist before a line is
+  # added rather than under the basket that already holds it.
   def handle_event("destination", params, socket) do
-    {:noreply, assign(socket, :destination, blank_to_nil(params["destination"]))}
+    {:noreply,
+     socket
+     |> assign(:destination, blank_to_nil(params["destination"]))
+     |> assign(:recipient_name, params["recipient_name"] || "")
+     |> assign(:recipient_tax_id, params["recipient_tax_id"] || "")
+     |> assign(:notes, params["notes"] || "")}
   end
 
   # Recomputes the FEFO preview whenever the quantity or the chosen box
@@ -648,6 +735,7 @@ defmodule EstoqueOSWeb.IssueLive.Index do
         else
           box_id = to_id(params["box_id"])
           box_code = box_code_for(socket.assigns.box_options, box_id)
+          lot_id = to_id(params["lot_id"])
 
           {:noreply,
            socket
@@ -656,12 +744,15 @@ defmodule EstoqueOSWeb.IssueLive.Index do
              socket.assigns.basket ++
                [
                  basket_line(product, amount, box_id, box_code,
+                   lot_id: lot_id,
+                   lot_number: lot_number_for(socket.assigns.lot_options, lot_id),
                    sale_unit_price: to_decimal(params["sale_unit_price"])
                  )
                ]
            )
            |> assign(:product, nil)
            |> assign(:box_options, [])
+           |> assign(:lot_options, [])
            |> assign(:picks, nil)
            |> assign(:quantity, "")
            |> assign(:sale_unit_price, "")
@@ -689,13 +780,13 @@ defmodule EstoqueOSWeb.IssueLive.Index do
     {:noreply, assign(socket, :basket, List.delete_at(socket.assigns.basket, index))}
   end
 
-  def handle_event("issue", params, socket) do
+  def handle_event("issue", _params, socket) do
     case Outbound.issue_many(socket.assigns.basket, %{
            location_id: socket.assigns.location_id,
-           destination: blank_to_nil(params["destination"]),
-           recipient_name: blank_to_nil(params["recipient_name"]),
-           recipient_tax_id: blank_to_nil(params["recipient_tax_id"]),
-           notes: params["notes"],
+           destination: socket.assigns.destination,
+           recipient_name: blank_to_nil(socket.assigns.recipient_name),
+           recipient_tax_id: blank_to_nil(socket.assigns.recipient_tax_id),
+           notes: blank_to_nil(socket.assigns.notes),
            user_id: socket.assigns.current_scope.user.id
          }) do
       {:ok, _transaction} ->
@@ -712,6 +803,9 @@ defmodule EstoqueOSWeb.IssueLive.Index do
          |> assign(:quantity, "")
          |> assign(:sale_unit_price, "")
          |> assign(:destination, nil)
+         |> assign(:recipient_name, "")
+         |> assign(:recipient_tax_id, "")
+         |> assign(:notes, "")
          |> assign(:query, "")
          # The shelf just changed, and this screen is now showing it.
          |> load_here()}

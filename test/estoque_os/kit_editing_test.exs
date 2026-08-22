@@ -141,7 +141,7 @@ defmodule EstoqueOS.KitEditingTest do
       {:ok, _} =
         EstoqueOS.Outbound.issue_many(
           [%{product_id: kit.product.id, quantity: Decimal.new(2)}],
-          %{location_id: warehouse.id, user_id: actor_id()}
+          %{location_id: warehouse.id, user_id: actor_id(), destination: "pacu"}
         )
 
       assert Decimal.equal?(Kits.assembled_count(kit), Decimal.new(0))

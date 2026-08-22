@@ -104,6 +104,7 @@ defmodule EstoqueOSWeb.IssueLiveTest do
       view |> element("button", product.name) |> render_click()
 
       view |> element("#issue-form") |> render_submit(%{"quantity" => "5"})
+      view |> form("#destination-form", %{"destination" => "pacu"}) |> render_change()
       view |> element("#basket-form") |> render_submit(%{})
 
       # 5 came from the box expiring soonest, the other box untouched.
@@ -130,6 +131,7 @@ defmodule EstoqueOSWeb.IssueLiveTest do
 
       assert html =~ far.code
 
+      view |> form("#destination-form", %{"destination" => "pacu"}) |> render_change()
       view |> element("#basket-form") |> render_submit(%{})
 
       assert Decimal.equal?(Inventory.balance(lot_id: far_lot.id), Decimal.new(6))
@@ -226,6 +228,7 @@ defmodule EstoqueOSWeb.IssueLiveTest do
       |> element("#issue-form")
       |> render_submit(%{"quantity" => "20", "box_id" => "#{near.id}"})
 
+      view |> form("#destination-form", %{"destination" => "pacu"}) |> render_change()
       html = view |> element("#basket-form") |> render_submit(%{})
 
       assert html =~ "Não há o bastante aqui"
@@ -250,9 +253,9 @@ defmodule EstoqueOSWeb.IssueLiveTest do
       view |> element("button", lone.name) |> render_click()
       view |> element("#issue-form") |> render_submit(%{"quantity" => "4"})
 
-      view
-      |> element("#basket-form")
-      |> render_submit(%{"destination" => "disposal", "notes" => ""})
+      view |> form("#destination-form", %{"destination" => "disposal"}) |> render_change()
+
+      view |> element("#basket-form") |> render_submit(%{})
 
       # The whole point of a closed list: "how much did we throw away" is a
       # query, not somebody reading notes.
@@ -269,7 +272,8 @@ defmodule EstoqueOSWeb.IssueLiveTest do
       view |> element("#search-form") |> render_change(%{"query" => lone.name})
       view |> element("button", lone.name) |> render_click()
       view |> element("#issue-form") |> render_submit(%{"quantity" => "4"})
-      view |> element("#basket-form") |> render_submit(%{"destination" => "disposal"})
+      view |> form("#destination-form", %{"destination" => "disposal"}) |> render_change()
+      view |> element("#basket-form") |> render_submit(%{})
 
       [transaction] = Repo.all(from(t in Transaction, where: t.type == "manual_out"))
 

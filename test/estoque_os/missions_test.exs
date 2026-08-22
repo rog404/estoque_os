@@ -59,7 +59,8 @@ defmodule EstoqueOS.MissionsTest do
         source_location_id: warehouse.id,
         destination_location_id: site.id,
         box_ids: [box.id],
-        user_id: actor_id()
+        user_id: actor_id(),
+        destination: "pacu"
       })
 
     result
@@ -147,7 +148,8 @@ defmodule EstoqueOS.MissionsTest do
           source_location_id: warehouse.id,
           destination_location_id: other.id,
           box_ids: [box.id],
-          user_id: actor_id()
+          user_id: actor_id(),
+          destination: "pacu"
         })
 
       refute result.transaction.mission_id
@@ -161,7 +163,11 @@ defmodule EstoqueOS.MissionsTest do
 
       # Used during the mission.
       {:ok, _} =
-        Outbound.issue(context.gauze.id, 10, %{location_id: site.id, user_id: actor_id()})
+        Outbound.issue(context.gauze.id, 10, %{
+          location_id: site.id,
+          user_id: actor_id(),
+          destination: "pacu"
+        })
 
       # Handed to the hospital at the end. Not consumed — it still exists.
       {:ok, _} =
@@ -207,7 +213,8 @@ defmodule EstoqueOS.MissionsTest do
       {:ok, _} =
         Outbound.issue(context.gauze.id, 10, %{
           location_id: context.site.id,
-          user_id: actor_id()
+          user_id: actor_id(),
+          destination: "pacu"
         })
 
       panel = Missions.panel(Missions.get_mission!(context.mission.id))
@@ -299,7 +306,11 @@ defmodule EstoqueOS.MissionsTest do
       send_out(context)
 
       {:ok, _} =
-        Outbound.issue(context.gauze.id, 10, %{location_id: site.id, user_id: actor_id()})
+        Outbound.issue(context.gauze.id, 10, %{
+          location_id: site.id,
+          user_id: actor_id(),
+          destination: "pacu"
+        })
 
       # Straight on to the next city without coming home.
       {:ok, _} =
@@ -307,7 +318,8 @@ defmodule EstoqueOS.MissionsTest do
           source_location_id: site.id,
           destination_location_id: next_site.id,
           box_ids: [box.id],
-          user_id: actor_id()
+          user_id: actor_id(),
+          destination: "pacu"
         })
 
       first_panel = Missions.panel(Missions.get_mission!(first.id))
@@ -341,7 +353,8 @@ defmodule EstoqueOS.MissionsTest do
       {:ok, _} =
         Outbound.issue(context.gauze.id, 12, %{
           location_id: context.site.id,
-          user_id: actor_id()
+          user_id: actor_id(),
+          destination: "pacu"
         })
 
       panel = Missions.panel(Missions.get_mission!(context.mission.id))

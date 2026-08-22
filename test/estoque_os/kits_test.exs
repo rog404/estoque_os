@@ -158,7 +158,8 @@ defmodule EstoqueOS.KitsTest do
                Kits.assemble(kit, 2, %{
                  location_id: warehouse.id,
                  box_id: box.id,
-                 user_id: actor_id()
+                 user_id: actor_id(),
+                 destination: "pacu"
                })
 
       assert Decimal.equal?(quantity, Decimal.new(2))
@@ -187,7 +188,8 @@ defmodule EstoqueOS.KitsTest do
                Kits.assemble(kit, 1, %{
                  location_id: warehouse.id,
                  box_id: box.id,
-                 user_id: actor_id()
+                 user_id: actor_id(),
+                 destination: "pacu"
                })
 
       assert lot.expires_on == ~D[2026-09-30]
@@ -205,7 +207,8 @@ defmodule EstoqueOS.KitsTest do
                Kits.assemble(kit, 2, %{
                  location_id: warehouse.id,
                  box_id: box.id,
-                 user_id: actor_id()
+                 user_id: actor_id(),
+                 destination: "pacu"
                })
 
       provenance =
@@ -234,7 +237,8 @@ defmodule EstoqueOS.KitsTest do
                Kits.assemble(kit, 10, %{
                  location_id: warehouse.id,
                  box_id: target.id,
-                 user_id: actor_id()
+                 user_id: actor_id(),
+                 destination: "pacu"
                })
 
       assert Decimal.equal?(quantity, Decimal.new(10))
@@ -253,7 +257,8 @@ defmodule EstoqueOS.KitsTest do
                Kits.assemble(kit, 10, %{
                  location_id: warehouse.id,
                  box_id: box.id,
-                 user_id: actor_id()
+                 user_id: actor_id(),
+                 destination: "pacu"
                })
 
       assert item.product_id == pen.id
@@ -337,7 +342,8 @@ defmodule EstoqueOS.KitsTest do
       assert {:ok, transaction} =
                Outbound.issue_many([%{product_id: kit.product.id, quantity: Decimal.new(2)}], %{
                  location_id: warehouse.id,
-                 user_id: actor_id()
+                 user_id: actor_id(),
+                 destination: "pacu"
                })
 
       assert transaction.type == "manual_out"
