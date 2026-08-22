@@ -195,9 +195,9 @@ defmodule EstoqueOSWeb.BoxLive.Index do
 
           <:col :let={row} label={gettext("Counting")}>
             <.write_gate may={@role_may_write?} allowed={@controls_enabled?}>
-              <.link navigate={~p"/boxes/#{row.box}/count"} class="btn btn-sm">
+              <.button navigate={~p"/boxes/#{row.box}/count"} class="btn-sm">
                 {gettext("Count")}
-              </.link>
+              </.button>
             </.write_gate>
           </:col>
 
@@ -226,7 +226,7 @@ defmodule EstoqueOSWeb.BoxLive.Index do
                     {location.name}
                   </option>
                 </select>
-                <button class="btn" phx-disable-with={gettext("Moving...")}>{gettext("Move")}</button>
+                <.button class="btn-sm" phx-disable-with={gettext("Moving...")}>{gettext("Move")}</.button>
               </form>
             </.write_gate>
           </:col>

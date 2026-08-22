@@ -257,14 +257,15 @@ defmodule EstoqueOSWeb.StockLive.Index do
 
               <.button variant="primary" class="btn-block">{gettext("Apply filters")}</.button>
 
-              <button
+              <.button
                 :if={filtering?(assigns)}
+                variant="ghost"
                 type="button"
                 phx-click="clear_filters"
-                class="btn btn-ghost btn-block"
+                class="btn-block"
               >
                 {gettext("Clear filters")}
-              </button>
+              </.button>
             </div>
           </details>
         </form>
@@ -310,9 +311,9 @@ defmodule EstoqueOSWeb.StockLive.Index do
               note={gettext("Try a wider search, or clear the filters to see the whole stock.")}
             >
               <:actions>
-                <button type="button" phx-click="clear_filters" class="btn btn-primary btn-soft">
+                <.button type="button" phx-click="clear_filters">
                   {gettext("Clear filters")}
-                </button>
+                </.button>
               </:actions>
             </.empty>
 
@@ -326,12 +327,12 @@ defmodule EstoqueOSWeb.StockLive.Index do
               }
             >
               <:actions>
-                <.link navigate={~p"/invoices/import"} class="btn btn-primary">
+                <.button navigate={~p"/invoices/import"} variant="primary">
                   {gettext("Import invoice")}
-                </.link>
-                <.link navigate={~p"/entry"} class="btn btn-primary btn-soft">
+                </.button>
+                <.button navigate={~p"/entry"}>
                   {gettext("Manual entry")}
-                </.link>
+                </.button>
               </:actions>
             </.empty>
           </:empty>
@@ -461,27 +462,27 @@ defmodule EstoqueOSWeb.StockLive.Index do
         class="flex items-center justify-between gap-4 mt-4"
         aria-label={gettext("Pages")}
       >
-        <button
+        <.button
           phx-click="page"
           phx-value-page={@page - 1}
           disabled={@page == 1}
-          class="btn btn-sm"
+          class="btn-sm"
         >
           {gettext("Previous")}
-        </button>
+        </.button>
 
         <span class="text-sm text-base-content/80">
           {gettext("Page %{page} of %{pages}", page: @page, pages: @pages)}
         </span>
 
-        <button
+        <.button
           phx-click="page"
           phx-value-page={@page + 1}
           disabled={@page == @pages}
-          class="btn btn-sm"
+          class="btn-sm"
         >
           {gettext("Next")}
-        </button>
+        </.button>
       </nav>
     </Layouts.app>
     """

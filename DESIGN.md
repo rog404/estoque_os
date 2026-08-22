@@ -222,7 +222,49 @@ to look up per screen:
 |---|---|
 | A page's own actions, in the header | default (unsized `.btn`) |
 | An action scoped to one card or table row | `btn-sm` |
-| An icon-only control repeated down a list | `btn-ghost btn-square btn-xs` |
+| An icon-only control repeated down a list | `btn-ghost btn-square btn-sm` |
+
+The icon-only row control was `btn-xs`, and `commit_action/1` — the one
+component that renders exactly that control — had always drawn it `btn-square
+btn-sm`. Two answers to one question, and the smaller one was a 24px target on
+a screen §5 promises 2.5rem on. It is `btn-sm` everywhere now, and the doc
+follows the component rather than the other way round.
+
+Classes are written in the order `btn` → colour → shape → size, so the same
+control greps the same way on every screen. `btn btn-sm btn-ghost btn-square`
+and `btn btn-ghost btn-square btn-sm` render identically and read as two
+different patterns.
+
+### The button is the component, and it never takes a colour in `class`
+
+`button/1` *adds* the caller's class to what makes a button, so a colour passed
+in `class` does not replace the variant — it joins it. Four controls on the
+login confirmation screen were `<.button class="btn btn-primary w-full">`, which
+shipped `btn-primary btn-soft` **and** `btn-primary`: the solid fill the author
+wanted, fighting the soft one the omitted variant supplies, and which of the two
+won depended on stylesheet order. Colour goes in `variant`. `class` is for
+layout — `w-full`, `btn-block`, a margin, a size.
+
+`type` and `form` are on `button/1`'s `:global` include list because they are
+not global HTML attributes and every `<.button type="button">` in the app was
+compiling with a warning. A warning on the correct spelling is an argument for
+the wrong one, and hand-written `class="btn ..."` is what people wrote instead.
+
+### The resting tier had three spellings
+
+`btn-outline` and a bare colourless `.btn` were both in use, alongside the
+documented soft primary, for the same job: a control that is present without
+being the loudest thing on the screen. Three spellings of one tier is how a
+screen ends up with an outline button beside a soft one beside a base-200 one,
+all meaning "secondary" — and the bare `.btn` was the worst of them, because
+`base-200` on the `base-200` ground is a control that does not read as a
+control. Both are gone: twenty-two of them across fifteen screens are `<.button>`
+with no variant.
+
+The one exception is a `<summary>` that opens a dropdown — the stock screen's
+filter trigger. It cannot be a `<button>` element, so it keeps the plain
+`.btn` classes, and it is a *toggle* rather than an action: it does not belong
+to the action vocabulary at all.
 
 ## 3. The data table
 

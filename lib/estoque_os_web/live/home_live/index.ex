@@ -253,7 +253,7 @@ defmodule EstoqueOSWeb.HomeLive.Index do
                 type="button"
                 phx-click="acknowledge_count"
                 phx-value-id={row.transaction.id}
-                class="btn btn-xs btn-soft shrink-0"
+                class="btn btn-primary btn-soft btn-xs shrink-0"
               >
                 {gettext("Noted")}
               </button>
@@ -533,9 +533,9 @@ defmodule EstoqueOSWeb.HomeLive.Index do
         <!-- The stock list, filtered to exactly those lots. The count was the
              whole message before, and a number is not something anyone can act
              on. -->
-        <.link navigate={~p"/stock?review=on"} class="btn btn-sm">
+        <.button navigate={~p"/stock?review=on"} class="btn-sm">
           {gettext("See them")}
-        </.link>
+        </.button>
       </div>
     </Layouts.app>
     """

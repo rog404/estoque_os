@@ -77,25 +77,27 @@ defmodule EstoqueOSWeb.ConferenceLive.Index do
 
           <:col :let={row} label={gettext("Actions")} hide_label_on_card={true} field={:inline} group>
             <div class="flex justify-end">
-              <.link
+              <.button
                 :if={row.receipt}
                 navigate={~p"/receipts/#{row.receipt}"}
-                class="btn btn-sm btn-primary"
+                variant="primary"
+                class="btn-sm"
               >
                 {gettext("Continue counting")}
-              </.link>
+              </.button>
               <!-- No `@writable?` guard: this route already requires an
                    operator, so the question is settled before the page
                    renders. -->
-              <button
+              <.button
                 :if={is_nil(row.receipt)}
                 phx-click="start"
                 phx-value-invoice={row.invoice.id}
-                class="btn btn-sm btn-primary"
+                variant="primary"
+                class="btn-sm"
                 phx-disable-with={gettext("Opening...")}
               >
                 {gettext("Start counting")}
-              </button>
+              </.button>
             </div>
           </:col>
         </.data_table>

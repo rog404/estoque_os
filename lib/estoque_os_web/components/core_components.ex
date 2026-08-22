@@ -192,7 +192,14 @@ defmodule EstoqueOSWeb.CoreComponents do
       <.button phx-click="remove" variant="danger">Remove</.button>
       <.button navigate={~p"/"}>Home</.button>
   """
-  attr :rest, :global, include: ~w(href navigate patch method download name value disabled)
+  # `type` and `form` are on the include list because they are not global
+  # attributes: a `<button type="button">` inside a form, and a submit that
+  # lives outside the form it posts, are both ordinary here, and without this
+  # every one of them compiled with a warning and tempted somebody back to a
+  # hand-written `class="btn"`.
+  attr :rest, :global,
+    include: ~w(href navigate patch method download name value disabled type form target)
+
   attr :class, :any, default: nil, doc: "added to the button classes, not a replacement for them"
   attr :variant, :string, values: ~w(primary commit danger ghost)
   slot :inner_block, required: true

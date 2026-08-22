@@ -432,7 +432,7 @@ defmodule EstoqueOSWeb.IssueLive.Index do
                   type="button"
                   phx-click="drop"
                   phx-value-index={index}
-                  class="btn btn-sm btn-ghost btn-square"
+                  class="btn btn-ghost btn-square btn-sm"
                   aria-label={gettext("Remove %{product}", product: line.product)}
                   title={gettext("Remove %{product}", product: line.product)}
                 >
@@ -557,9 +557,9 @@ defmodule EstoqueOSWeb.IssueLive.Index do
               />
             </label>
             <.button variant="primary">{gettext("Add to the write-off")}</.button>
-            <button type="button" phx-click="clear_product" class="btn btn-ghost">
+            <.button variant="ghost" type="button" phx-click="clear_product">
               {gettext("Cancel")}
-            </button>
+            </.button>
           </div>
 
           <!-- Below the field, never above it. It appears while somebody is
@@ -625,13 +625,13 @@ defmodule EstoqueOSWeb.IssueLive.Index do
                    what the screen does — reported as reading like an antithesis.
                    Picking is the warehouse's own word for gathering what is
                    about to leave, and it is what this click actually starts. -->
-              <button
+              <.button
                 phx-click="pick"
                 phx-value-product={row.product_id}
-                class="btn btn-sm"
+                class="btn-sm"
               >
                 {gettext("Pick")}
-              </button>
+              </.button>
             </div>
           </:col>
         </.data_table>

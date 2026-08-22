@@ -170,7 +170,7 @@ defmodule EstoqueOSWeb.IssueLive.List do
               }
               href={~p"/issues/#{row.transaction.id}/termo/doacao"}
               target="_blank"
-              class="btn btn-ghost btn-sm"
+              class="btn-sm"
             >
               <.icon name="hero-document-text" class="size-4" />
               {gettext("Certificate")}

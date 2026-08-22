@@ -125,7 +125,7 @@ defmodule EstoqueOSWeb.InvoiceLive.Import do
               </span>
               <button
                 type="button"
-                class="btn btn-ghost btn-sm text-error hover:bg-error/10"
+                class="btn btn-ghost btn-square btn-sm text-error hover:bg-error/10"
                 phx-click="cancel"
                 phx-value-ref={entry.ref}
                 aria-label={gettext("Remove file")}

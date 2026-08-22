@@ -27,9 +27,9 @@ defmodule EstoqueOSWeb.InvoiceLive.Index do
         {gettext("Invoices")}
         <:subtitle>{gettext("Everything imported from supplier XMLs.")}</:subtitle>
         <:actions>
-          <.link navigate={~p"/invoices/import"} class="btn btn-primary">
+          <.button navigate={~p"/invoices/import"} variant="primary">
             {gettext("Import invoice")}
-          </.link>
+          </.button>
         </:actions>
       </.header>
 
@@ -45,9 +45,9 @@ defmodule EstoqueOSWeb.InvoiceLive.Index do
               }
             >
               <:actions>
-                <.link navigate={~p"/invoices/import"} class="btn btn-primary">
+                <.button navigate={~p"/invoices/import"} variant="primary">
                   {gettext("Import invoice")}
-                </.link>
+                </.button>
               </:actions>
             </.empty>
           </:empty>

@@ -299,13 +299,14 @@ defmodule EstoqueOSWeb.ReceiptLive.Show do
                 <!-- Locked once counted: a recorded line reopens on purpose,
                      through "Count again", never by nudging a field that looks
                      editable because it still is one. -->
-                <button
-                  class="btn btn-sm btn-primary"
+                <.button
+                  variant="primary"
+                  class="btn-sm"
                   disabled={recorded?(line)}
                   phx-disable-with={gettext("Saving...")}
                 >
                   {gettext("Record")}
-                </button>
+                </.button>
 
                 <!-- Always rendered, so the row is the height it will be before
                      anything is counted. A tick that appears on save pushes the
@@ -510,14 +511,14 @@ defmodule EstoqueOSWeb.ReceiptLive.Show do
         <!-- Same button, one step further away, when there is something to say
              first. Not disabled: closing with lines uncounted is allowed and
              sometimes right — the delivery is short and everyone knows it. -->
-        <button
+        <.button
           :if={@outstanding != []}
+          variant="primary"
           type="button"
           data-confirm-open="uncounted-warning"
-          class="btn btn-primary"
         >
           {gettext("Close conference")}
-        </button>
+        </.button>
 
         <p class="text-sm opacity-70">
           {gettext("Lines left uncounted stay exactly as the invoice booked them.")}
@@ -573,14 +574,14 @@ defmodule EstoqueOSWeb.ReceiptLive.Show do
           </div>
 
           <div class="modal-action">
-            <button
+            <.button
+              variant="ghost"
               type="submit"
               form="complete-form"
-              class="btn btn-ghost"
               phx-disable-with={gettext("Closing...")}
             >
               {gettext("Close anyway")}
-            </button>
+            </.button>
             <button type="button" data-confirm-close class="btn btn-primary">
               {gettext("Go back and count")}
             </button>

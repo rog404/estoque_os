@@ -211,9 +211,9 @@ defmodule EstoqueOSWeb.KitLive.Show do
                     quantity: quantity(@review.quantity)
                   )}
                 </h2>
-                <button type="button" phx-click="review_again" class="btn btn-ghost btn-sm">
+                <.button variant="ghost" type="button" phx-click="review_again" class="btn-sm">
                   {gettext("Change quantity")}
-                </button>
+                </.button>
               </div>
 
               <div :if={@review.expired != []} class="alert alert-error" role="alert">
@@ -407,9 +407,9 @@ defmodule EstoqueOSWeb.KitLive.Show do
             />
           </label>
           <.button>{gettext("Add")}</.button>
-          <button type="button" phx-click="clear_component" class="btn btn-ghost">
+          <.button variant="ghost" type="button" phx-click="clear_component">
             {gettext("Cancel")}
-          </button>
+          </.button>
         </form>
       </.write_gate>
 

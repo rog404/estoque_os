@@ -191,9 +191,9 @@ defmodule EstoqueOSWeb.MissionLive.Show do
               note={gettext("It starts when the first load-out sends a box to this mission.")}
             >
               <:actions>
-                <.link navigate={~p"/load-out"} class="btn btn-primary btn-soft">
+                <.button navigate={~p"/load-out"}>
                   {gettext("Load-out")}
-                </.link>
+                </.button>
               </:actions>
             </.empty>
           </:empty>

@@ -126,15 +126,15 @@ defmodule EstoqueOSWeb.TransitLive.Index do
                  when it is confirmed sends the next tap to the wrong load. -->
             <div class={["mt-1", not row.in_transit? && "invisible"]}>
               <.write_gate may={@role_may_write?} allowed={@controls_enabled?}>
-                <button
+                <.button
                   type="button"
                   phx-click="arrive"
                   phx-value-id={row.shipment.id}
-                  class="btn btn-xs"
+                  class="btn-sm"
                   phx-disable-with={gettext("Recording...")}
                 >
                   {gettext("It arrived")}
-                </button>
+                </.button>
               </.write_gate>
             </div>
           </:col>
@@ -144,9 +144,9 @@ defmodule EstoqueOSWeb.TransitLive.Index do
                filling one in is an act, not a reading. -->
           <:col :let={row} label={gettext("Declaration")}>
             <.write_gate may={@role_may_write?} allowed={@controls_enabled?}>
-              <.link navigate={~p"/shipments/#{row.shipment.id}/declaracao"} class="btn btn-xs">
+              <.button navigate={~p"/shipments/#{row.shipment.id}/declaracao"} class="btn-sm">
                 {gettext("Declaration")}
-              </.link>
+              </.button>
             </.write_gate>
           </:col>
 
