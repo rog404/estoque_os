@@ -54,6 +54,7 @@ defmodule EstoqueOSWeb.SalesReportLive.Index do
     socket
     |> assign(:rows, rows)
     |> assign(:totals, Reports.sales_totals(rows))
+    |> assign(:places, Reports.sales_by_place(from, to, segment: blank_to_nil(segment)))
   end
 
   @impl true
@@ -135,6 +136,40 @@ defmodule EstoqueOSWeb.SalesReportLive.Index do
         />
       </div>
 
+      <!-- Where it was sold, which for the marketing stock is *when and at
+           which event*: a mission site, a fair, the office counter. The place
+           comes from the entry rather than from the movement — a sale does not
+           travel, so it has no source location; it left the shelf it was
+           standing on. -->
+      <.panel :if={@places != []} title={gettext("By place")} flush class="mb-6">
+        <.data_table rows={@places} row_id={&"place-#{&1.location_id}"}>
+          <:col :let={row} label={gettext("Place")} emphasis={:identity}>
+            {row.location}
+            <p class="text-sm text-base-content/80">{place_kind(row.kind)}</p>
+          </:col>
+
+          <:col :let={row} label={gettext("Quantity")} align={:right} group>
+            {quantity(row.quantity)}
+          </:col>
+
+          <:col :let={row} label={gettext("Revenue")} align={:right} emphasis={:primary}>
+            <.amount value={money(row.revenue)} />
+          </:col>
+
+          <:col :let={row} label={gettext("Cost")} align={:right} emphasis={:muted}>
+            <.amount value={money(row.cost)} />
+          </:col>
+
+          <:col :let={row} label={gettext("Margin")} align={:right}>
+            <.amount value={money(row.margin)} />
+            <!-- Always rendered, `invisible` when there is nothing to say. -->
+            <p class={["text-xs text-warning", row.unpriced == 0 && "invisible"]}>
+              {gettext("%{count} without cost", count: row.unpriced)}
+            </p>
+          </:col>
+        </.data_table>
+      </.panel>
+
       <.panel title={gettext("By product")} flush>
         <.data_table rows={@rows} row_id={&"sale-#{&1.product_id}"}>
           <:empty>
@@ -186,6 +221,14 @@ defmodule EstoqueOSWeb.SalesReportLive.Index do
     </Layouts.app>
     """
   end
+
+  # The kinds a sale can leave from, in the words the operation uses. A mission
+  # site is where the ONG spent a week; "outro" is the office counter and the
+  # fair stand, which is why it is not called "other" here.
+  defp place_kind("mission_site"), do: gettext("mission or event")
+  defp place_kind("warehouse"), do: gettext("warehouse")
+  defp place_kind("transit"), do: gettext("in transit")
+  defp place_kind(_other), do: gettext("elsewhere")
 
   @impl true
   def handle_event("filter", params, socket) do
