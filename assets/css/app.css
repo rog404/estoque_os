@@ -92,12 +92,19 @@
   --radius-selector: 0.1875rem;
   --radius-field: 0.25rem;
   --radius-box: 0.375rem;
-  /* Controls are sized for a gloved hand in a warehouse, not a mouse in an
-     office: a field is 0.25 × 10 = 2.5rem tall and a checkbox 0.25 × 6 =
-     1.5rem. The two used to be 2.1875rem and 1.3125rem, which is where the
-     checkboxes got their apologetic look. */
-  --size-selector: 0.25rem;
-  --size-field: 0.25rem;
+  /* One number sizes the input, the select and the button, so the three are
+     always the same height in a row — that is the whole reason it is a token
+     and not a per-screen class.
+
+     0.21875 × 10 = 2.1875rem, which is 37px at the 17px base. It was 0.25
+     (2.5rem, 42px), and 42px reads as a form built for a tablet kiosk: the
+     fields dwarfed the values inside them and a two-control row ate a third of
+     a phone's height. The checkbox rides the same number rather than a second
+     one — 0.21875 × 6 = 1.3125rem — and the apologetic look it used to have
+     came from being a bare 1.3rem box beside a 2.5rem input, which `.check-field`
+     fixes by giving it the field's own height and border. */
+  --size-selector: 0.21875rem;
+  --size-field: 0.21875rem;
   --border: 1px;
   --depth: 1;
   --noise: 0;
@@ -131,8 +138,8 @@
   --radius-selector: 0.1875rem;
   --radius-field: 0.25rem;
   --radius-box: 0.375rem;
-  --size-selector: 0.25rem;
-  --size-field: 0.25rem;
+  --size-selector: 0.21875rem;
+  --size-field: 0.21875rem;
   --border: 1px;
   --depth: 1;
   --noise: 0;
@@ -150,8 +157,19 @@
 [data-phx-session], [data-phx-teleported-src] { display: contents }
 
 /* Read at arm's length, in a warehouse, often on a phone: the base is a step
-   up from the 16px web default and the dense tables come up with it. */
+   up from the 16px web default and the dense tables come up with it.
+
+   A phone drops back to 16px. Everything here is in rem, so one declaration
+   takes the type, the fields, the buttons and the row heights down together —
+   which is what keeps a 390px screen showing another line of the list instead
+   of the same line in larger type. It stops at 16px and not below: under 16px
+   iOS zooms the page the moment an input takes focus, and a screen that jumps
+   while somebody is typing a count is worse than a screen that fits less. */
 html { font-size: 17px; }
+
+@media (max-width: 640px) {
+  html { font-size: 16px; }
+}
 
 /* ==========================================================================
    SECTION IDENTITY
@@ -821,7 +839,11 @@ th, td { font-feature-settings: "tnum" 1; }
     flex-wrap: wrap;
     overflow-wrap: anywhere;
     gap: 0.125rem 1rem;
-    padding: 0.125rem 0;
+    /* The sides are the desktop cell's own `px-3`, kept rather than zeroed. A
+       card with no horizontal padding glues every value — and every button in
+       an action cell — to the panel border, so the control looked clipped at
+       the edge of the phone. */
+    padding: 0.125rem 0.75rem;
     border: 0;
     text-align: right;
   }
@@ -864,10 +886,19 @@ th, td { font-feature-settings: "tnum" 1; }
     padding: 0.25rem 0;
   }
 
+  /* A cell the operator types into keeps a thumb-sized target, and the control
+     beside it takes the same height — a 2.5rem field next to a 2.1875rem button
+     is the mismatch the size token exists to prevent, and it shows up here
+     because this is the one place a control is deliberately taller than the
+     token. */
+  .data-table td.is-field :is(input, select, textarea):not([type="checkbox"]):not([type="radio"]),
+  .data-table td.is-field .btn {
+    min-height: 2.5rem;
+  }
+
   .data-table td.is-field :is(input, select, textarea):not([type="checkbox"]):not([type="radio"]) {
     width: 100%;
     max-width: 11rem;
-    min-height: 2.75rem;
     font-size: 1rem; /* under 16px iOS zooms the page on focus */
   }
 

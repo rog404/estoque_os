@@ -280,7 +280,7 @@ defmodule EstoqueOSWeb.LocationLive.Index do
                     type="button"
                     phx-click="reactivate"
                     phx-value-id={location.id}
-                    class="btn-sm w-full"
+                    class="w-full"
                   >
                     {gettext("Reactivate")}
                   </.button>

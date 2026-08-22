@@ -122,10 +122,34 @@ rather than fought with a selector.
 
 ### Control sizing
 
-`--size-field` and `--size-selector` are both **0.25rem**, so a field is 2.5rem
-tall and a checkbox is 1.5rem. They were 0.21875rem, which made a 22px checkbox
-sit beside a 37px input — and four screens shrank it further with `checkbox-sm`.
-These are sized for a gloved hand in a warehouse, not a mouse in an office.
+`--size-field` and `--size-selector` are both **0.21875rem**, so a field — and
+the button and the select beside it — is 2.1875rem, which is 37px at the 17px
+base. One token sizes all three, which is the whole reason it is a token: an
+input and the button that submits it are never two heights.
+
+They were 0.25rem (2.5rem, 42px) for a while, on the argument that a warehouse
+is a gloved hand and not a mouse. 42px turned out to read as a tablet kiosk —
+the fields dwarfed the values inside them, and a two-control row took a third
+of a phone's height. The earlier complaint that produced 0.25rem was never
+really about the field: it was a 22px checkbox sitting beside a 37px input, and
+what fixes that is `.check-field` giving the box the field's own height and
+border, not making every input in the app taller.
+
+**A phone drops the base to 16px.** Everything is in rem, so one declaration
+takes the type, the fields, the buttons and the row heights down together —
+which is what puts another line of the list on a 390px screen instead of the
+same line in larger type. It stops at 16px and not below: under 16px iOS zooms
+the page the moment an input takes focus, and a screen that jumps while
+somebody is typing a count is worse than a screen that fits less.
+
+The one control deliberately taller than the token is the field inside a data
+table's mobile card — 2.5rem, because it is typed into one-handed while holding
+a box — and the button beside it takes that height too, so the exception does
+not reintroduce the mismatch.
+
+Cards on a phone keep the desktop cell's `px-3` on their sides. Zeroing it glued
+every value, and every button in an action cell, to the panel border: a control
+flush against the edge of the phone reads as a control cut in half.
 
 ## 2. Components
 
@@ -223,6 +247,15 @@ to look up per screen:
 | A page's own actions, in the header | default (unsized `.btn`) |
 | An action scoped to one card or table row | `btn-sm` |
 | An icon-only control repeated down a list | `btn-ghost btn-square btn-sm` |
+
+One exception, and it is the shared-slot rule: where a `commit_action/1` word
+trigger and its counterpart take turns in the same fixed-width slot — the
+Deactivate/Reactivate pair on `/locations` — both take the trigger's size, which
+is the unsized default, not `btn-sm`. `commit_action/1` only shrinks itself when
+it is an icon. The pair had one of each: a default-size "Desativar" beside a
+`btn-sm` "Reativar", so the type went smaller on exactly the rows where the
+place was already retired. Two controls that swap in one slot are one control as
+far as the operator is concerned, and one control has one size.
 
 The icon-only row control was `btn-xs`, and `commit_action/1` — the one
 component that renders exactly that control — had always drawn it `btn-square
@@ -383,7 +416,8 @@ warehouses and hospital storage rooms. No formal standard has been agreed with
 the ONG yet — an open decision. Honored today: labelled controls, keyboard-
 reachable actions, status conveyed by **text and icon, never by colour alone**
 (every `status/1` carries a word, and most carry a shape), icon-only buttons
-carrying `aria-label`, and a 2.5rem minimum control height.
+carrying `aria-label`, and a 2.1875rem minimum control height — 2.5rem for a
+field typed into on a phone.
 
 ## 6. What is not decided
 
