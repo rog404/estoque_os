@@ -117,7 +117,10 @@ defmodule EstoqueOSWeb.HomeLiveTest do
 
     {:ok, _view, html} = live(conn, ~p"/")
 
-    assert html =~ "Nota fiscal lançada"
+    # The same ledger type, a different act: this one came in by hand, and the
+    # log used to call it a posted invoice.
+    assert html =~ "Entrada manual"
+    refute html =~ "Nota fiscal lançada"
     assert html =~ "1 linha(s)"
   end
 

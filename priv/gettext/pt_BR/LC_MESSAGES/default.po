@@ -11,18 +11,18 @@ msgstr ""
 "Language: pt_BR\n"
 "Plural-Forms: nplurals=2; plural=(n>1);\n"
 
-#: lib/estoque_os_web/components/layouts.ex:696
-#: lib/estoque_os_web/components/layouts.ex:711
+#: lib/estoque_os_web/components/layouts.ex:702
+#: lib/estoque_os_web/components/layouts.ex:717
 #, elixir-autogen, elixir-format
 msgid "Attempting to reconnect"
 msgstr "Tentando reconectar"
 
-#: lib/estoque_os_web/components/layouts.ex:703
+#: lib/estoque_os_web/components/layouts.ex:709
 #, elixir-autogen, elixir-format
 msgid "Something went wrong!"
 msgstr "Algo deu errado!"
 
-#: lib/estoque_os_web/components/layouts.ex:688
+#: lib/estoque_os_web/components/layouts.ex:694
 #, elixir-autogen, elixir-format
 msgid "We can't find the internet"
 msgstr "Sem conexão com a internet"
@@ -702,8 +702,8 @@ msgstr "Quantidade"
 msgid "Reading the spreadsheet..."
 msgstr "Lendo a planilha..."
 
-#: lib/estoque_os_web/components/layouts.ex:415
-#: lib/estoque_os_web/components/layouts.ex:424
+#: lib/estoque_os_web/components/layouts.ex:421
+#: lib/estoque_os_web/components/layouts.ex:430
 #: lib/estoque_os_web/live/entry_live/new.ex:155
 #: lib/estoque_os_web/live/invoice_live/import.ex:80
 #: lib/estoque_os_web/live/product_live/show.ex:169
@@ -834,7 +834,7 @@ msgstr "faltam %{count}"
 msgid "%{days} day(s) · %{date}"
 msgstr "%{days} dia(s) · %{date}"
 
-#: lib/estoque_os_web/movement.ex:27
+#: lib/estoque_os_web/movement.ex:41
 #, elixir-autogen, elixir-format
 msgid "Adjustment"
 msgstr "Ajuste"
@@ -855,12 +855,12 @@ msgstr "Caixas para recontar"
 msgid "Catalog"
 msgstr "Catálogo"
 
-#: lib/estoque_os_web/movement.ex:28
+#: lib/estoque_os_web/movement.ex:42
 #, elixir-autogen, elixir-format
 msgid "Count imported"
 msgstr "Contagem importada"
 
-#: lib/estoque_os_web/movement.ex:20
+#: lib/estoque_os_web/movement.ex:34
 #, elixir-autogen, elixir-format
 msgid "Donation received"
 msgstr "Doação recebida"
@@ -882,7 +882,7 @@ msgstr "Vencendo em breve"
 msgid "In stock"
 msgstr "Em estoque"
 
-#: lib/estoque_os_web/movement.ex:19
+#: lib/estoque_os_web/movement.ex:33
 #, elixir-autogen, elixir-format
 msgid "Invoice posted"
 msgstr "Nota fiscal lançada"
@@ -892,12 +892,12 @@ msgstr "Nota fiscal lançada"
 msgid "Invoices pending"
 msgstr "Notas pendentes"
 
-#: lib/estoque_os_web/movement.ex:24
+#: lib/estoque_os_web/movement.ex:38
 #, elixir-autogen, elixir-format
 msgid "Kit assembled"
 msgstr "Kit montado"
 
-#: lib/estoque_os_web/movement.ex:25
+#: lib/estoque_os_web/movement.ex:39
 #, elixir-autogen, elixir-format
 msgid "Kit consumed"
 msgstr "Kit consumido"
@@ -909,12 +909,12 @@ msgid "Known value"
 msgstr "Valor conhecido"
 
 #: lib/estoque_os_web/live/mission_live/show.ex:195
-#: lib/estoque_os_web/movement.ex:22
+#: lib/estoque_os_web/movement.ex:36
 #, elixir-autogen, elixir-format
 msgid "Load-out"
 msgstr "Derrubada de carga"
 
-#: lib/estoque_os_web/movement.ex:26
+#: lib/estoque_os_web/movement.ex:40
 #, elixir-autogen, elixir-format
 msgid "Manual issue"
 msgstr "Baixa manual"
@@ -945,12 +945,12 @@ msgstr "Visão geral"
 msgid "Recent activity"
 msgstr "Atividade recente"
 
-#: lib/estoque_os_web/movement.ex:23
+#: lib/estoque_os_web/movement.ex:37
 #, elixir-autogen, elixir-format
 msgid "Return"
 msgstr "Retorno"
 
-#: lib/estoque_os_web/movement.ex:21
+#: lib/estoque_os_web/movement.ex:35
 #, elixir-autogen, elixir-format
 msgid "Transfer"
 msgstr "Transferência"
@@ -1221,7 +1221,7 @@ msgstr "Código da caixa"
 msgid "Box marked as counted today."
 msgstr "Caixa marcada como contada hoje."
 
-#: lib/estoque_os_web/components/layouts.ex:435
+#: lib/estoque_os_web/components/layouts.ex:441
 #: lib/estoque_os_web/live/box_live/index.ex:21
 #: lib/estoque_os_web/live/box_live/index.ex:88
 #: lib/estoque_os_web/live/box_live/show.ex:44
@@ -1259,6 +1259,7 @@ msgstr "Dê à caixa um código que ainda não esteja em uso."
 msgid "Give the location a name that is not in use yet."
 msgstr "Dê ao local um nome que ainda não esteja em uso."
 
+#: lib/estoque_os_web/live/entry_live/list.ex:124
 #: lib/estoque_os_web/live/location_live/index.ex:120
 #: lib/estoque_os_web/live/location_live/index.ex:191
 #, elixir-autogen, elixir-format
@@ -1280,7 +1281,7 @@ msgstr "Local %{name} criado."
 msgid "Location name"
 msgstr "Nome do local"
 
-#: lib/estoque_os_web/components/layouts.ex:441
+#: lib/estoque_os_web/components/layouts.ex:447
 #: lib/estoque_os_web/live/location_live/index.ex:18
 #: lib/estoque_os_web/live/location_live/index.ex:97
 #: lib/estoque_os_web/live/location_live/index.ex:144
@@ -1371,7 +1372,7 @@ msgid "mission site"
 msgstr "local de missão"
 
 #: lib/estoque_os_web/live/location_live/index.ex:322
-#: lib/estoque_os_web/movement.ex:73
+#: lib/estoque_os_web/movement.ex:95
 #, elixir-autogen, elixir-format
 msgid "other"
 msgstr "outro"
@@ -1467,6 +1468,7 @@ msgid "Everything is selected by default — uncheck what stays behind."
 msgstr "Tudo vem selecionado — desmarque o que fica."
 
 #: lib/estoque_os_web/live/audit_report_live/index.ex:94
+#: lib/estoque_os_web/live/entry_live/list.ex:94
 #: lib/estoque_os_web/live/issue_live/index.ex:349
 #: lib/estoque_os_web/live/issue_live/list.ex:95
 #: lib/estoque_os_web/live/load_out_live/index.ex:103
@@ -1527,6 +1529,7 @@ msgid "There is nothing to send from here."
 msgstr "Não há nada para enviar daqui."
 
 #: lib/estoque_os_web/live/audit_report_live/index.ex:98
+#: lib/estoque_os_web/live/entry_live/list.ex:98
 #: lib/estoque_os_web/live/issue_live/list.ex:99
 #: lib/estoque_os_web/live/load_out_live/index.ex:115
 #: lib/estoque_os_web/live/sales_report_live/index.ex:76
@@ -1583,7 +1586,7 @@ msgstr "Quantos"
 msgid "Into box"
 msgstr "Na caixa"
 
-#: lib/estoque_os_web/components/layouts.ex:447
+#: lib/estoque_os_web/components/layouts.ex:453
 #: lib/estoque_os_web/live/kit_live/index.ex:29
 #: lib/estoque_os_web/live/kit_live/index.ex:52
 #: lib/estoque_os_web/live/kit_live/show.ex:141
@@ -1808,7 +1811,7 @@ msgstr "vencendo"
 msgid "Adjustments by reason"
 msgstr "Ajustes por motivo"
 
-#: lib/estoque_os_web/components/layouts.ex:494
+#: lib/estoque_os_web/components/layouts.ex:500
 #: lib/estoque_os_web/live/audit_report_live/index.ex:31
 #: lib/estoque_os_web/live/audit_report_live/index.ex:83
 #, elixir-autogen, elixir-format
@@ -1889,6 +1892,7 @@ msgid "Type"
 msgstr "Tipo"
 
 #: lib/estoque_os_web/live/audit_report_live/index.ex:246
+#: lib/estoque_os_web/live/entry_live/list.ex:140
 #: lib/estoque_os_web/live/issue_live/list.ex:162
 #, elixir-autogen, elixir-format
 msgid "Units"
@@ -1909,6 +1913,7 @@ msgid "Units out"
 msgstr "Saídas"
 
 #: lib/estoque_os_web/live/audit_report_live/index.ex:227
+#: lib/estoque_os_web/live/entry_live/list.ex:120
 #: lib/estoque_os_web/live/issue_live/list.ex:129
 #: lib/estoque_os_web/live/product_live/show.ex:376
 #: lib/estoque_os_web/live/product_live/show.ex:412
@@ -1917,28 +1922,29 @@ msgid "When"
 msgstr "Quando"
 
 #: lib/estoque_os_web/live/audit_report_live/index.ex:242
+#: lib/estoque_os_web/live/entry_live/list.ex:136
 #: lib/estoque_os_web/live/issue_live/list.ex:158
 #: lib/estoque_os_web/live/product_live/show.ex:437
 #, elixir-autogen, elixir-format
 msgid "Who"
 msgstr "Quem"
 
-#: lib/estoque_os_web/movement.ex:72
+#: lib/estoque_os_web/movement.ex:94
 #, elixir-autogen, elixir-format
 msgid "count correction"
 msgstr "correção de contagem"
 
-#: lib/estoque_os_web/movement.ex:70
+#: lib/estoque_os_web/movement.ex:92
 #, elixir-autogen, elixir-format
 msgid "damage"
 msgstr "avaria"
 
-#: lib/estoque_os_web/movement.ex:69
+#: lib/estoque_os_web/movement.ex:91
 #, elixir-autogen, elixir-format
 msgid "expiry"
 msgstr "vencimento"
 
-#: lib/estoque_os_web/movement.ex:71
+#: lib/estoque_os_web/movement.ex:93
 #, elixir-autogen, elixir-format
 msgid "loss"
 msgstr "perda"
@@ -1988,12 +1994,12 @@ msgstr "Vencendo"
 msgid "Nothing here matches that."
 msgstr "Nada aqui corresponde a isso."
 
-#: lib/estoque_os_web/components/layouts.ex:377
+#: lib/estoque_os_web/components/layouts.ex:383
 #, elixir-autogen, elixir-format
 msgid "Operation"
 msgstr "Operação"
 
-#: lib/estoque_os_web/components/layouts.ex:456
+#: lib/estoque_os_web/components/layouts.ex:462
 #, elixir-autogen, elixir-format
 msgid "Reports"
 msgstr "Relatórios"
@@ -2006,7 +2012,7 @@ msgstr "Relatórios"
 msgid "Search"
 msgstr "Buscar"
 
-#: lib/estoque_os_web/components/layouts.ex:389
+#: lib/estoque_os_web/components/layouts.ex:395
 #: lib/estoque_os_web/live/issue_live/index.ex:41
 #: lib/estoque_os_web/live/issue_live/index.ex:270
 #: lib/estoque_os_web/live/issue_live/index.ex:450
@@ -2087,6 +2093,7 @@ msgstr "O que não voltou é baixado como consumido na missão, a menos que voc�
 msgid "Export stock"
 msgstr "Exportar estoque"
 
+#: lib/estoque_os_web/live/entry_live/list.ex:132
 #: lib/estoque_os_web/live/mission_live/index.ex:65
 #: lib/estoque_os_web/live/mission_live/index.ex:109
 #: lib/estoque_os_web/live/product_live/show.ex:289
@@ -2345,7 +2352,7 @@ msgid "CNPJ of the hospital or institution"
 msgstr "CNPJ do hospital ou instituição"
 
 #: lib/estoque_os_web/live/entry_live/new.ex:341
-#: lib/estoque_os_web/movement.ex:85
+#: lib/estoque_os_web/movement.ex:107
 #, elixir-autogen, elixir-format
 msgid "Donation"
 msgstr "Doação"
@@ -2356,17 +2363,17 @@ msgstr "Doação"
 msgid "Note"
 msgstr "Observação"
 
-#: lib/estoque_os_web/movement.ex:84
+#: lib/estoque_os_web/movement.ex:106
 #, elixir-autogen, elixir-format
 msgid "Operating room"
 msgstr "Centro Cirúrgico"
 
-#: lib/estoque_os_web/movement.ex:83
+#: lib/estoque_os_web/movement.ex:105
 #, elixir-autogen, elixir-format
 msgid "PACU"
 msgstr "PACU"
 
-#: lib/estoque_os_web/movement.ex:86
+#: lib/estoque_os_web/movement.ex:108
 #, elixir-autogen, elixir-format
 msgid "Pre and post"
 msgstr "Pré e Pós"
@@ -2376,7 +2383,7 @@ msgstr "Pré e Pós"
 msgid "Recipient CNPJ"
 msgstr "CNPJ do destinatário"
 
-#: lib/estoque_os_web/movement.ex:87
+#: lib/estoque_os_web/movement.ex:109
 #, elixir-autogen, elixir-format
 msgid "Triage"
 msgstr "Triagem"
@@ -2405,7 +2412,7 @@ msgid "optional"
 msgstr "opcional"
 
 #: lib/estoque_os_web/live/issue_live/list.ex:193
-#: lib/estoque_os_web/movement.ex:157
+#: lib/estoque_os_web/movement.ex:179
 #, elixir-autogen, elixir-format
 msgid "%{product} +%{count}"
 msgstr "%{product} +%{count}"
@@ -2421,7 +2428,7 @@ msgstr "Termo"
 msgid "Goods that left by hand between %{from} and %{to}."
 msgstr "O que saiu na mão entre %{from} e %{to}."
 
-#: lib/estoque_os_web/components/layouts.ex:500
+#: lib/estoque_os_web/components/layouts.ex:506
 #: lib/estoque_os_web/live/issue_live/list.ex:41
 #: lib/estoque_os_web/live/issue_live/list.ex:81
 #, elixir-autogen, elixir-format
@@ -2519,10 +2526,11 @@ msgstr "Mercadoria que chegou sem nota — uma doação recebida na porta."
 msgid "Into"
 msgstr "Para"
 
-#: lib/estoque_os_web/components/layouts.ex:368
+#: lib/estoque_os_web/components/layouts.ex:374
 #: lib/estoque_os_web/live/entry_live/new.ex:38
 #: lib/estoque_os_web/live/entry_live/new.ex:124
 #: lib/estoque_os_web/live/stock_live/index.ex:333
+#: lib/estoque_os_web/movement.ex:29
 #, elixir-autogen, elixir-format
 msgid "Manual entry"
 msgstr "Entrada manual"
@@ -2609,6 +2617,7 @@ msgstr "%{where} · saiu em %{left}"
 msgid "Create mission"
 msgstr "Criar missão"
 
+#: lib/estoque_os_web/live/entry_live/list.ex:106
 #: lib/estoque_os_web/live/mission_live/show.ex:143
 #: lib/estoque_os_web/live/mission_live/show.ex:214
 #, elixir-autogen, elixir-format
@@ -2643,7 +2652,7 @@ msgstr "Missão"
 msgid "Mission %{name} created."
 msgstr "Missão %{name} criada."
 
-#: lib/estoque_os_web/components/layouts.ex:506
+#: lib/estoque_os_web/components/layouts.ex:512
 #: lib/estoque_os_web/live/mission_live/index.ex:26
 #: lib/estoque_os_web/live/mission_live/index.ex:39
 #: lib/estoque_os_web/live/mission_live/index.ex:98
@@ -3322,7 +3331,7 @@ msgstr "%{counted} de %{lines}"
 msgid "%{count} already closed"
 msgstr "%{count} já encerrada(s)"
 
-#: lib/estoque_os_web/components/layouts.ex:383
+#: lib/estoque_os_web/components/layouts.ex:389
 #: lib/estoque_os_web/live/conference_live/index.ex:23
 #: lib/estoque_os_web/live/conference_live/index.ex:34
 #: lib/estoque_os_web/live/receipt_live/show.ex:165
@@ -3444,6 +3453,7 @@ msgstr "Caixa(s) criada(s) aqui: %{codes}"
 msgid "That box code could not be used."
 msgstr "Esse código de caixa não pôde ser usado."
 
+#: lib/estoque_os_web/live/entry_live/list.ex:105
 #: lib/estoque_os_web/live/entry_live/new.ex:362
 #, elixir-autogen, elixir-format
 msgid "Bought"
@@ -4313,7 +4323,7 @@ msgstr "%{count} foram contadas e não bateram:"
 msgid "Product, lot, box, GTIN or invoice number"
 msgstr "Produto, lote, caixa, GTIN ou número da nota"
 
-#: lib/estoque_os_web/movement.ex:88
+#: lib/estoque_os_web/movement.ex:110
 #, elixir-autogen, elixir-format
 msgid "Disposal"
 msgstr "Descarte"
@@ -4429,7 +4439,7 @@ msgstr "Nada foi vendido neste período."
 msgid "Revenue"
 msgstr "Receita"
 
-#: lib/estoque_os_web/movement.ex:89
+#: lib/estoque_os_web/movement.ex:111
 #, elixir-autogen, elixir-format
 msgid "Sale"
 msgstr "Venda"
@@ -4439,7 +4449,7 @@ msgstr "Venda"
 msgid "Sale price (unit)"
 msgstr "Preço de venda (unit.)"
 
-#: lib/estoque_os_web/components/layouts.ex:474
+#: lib/estoque_os_web/components/layouts.ex:480
 #: lib/estoque_os_web/live/sales_report_live/index.ex:37
 #: lib/estoque_os_web/live/sales_report_live/index.ex:64
 #, elixir-autogen, elixir-format
@@ -4528,7 +4538,7 @@ msgstr "conferência"
 msgid "Apply filters"
 msgstr "Aplicar filtros"
 
-#: lib/estoque_os_web/components/layouts.ex:468
+#: lib/estoque_os_web/components/layouts.ex:474
 #: lib/estoque_os_web/live/stock_live/spreadsheet.ex:30
 #, elixir-autogen, elixir-format
 msgid "Data"
@@ -4656,7 +4666,7 @@ msgstr "Previsto"
 msgid "Expected arrival"
 msgstr "Chegada prevista"
 
-#: lib/estoque_os_web/components/layouts.ex:488
+#: lib/estoque_os_web/components/layouts.ex:494
 #: lib/estoque_os_web/live/shipment_live/declaration.ex:46
 #: lib/estoque_os_web/live/transit_live/index.ex:31
 #: lib/estoque_os_web/live/transit_live/index.ex:50
@@ -4674,12 +4684,12 @@ msgstr "Cargas na estrada"
 msgid "Nothing is on the road."
 msgstr "Nada está na estrada."
 
-#: lib/estoque_os_web/components/layouts.ex:406
+#: lib/estoque_os_web/components/layouts.ex:412
 #, elixir-autogen, elixir-format
 msgid "Receive a load"
 msgstr "Receber carga"
 
-#: lib/estoque_os_web/components/layouts.ex:400
+#: lib/estoque_os_web/components/layouts.ex:406
 #: lib/estoque_os_web/live/load_out_live/index.ex:34
 #: lib/estoque_os_web/live/load_out_live/index.ex:88
 #, elixir-autogen, elixir-format
@@ -5260,3 +5270,59 @@ msgstr "Mercadoria saindo sem nota nem kit. O FEFO escolhe o lote, a menos que v
 #, elixir-autogen, elixir-format
 msgid "Lines with no lot chosen go FEFO: whatever expires first goes first."
 msgstr "Linhas sem lote escolhido saem por FEFO: o que vence primeiro sai primeiro."
+
+#: lib/estoque_os_web/live/entry_live/list.ex:168
+#, elixir-autogen, elixir-format
+msgid "%{product} and %{count} more"
+msgstr "%{product} e mais %{count}"
+
+#: lib/estoque_os_web/live/entry_live/list.ex:104
+#, elixir-autogen, elixir-format
+msgid "Bought and donated"
+msgstr "Comprado e doado"
+
+#: lib/estoque_os_web/live/entry_live/list.ex:82
+#, elixir-autogen, elixir-format
+msgid "Goods taken in by hand between %{from} and %{to}."
+msgstr "O que entrou pela mão entre %{from} e %{to}."
+
+#: lib/estoque_os_web/live/entry_live/list.ex:38
+#: lib/estoque_os_web/live/entry_live/list.ex:80
+#, elixir-autogen, elixir-format
+msgid "Manual entries"
+msgstr "Entradas manuais"
+
+#: lib/estoque_os_web/components/layouts.ex:368
+#, elixir-autogen, elixir-format
+msgid "Manual entries recorded"
+msgstr "Entradas manuais registradas"
+
+#: lib/estoque_os_web/live/entry_live/list.ex:88
+#, elixir-autogen, elixir-format
+msgid "New entry"
+msgstr "Nova entrada"
+
+#: lib/estoque_os_web/live/entry_live/list.ex:115
+#, elixir-autogen, elixir-format
+msgid "Nothing came in by hand in this period."
+msgstr "Nada entrou pela mão neste período."
+
+#: lib/estoque_os_web/live/entry_live/list.ex:116
+#, elixir-autogen, elixir-format
+msgid "Try a wider period. Invoices are in Notas fiscais, not here."
+msgstr "Tente um período maior. Notas fiscais ficam em Notas fiscais, não aqui."
+
+#: lib/estoque_os_web/live/entry_live/list.ex:144
+#, elixir-autogen, elixir-format
+msgid "Value"
+msgstr "Valor"
+
+#: lib/estoque_os_web/live/entry_live/list.ex:128
+#, elixir-autogen, elixir-format
+msgid "What came in"
+msgstr "O que entrou"
+
+#: lib/estoque_os_web/live/entry_live/list.ex:102
+#, elixir-autogen, elixir-format
+msgid "Where it came from"
+msgstr "De onde veio"

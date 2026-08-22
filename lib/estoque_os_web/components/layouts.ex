@@ -365,6 +365,12 @@ defmodule EstoqueOSWeb.Layouts do
             roles: ~w(admin manager marketing auditor)
           },
           %{
+            label: gettext("Manual entries recorded"),
+            path: ~p"/entries",
+            icon: "hero-clipboard-document-list",
+            roles: :everyone
+          },
+          %{
             label: gettext("Manual entry"),
             path: ~p"/entry",
             icon: "hero-inbox-arrow-down",
