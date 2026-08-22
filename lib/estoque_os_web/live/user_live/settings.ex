@@ -262,8 +262,9 @@ defmodule EstoqueOSWeb.UserLive.Settings do
     end
   end
 
-  # Why the two buttons are disabled, or nil when they are not — the same shape
-  # `write_block/1` has for every other guarded control in the app.
+  # Why the two buttons are disabled, or nil when they are not. This one is
+  # about a stale login rather than about a role, which is why it survived the
+  # removal of the role-shaped version.
   defp sudo_block(%{confirmed_recently?: true}), do: nil
   defp sudo_block(_assigns), do: sudo_message()
 

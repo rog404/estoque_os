@@ -125,7 +125,7 @@ defmodule EstoqueOSWeb.TransitLive.Index do
                  appears on some rows changes their height, and a row that grows
                  when it is confirmed sends the next tap to the wrong load. -->
             <div class={["mt-1", not row.in_transit? && "invisible"]}>
-              <.write_gate may={@role_may_write?} allowed={@writable?} reason={@write_block}>
+              <.write_gate may={@role_may_write?} allowed={@controls_enabled?}>
                 <button
                   type="button"
                   phx-click="arrive"
@@ -143,7 +143,7 @@ defmodule EstoqueOSWeb.TransitLive.Index do
                rendered so the row keeps its height, and only a writer gets it:
                filling one in is an act, not a reading. -->
           <:col :let={row} label={gettext("Declaration")}>
-            <.write_gate may={@role_may_write?} allowed={@writable?} reason={@write_block}>
+            <.write_gate may={@role_may_write?} allowed={@controls_enabled?}>
               <.link navigate={~p"/shipments/#{row.shipment.id}/declaracao"} class="btn btn-xs">
                 {gettext("Declaration")}
               </.link>

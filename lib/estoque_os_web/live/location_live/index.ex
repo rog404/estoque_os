@@ -100,7 +100,7 @@ defmodule EstoqueOSWeb.LocationLive.Index do
         </:subtitle>
       </.header>
 
-      <.write_gate may={@role_may_write?} allowed={@writable?} reason={@write_block}>
+      <.write_gate may={@role_may_write?} allowed={@controls_enabled?}>
         <form
           id="new-location"
           phx-submit="create"
@@ -196,7 +196,7 @@ defmodule EstoqueOSWeb.LocationLive.Index do
                here is what stops one of the two coordinators correcting the
                location on every single entry. -->
           <:col :let={location} label={gettext("Entry point for")}>
-            <.write_gate may={@role_may_write?} allowed={@writable?} reason={@write_block}>
+            <.write_gate may={@role_may_write?} allowed={@controls_enabled?}>
               <form id={"default-#{location.id}"} phx-change="set_default">
                 <input type="hidden" name="location_id" value={location.id} />
                 <select
@@ -229,7 +229,7 @@ defmodule EstoqueOSWeb.LocationLive.Index do
           </:col>
 
           <:col :let={location} label={gettext("Actions")} hide_label_on_card={true}>
-            <.write_gate may={@role_may_write?} allowed={@writable?} reason={@write_block}>
+            <.write_gate may={@role_may_write?} allowed={@controls_enabled?}>
               <div class="flex items-center gap-1">
                 <button
                   type="button"

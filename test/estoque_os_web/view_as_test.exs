@@ -18,11 +18,12 @@ defmodule EstoqueOSWeb.ViewAsTest do
   import EstoqueOS.InventoryFixtures
 
   alias EstoqueOS.Inventory
+  alias EstoqueOS.Inventory.Locations
   alias EstoqueOS.Inventory.Transaction
   alias EstoqueOS.Repo
 
   setup %{conn: conn} do
-    warehouse = EstoqueOS.Inventory.Locations.default_location() || location_fixture()
+    warehouse = Locations.default_location() || location_fixture()
     box = box_fixture(%{location_id: warehouse.id})
     product = product_fixture(%{name: "Compressa de gaze"})
     lot = lot_fixture(%{product_id: product.id, expires_on: ~D[2029-01-31]})
@@ -139,23 +140,38 @@ defmodule EstoqueOSWeb.ViewAsTest do
     end
 
     # What the ONG actually asked for: "preciso poder NAVEGAR como se fosse um
-    # operador logístico para ver tudo que ele pode ver". Before this, every
-    # control keyed off one predicate and simply vanished, so the borrowed
-    # screen was a hollow copy of the operator's — you could not tell a
-    # permission you lack from a feature that is not there.
-    test "sees the operator's controls, disabled, with the reason", %{conn: conn} do
+    # operador logístico para ver tudo que ele pode ver". The controls used to
+    # be rendered and greyed out, which answered a different question — it
+    # showed the app that person would be refused by rather than the app they
+    # use. Now the screen is theirs, button for button, and the refusal happens
+    # on the event, where it cannot be faked.
+    test "sees the operator's controls exactly as the operator does", %{conn: conn} do
       conn = post(conn, ~p"/users/view-as", %{"role" => "logistics"})
 
       {:ok, _view, html} = live(conn, ~p"/boxes")
 
-      # The screen is the operator's screen: the box-creating form is on it.
       assert html =~ ~s(id="new-box")
 
-      # And nothing on it can be pressed. One `disabled` fieldset does that to
-      # every control underneath, which is why the assertion is on the wrapper.
       gate = Regex.run(~r{<fieldset[^>]*>}, html) |> hd()
-      assert gate =~ "disabled"
-      assert gate =~ "outro papel"
+      refute gate =~ "disabled"
+    end
+
+    # And pressing one does nothing but say no.
+    test "pressing a control says no and writes nothing", %{conn: conn} do
+      warehouse = Locations.default_location()
+      conn = post(conn, ~p"/users/view-as", %{"role" => "logistics"})
+
+      {:ok, view, _html} = live(conn, ~p"/boxes")
+
+      refused =
+        render_hook(view, "create", %{"code" => "VA99", "location_id" => "#{warehouse.id}"})
+
+      assert refused =~ "permissão"
+
+      refute Enum.any?(
+               Locations.list_boxes(warehouse.id),
+               &(&1.code == "VA99")
+             )
     end
 
     test "the operator's controls are absent for a role that never had them", %{conn: conn} do

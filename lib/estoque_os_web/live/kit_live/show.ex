@@ -118,9 +118,12 @@ defmodule EstoqueOSWeb.KitLive.Show do
     Scope.effective_role(scope) in User.roles_that_plan()
   end
 
+  # Borrowing a role does not disable anything any more — the screen looks like
+  # the borrowed person's and the refusal happens on the event. What is left
+  # here is the one reason that is about the role itself.
   defp plan_block(scope) do
     if may_plan?(scope) do
-      EstoqueOSWeb.UserAuth.write_block(scope)
+      nil
     else
       gettext("Only a manager changes the kit recipe.")
     end
@@ -176,7 +179,7 @@ defmodule EstoqueOSWeb.KitLive.Show do
       </div>
 
       <div class="mt-6">
-        <.write_gate may={@role_may_write?} allowed={@writable?} reason={@write_block}>
+        <.write_gate may={@role_may_write?} allowed={@controls_enabled?}>
           <div :if={is_nil(@review)} class="panel">
             <form id="review-form" phx-submit="review" class="panel-body space-y-3">
               <h2 class="font-semibold">{gettext("Assemble kits")}</h2>
@@ -307,7 +310,7 @@ defmodule EstoqueOSWeb.KitLive.Show do
 
       <.write_gate
         may={@role_may_write? and may_plan?(@current_scope)}
-        allowed={@writable?}
+        allowed={@controls_enabled?}
         reason={plan_block(@current_scope)}
       >
         <!-- Search, then pick — the same two steps as the manual entry and the
@@ -459,14 +462,14 @@ defmodule EstoqueOSWeb.KitLive.Show do
                   name="quantity"
                   value={quantity(item.quantity)}
                   inputmode="decimal"
-                  disabled={not may_plan?(@current_scope) or not @writable?}
+                  disabled={not may_plan?(@current_scope) or not @controls_enabled?}
                   title={plan_block(@current_scope)}
                   class="input input-sm w-20 text-right"
                   aria-label={gettext("Quantity per kit for %{item}", item: item.description)}
                 />
                 <button
                   class="btn btn-success btn-soft btn-square btn-sm"
-                  disabled={not may_plan?(@current_scope) or not @writable?}
+                  disabled={not may_plan?(@current_scope) or not @controls_enabled?}
                   title={plan_block(@current_scope) || gettext("Save")}
                   aria-label={gettext("Save %{item}", item: item.description)}
                 >
@@ -485,7 +488,7 @@ defmodule EstoqueOSWeb.KitLive.Show do
                 title={gettext("Remove %{item} from the recipe?", item: item.description)}
                 confirm_label={gettext("Remove")}
                 tone={:danger}
-                disabled={not may_plan?(@current_scope) or not @writable?}
+                disabled={not may_plan?(@current_scope) or not @controls_enabled?}
                 reason={plan_block(@current_scope)}
               >
                 <:consequence>

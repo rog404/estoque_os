@@ -89,7 +89,7 @@ defmodule EstoqueOSWeb.MissionLive.Show do
       <!-- Plans change: the flight home moves, the team stays an extra day. The
            dates are what somebody wrote down, not something the ledger decided,
            so they are editable without touching a single movement. -->
-      <.write_gate may={@role_may_write?} allowed={@writable?} reason={@write_block}>
+      <.write_gate may={@role_may_write?} allowed={@controls_enabled?}>
         <form
           id="mission-dates"
           phx-submit="reschedule"

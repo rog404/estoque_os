@@ -47,7 +47,7 @@ defmodule EstoqueOSWeb.BoxLive.Show do
           {@box.location.name} · {verified_label(@box)}
         </:subtitle>
         <:actions>
-          <.write_gate may={@role_may_write?} allowed={@writable?} reason={@write_block}>
+          <.write_gate may={@role_may_write?} allowed={@controls_enabled?}>
             <!-- Counting it and saying it was counted are different acts, and
                  this screen only offered the second. Somebody standing in front
                  of the box is already here; the blind count is a route away and
@@ -117,7 +117,7 @@ defmodule EstoqueOSWeb.BoxLive.Show do
             field={:block}
             group
           >
-            <.write_gate may={true} allowed={@writable?} reason={@write_block}>
+            <.write_gate may={true} allowed={@controls_enabled?}>
               <form
                 id={"rebox-#{row.lot_id}"}
                 phx-submit="rebox"
@@ -189,7 +189,7 @@ defmodule EstoqueOSWeb.BoxLive.Show do
           </:col>
 
           <:col :let={row} label={gettext("Into this box")} field={:block} group>
-            <.write_gate may={true} allowed={@writable?} reason={@write_block}>
+            <.write_gate may={true} allowed={@controls_enabled?}>
               <form
                 id={"stow-#{row.lot_id}"}
                 phx-submit="stow"
