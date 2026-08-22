@@ -824,6 +824,70 @@ defmodule EstoqueOS.Reports do
   end
 
   @doc """
+  What was sold, grouped by where it went out from.
+
+  A sale leaves from a place, and for the marketing stock the place is the
+  event: a mission site, a fair, the office counter. "Quanto vendemos em
+  Manacapuru" was a question the ledger could answer and no screen asked — the
+  sales report totalled the period and stopped there.
+
+  The place is read from the entry rather than from the transaction: a movement
+  has a source location only when it travelled, and a sale does not travel. The
+  goods left the shelf they were standing on, and that shelf is the answer.
+  """
+  def sales_by_place(from, to, opts \\ []) do
+    {from, to} = period(from, to)
+    costs = Inventory.average_unit_costs()
+
+    TransactionEntry
+    |> join(:inner, [e], t in Transaction, on: t.id == e.transaction_id)
+    |> join(:inner, [e], l in Lot, on: l.id == e.lot_id)
+    |> join(:inner, [e, t, l], p in Product, on: p.id == l.product_id)
+    # Narrowed before the location joins in: `segment_scope/2` reads the last
+    # binding, and after the join that is the place rather than the product.
+    |> segment_scope(opts[:segment])
+    |> join(:inner, [e, t, l, p], loc in Location, on: loc.id == e.location_id)
+    |> where([e, t], t.type == "manual_out" and t.destination == "sale")
+    |> where([e, t], t.occurred_at >= ^from and t.occurred_at <= ^to)
+    |> select([e, t, l, p, loc], %{
+      location_id: loc.id,
+      location: loc.name,
+      kind: loc.kind,
+      lot_id: l.id,
+      quantity: fragment("-(?)", e.quantity),
+      sale_unit_price: e.sale_unit_price
+    })
+    |> Repo.all()
+    |> Enum.map(fn row ->
+      unit_cost = costs[row.lot_id]
+
+      row
+      |> Map.put(:revenue, mult(row.sale_unit_price, row.quantity))
+      |> Map.put(:cost, mult(unit_cost, row.quantity))
+      |> Map.put(:unpriced, is_nil(unit_cost))
+    end)
+    |> Enum.group_by(& &1.location_id)
+    |> Enum.map(fn {_id, rows} -> merge_place_rows(rows) end)
+    |> Enum.sort_by(& &1.revenue, &(Decimal.compare(&1, &2) != :lt))
+  end
+
+  defp merge_place_rows([first | _rest] = rows) do
+    revenue = sum(rows, & &1.revenue)
+    cost = sum(rows, & &1.cost)
+
+    %{
+      location_id: first.location_id,
+      location: first.location,
+      kind: first.kind,
+      quantity: sum(rows, & &1.quantity),
+      revenue: revenue,
+      cost: cost,
+      margin: Decimal.sub(revenue, cost),
+      unpriced: Enum.count(rows, & &1.unpriced)
+    }
+  end
+
+  @doc """
   The three numbers a sales report is read for, plus the one that says how much
   to trust the third.
   """

@@ -488,7 +488,7 @@ msgstr ""
 #: lib/estoque_os_web/live/kit_live/show.ex:432
 #: lib/estoque_os_web/live/mission_live/show.ex:201
 #: lib/estoque_os_web/live/return_live/index.ex:221
-#: lib/estoque_os_web/live/sales_report_live/index.ex:151
+#: lib/estoque_os_web/live/sales_report_live/index.ex:186
 #: lib/estoque_os_web/live/shipment_live/declaration.ex:178
 #: lib/estoque_os_web/live/stock_live/index.ex:348
 #, elixir-autogen, elixir-format
@@ -690,7 +690,8 @@ msgstr ""
 #: lib/estoque_os_web/live/product_live/show.ex:296
 #: lib/estoque_os_web/live/product_live/show.ex:383
 #: lib/estoque_os_web/live/product_live/show.ex:438
-#: lib/estoque_os_web/live/sales_report_live/index.ex:158
+#: lib/estoque_os_web/live/sales_report_live/index.ex:151
+#: lib/estoque_os_web/live/sales_report_live/index.ex:193
 #: lib/estoque_os_web/live/shipment_live/declaration.ex:186
 #: lib/estoque_os_web/live/stock_live/index.ex:415
 #, elixir-autogen, elixir-format
@@ -707,7 +708,7 @@ msgstr ""
 #: lib/estoque_os_web/live/entry_live/new.ex:155
 #: lib/estoque_os_web/live/invoice_live/import.ex:80
 #: lib/estoque_os_web/live/product_live/show.ex:169
-#: lib/estoque_os_web/live/sales_report_live/index.ex:82
+#: lib/estoque_os_web/live/sales_report_live/index.ex:83
 #: lib/estoque_os_web/live/stock_live/index.ex:37
 #: lib/estoque_os_web/live/stock_live/index.ex:162
 #: lib/estoque_os_web/live/stock_live/index.ex:238
@@ -1362,6 +1363,7 @@ msgstr ""
 
 #: lib/estoque_os_web/components/ui.ex:430
 #: lib/estoque_os_web/live/location_live/index.ex:321
+#: lib/estoque_os_web/live/sales_report_live/index.ex:230
 #, elixir-autogen, elixir-format
 msgid "in transit"
 msgstr ""
@@ -1378,6 +1380,7 @@ msgid "other"
 msgstr ""
 
 #: lib/estoque_os_web/live/location_live/index.ex:319
+#: lib/estoque_os_web/live/sales_report_live/index.ex:229
 #, elixir-autogen, elixir-format
 msgid "warehouse"
 msgstr ""
@@ -1472,7 +1475,7 @@ msgstr ""
 #: lib/estoque_os_web/live/issue_live/index.ex:349
 #: lib/estoque_os_web/live/issue_live/list.ex:95
 #: lib/estoque_os_web/live/load_out_live/index.ex:103
-#: lib/estoque_os_web/live/sales_report_live/index.ex:72
+#: lib/estoque_os_web/live/sales_report_live/index.ex:73
 #, elixir-autogen, elixir-format
 msgid "From"
 msgstr ""
@@ -1532,7 +1535,7 @@ msgstr ""
 #: lib/estoque_os_web/live/entry_live/list.ex:98
 #: lib/estoque_os_web/live/issue_live/list.ex:99
 #: lib/estoque_os_web/live/load_out_live/index.ex:115
-#: lib/estoque_os_web/live/sales_report_live/index.ex:76
+#: lib/estoque_os_web/live/sales_report_live/index.ex:77
 #, elixir-autogen, elixir-format
 msgid "To"
 msgstr ""
@@ -2241,19 +2244,19 @@ msgid "Read the XML"
 msgstr ""
 
 #: lib/estoque_os_web/live/audit_report_live/index.ex:121
-#: lib/estoque_os_web/live/sales_report_live/index.ex:100
+#: lib/estoque_os_web/live/sales_report_live/index.ex:101
 #, elixir-autogen, elixir-format
 msgid "1 year"
 msgstr ""
 
 #: lib/estoque_os_web/live/audit_report_live/index.ex:119
-#: lib/estoque_os_web/live/sales_report_live/index.ex:98
+#: lib/estoque_os_web/live/sales_report_live/index.ex:99
 #, elixir-autogen, elixir-format
 msgid "30 days"
 msgstr ""
 
 #: lib/estoque_os_web/live/audit_report_live/index.ex:120
-#: lib/estoque_os_web/live/sales_report_live/index.ex:99
+#: lib/estoque_os_web/live/sales_report_live/index.ex:100
 #, elixir-autogen, elixir-format
 msgid "90 days"
 msgstr ""
@@ -4354,7 +4357,7 @@ msgstr ""
 msgid "already in the recipe"
 msgstr ""
 
-#: lib/estoque_os_web/live/sales_report_live/index.ex:90
+#: lib/estoque_os_web/live/sales_report_live/index.ex:91
 #, elixir-autogen, elixir-format
 msgid "Every stock"
 msgstr ""
@@ -4382,22 +4385,23 @@ msgstr ""
 msgid "marketing manager"
 msgstr ""
 
-#: lib/estoque_os_web/live/sales_report_live/index.ex:132
+#: lib/estoque_os_web/live/sales_report_live/index.ex:133
 #, elixir-autogen, elixir-format
 msgid "%{count} line(s) came from stock with no cost"
 msgstr ""
 
-#: lib/estoque_os_web/live/sales_report_live/index.ex:180
+#: lib/estoque_os_web/live/sales_report_live/index.ex:215
 #, elixir-autogen, elixir-format
 msgid "%{count} product(s)"
 msgstr ""
 
-#: lib/estoque_os_web/live/sales_report_live/index.ex:176
+#: lib/estoque_os_web/live/sales_report_live/index.ex:167
+#: lib/estoque_os_web/live/sales_report_live/index.ex:211
 #, elixir-autogen, elixir-format
 msgid "%{count} without cost"
 msgstr ""
 
-#: lib/estoque_os_web/live/sales_report_live/index.ex:144
+#: lib/estoque_os_web/live/sales_report_live/index.ex:179
 #, elixir-autogen, elixir-format
 msgid "A sale is a write-off sent to \"Venda\", with the price it went out for on each line."
 msgstr ""
@@ -4407,34 +4411,37 @@ msgstr ""
 msgid "A sale needs the sale price on every line. Remove the line and add it again."
 msgstr ""
 
-#: lib/estoque_os_web/live/sales_report_live/index.ex:138
+#: lib/estoque_os_web/live/sales_report_live/index.ex:173
 #, elixir-autogen, elixir-format
 msgid "By product"
 msgstr ""
 
-#: lib/estoque_os_web/live/sales_report_live/index.ex:166
+#: lib/estoque_os_web/live/sales_report_live/index.ex:159
+#: lib/estoque_os_web/live/sales_report_live/index.ex:201
 #, elixir-autogen, elixir-format
 msgid "Cost"
 msgstr ""
 
-#: lib/estoque_os_web/live/sales_report_live/index.ex:121
+#: lib/estoque_os_web/live/sales_report_live/index.ex:122
 #, elixir-autogen, elixir-format
 msgid "Cost of what was sold"
 msgstr ""
 
-#: lib/estoque_os_web/live/sales_report_live/index.ex:127
-#: lib/estoque_os_web/live/sales_report_live/index.ex:170
+#: lib/estoque_os_web/live/sales_report_live/index.ex:128
+#: lib/estoque_os_web/live/sales_report_live/index.ex:163
+#: lib/estoque_os_web/live/sales_report_live/index.ex:205
 #, elixir-autogen, elixir-format
 msgid "Margin"
 msgstr ""
 
-#: lib/estoque_os_web/live/sales_report_live/index.ex:142
+#: lib/estoque_os_web/live/sales_report_live/index.ex:177
 #, elixir-autogen, elixir-format
 msgid "Nothing was sold in this period."
 msgstr ""
 
-#: lib/estoque_os_web/live/sales_report_live/index.ex:119
-#: lib/estoque_os_web/live/sales_report_live/index.ex:162
+#: lib/estoque_os_web/live/sales_report_live/index.ex:120
+#: lib/estoque_os_web/live/sales_report_live/index.ex:155
+#: lib/estoque_os_web/live/sales_report_live/index.ex:197
 #, elixir-autogen, elixir-format
 msgid "Revenue"
 msgstr ""
@@ -4451,7 +4458,7 @@ msgstr ""
 
 #: lib/estoque_os_web/components/layouts.ex:480
 #: lib/estoque_os_web/live/sales_report_live/index.ex:37
-#: lib/estoque_os_web/live/sales_report_live/index.ex:64
+#: lib/estoque_os_web/live/sales_report_live/index.ex:65
 #, elixir-autogen, elixir-format
 msgid "Sales"
 msgstr ""
@@ -4461,22 +4468,22 @@ msgstr ""
 msgid "Unit sale price"
 msgstr ""
 
-#: lib/estoque_os_web/live/sales_report_live/index.ex:114
+#: lib/estoque_os_web/live/sales_report_live/index.ex:115
 #, elixir-autogen, elixir-format
 msgid "Units sold"
 msgstr ""
 
-#: lib/estoque_os_web/live/sales_report_live/index.ex:66
+#: lib/estoque_os_web/live/sales_report_live/index.ex:67
 #, elixir-autogen, elixir-format
 msgid "What was sold between %{from} and %{to}."
 msgstr ""
 
-#: lib/estoque_os_web/live/sales_report_live/index.ex:133
+#: lib/estoque_os_web/live/sales_report_live/index.ex:134
 #, elixir-autogen, elixir-format
 msgid "revenue minus cost"
 msgstr ""
 
-#: lib/estoque_os_web/live/sales_report_live/index.ex:124
+#: lib/estoque_os_web/live/sales_report_live/index.ex:125
 #, elixir-autogen, elixir-format
 msgid "what the ONG paid for it"
 msgstr ""
@@ -5325,4 +5332,24 @@ msgstr ""
 #: lib/estoque_os_web/live/entry_live/list.ex:102
 #, elixir-autogen, elixir-format
 msgid "Where it came from"
+msgstr ""
+
+#: lib/estoque_os_web/live/sales_report_live/index.ex:144
+#, elixir-autogen, elixir-format
+msgid "By place"
+msgstr ""
+
+#: lib/estoque_os_web/live/sales_report_live/index.ex:146
+#, elixir-autogen, elixir-format
+msgid "Place"
+msgstr ""
+
+#: lib/estoque_os_web/live/sales_report_live/index.ex:231
+#, elixir-autogen, elixir-format
+msgid "elsewhere"
+msgstr ""
+
+#: lib/estoque_os_web/live/sales_report_live/index.ex:228
+#, elixir-autogen, elixir-format
+msgid "mission or event"
 msgstr ""
