@@ -74,7 +74,6 @@ defmodule EstoqueOSWeb.EntryLive.New do
     {:noreply,
      socket
      |> assign(:segment, segment)
-     |> assign(:locked_segment, Scope.segment(socket.assigns.current_scope))
      |> preselect_location(segment)}
   end
 
@@ -147,13 +146,17 @@ defmodule EstoqueOSWeb.EntryLive.New do
             phx-debounce="300"
           />
         </label>
-        <!-- Only for somebody who has both. The marketing role never sees this:
-             their stock is the only one they have, and a picker with one option
-             is a question with one answer. -->
-        <label :if={is_nil(@locked_segment)} class="fieldset">
+        <!-- Both stocks, for everybody, already on the one this role works in.
+             Each option carries its own value: a blank one used to mean
+             surgical, which the default now reads as "whatever this role
+             does" — and for the marketing coordinator that is the opposite
+             answer. -->
+        <label class="fieldset">
           <span class="label">{gettext("Stock")}</span>
           <select name="segment" class="select select-bordered">
-            <option value="">{gettext("Surgical")}</option>
+            <option value="medical" selected={@segment != "marketing"}>
+              {gettext("Surgical")}
+            </option>
             <option value="marketing" selected={@segment == "marketing"}>
               {gettext("Marketing")}
             </option>
@@ -506,7 +509,14 @@ defmodule EstoqueOSWeb.EntryLive.New do
     location_id = parse_id(params["location_id"]) || socket.assigns.location_id
     location = Enum.find(socket.assigns.locations, &(&1.id == location_id))
     query = params["query"] || ""
-    socket = assign(socket, :segment, segment(socket, params["segment"]))
+    # Only when the form actually carries one. Recomputing from a missing key
+    # would answer with the role's default and quietly undo the stock the
+    # address asked for, on the first keystroke in the search box.
+    socket =
+      case params["segment"] do
+        nil -> socket
+        asked -> assign(socket, :segment, segment(socket, asked))
+      end
 
     {:noreply,
      socket

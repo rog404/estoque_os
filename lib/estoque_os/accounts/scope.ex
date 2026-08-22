@@ -68,28 +68,36 @@ defmodule EstoqueOS.Accounts.Scope do
   def effective_role(_scope), do: nil
 
   @doc """
-  The stock this scope may see, or `nil` for all of it.
+  The stock this scope's screens open on.
 
   Read from the *effective* role, so an admin standing in the marketing role's
-  shoes sees the marketing stock and only that — which is the entire point of
-  being able to stand in it.
+  shoes lands where that role lands — which is the point of being able to stand
+  in it.
+
+  A default and not a fence: see `EstoqueOS.Accounts.User.default_segment/1`.
+  Everybody may look at either stock; this is which one is already ticked when
+  the screen opens.
   """
-  def segment(%__MODULE__{} = scope), do: scope |> effective_role() |> User.segment()
-  def segment(_scope), do: nil
+  def default_segment(%__MODULE__{} = scope) do
+    scope |> effective_role() |> User.default_segment()
+  end
+
+  def default_segment(_scope), do: nil
 
   @doc """
-  The stock this scope may see, given what a page asked for.
+  The stock a page is about: what it asked for, or the role's own when it asked
+  for nothing.
 
-  The rule is one sentence and it was written out five times: a role confined to
-  one stock gets that one whatever the address says, and everybody else gets
-  whatever they asked for as long as it is a real segment. Five copies of a
-  sentence about *who may see what* is four chances for one of them to drift,
-  and the drift would not look like a bug — it would look like a filter.
+  `"all"` is a real answer and means both stocks — the tab that says "Tudo".
+  Without it there would be no way back to the whole operation once a default
+  is in place, and a coordinator reading one stock's numbers as if they were
+  the operation's is the mistake this screen exists to prevent.
   """
   def segment(%__MODULE__{} = scope, asked) do
-    case segment(scope) do
-      nil -> if asked in Product.segments(), do: asked
-      forced -> forced
+    cond do
+      asked in Product.segments() -> asked
+      asked == "all" -> nil
+      true -> default_segment(scope)
     end
   end
 

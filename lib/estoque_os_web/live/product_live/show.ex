@@ -33,20 +33,10 @@ defmodule EstoqueOSWeb.ProductLive.Show do
 
   @impl true
   def mount(%{"id" => id}, _session, socket) do
-    history = ProductHistory.for_product(id)
-
-    if hidden_from?(socket.assigns.current_scope, history.product) do
-      # A role confined to one stock has no business reading a product from the
-      # other one, and this page is reachable by id from anywhere — a link, a
-      # bookmark, a typed number. The list screens filter; this is the one that
-      # has to refuse.
-      {:ok,
-       socket
-       |> put_flash(:error, gettext("You don't have permission to access this page."))
-       |> push_navigate(to: ~p"/stock")}
-    else
-      mount_product(socket, history)
-    end
+    # No stock gate here any more. The two stocks are two filters on one
+    # operation, and this page refusing to open by id was the fence talking —
+    # what a person may *change* is still decided by role, further down.
+    mount_product(socket, ProductHistory.for_product(id))
   end
 
   # A code from the same location, because a fixed example is a code standing
@@ -114,13 +104,6 @@ defmodule EstoqueOSWeb.ProductLive.Show do
 
       {:error, _reason} ->
         {:noreply, put_flash(socket, :error, gettext("That could not be stored."))}
-    end
-  end
-
-  defp hidden_from?(scope, product) do
-    case Scope.segment(scope) do
-      nil -> false
-      segment -> product.segment != segment
     end
   end
 

@@ -30,7 +30,7 @@ defmodule EstoqueOSWeb.InvoiceLive.Import do
      # in — marketing imports marketing — and stays a choice, because a
      # coordinator does receive the other side's delivery now and then and
      # re-importing under the right stock is not a thing anybody can do twice.
-     |> assign(:segment, Scope.segment(socket.assigns.current_scope) || "medical")
+     |> assign(:segment, Scope.default_segment(socket.assigns.current_scope) || "medical")
      |> assign(:max_upload_size, @max_upload_size)
      |> allow_upload(:xml,
        accept: ~w(.xml text/xml application/xml),

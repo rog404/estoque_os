@@ -39,9 +39,6 @@ defmodule EstoqueOSWeb.StockLive.Index do
      |> assign(:location_ids, [])
      |> assign(:situations, [])
      |> assign(:segment, nil)
-     # A locked segment is not a filter the page offers: it is the only stock
-     # this role has, so it neither shows as an active filter nor clears.
-     |> assign(:segment_locked?, false)
      |> assign(:sort, %{key: "product", dir: :asc})
      |> assign(:page, 1)
      |> assign(:locations, Locations.list_locations())}
@@ -65,7 +62,6 @@ defmodule EstoqueOSWeb.StockLive.Index do
      # minimum".
      |> assign(:situations, situations_from(params))
      |> assign(:segment, segment(socket, params["segment"]))
-     |> assign(:segment_locked?, locked?(socket))
      |> load_rows()}
   end
 
@@ -96,7 +92,7 @@ defmodule EstoqueOSWeb.StockLive.Index do
   defp active_filters(assigns) do
     [
       assigns.location_ids != [],
-      assigns.segment != nil and not assigns.segment_locked?,
+      assigns.segment != nil,
       assigns.situations != []
     ]
     |> Enum.count(& &1)
@@ -127,7 +123,7 @@ defmodule EstoqueOSWeb.StockLive.Index do
           do: {"situation", value, label}
 
     segment =
-      if assigns.segment && not assigns.segment_locked?,
+      if assigns.segment,
         do: [{"segment", assigns.segment, segment_label(assigns.segment)}],
         else: []
 
@@ -138,7 +134,7 @@ defmodule EstoqueOSWeb.StockLive.Index do
 
   defp filtering?(assigns) do
     assigns.search != "" or assigns.location_ids != [] or assigns.situations != [] or
-      (assigns.segment != nil and not assigns.segment_locked?)
+      assigns.segment != nil
   end
 
   # Both totals skip nils rather than treating them as zero: a donation with no
@@ -238,7 +234,6 @@ defmodule EstoqueOSWeb.StockLive.Index do
                    `segment/2`, which ignores whatever arrives; this is only
                    about not offering a choice that does not exist. -->
               <.filter_chips
-                :if={not @segment_locked?}
                 name="segment"
                 label={gettext("Stock")}
                 tone={filter_tone("segment")}
@@ -514,8 +509,9 @@ defmodule EstoqueOSWeb.StockLive.Index do
      socket
      |> assign(:location_ids, parse_ids(params["location_id"]))
      |> assign(:situations, List.wrap(params["situation"]))
-     |> assign(:segment, segment(socket, params["segment"]))
-     |> assign(:segment_locked?, locked?(socket))
+     # Ticking neither stock means both, and the panel is the one place that
+     # can say it — so a blank answer here is the answer, not "use my default".
+     |> assign(:segment, chosen_segment(params["segment"]))
      |> assign(:page, 1)
      |> load_rows()}
   end
@@ -547,17 +543,17 @@ defmodule EstoqueOSWeb.StockLive.Index do
      |> assign(:search, "")
      |> assign(:location_ids, [])
      |> assign(:situations, [])
-     # Not cleared: a marketing user has no other stock to clear it back to.
+     # Back to the stock this role works in, not to both: clearing the filters
+     # returns the screen to how it opens, and it opens on one stock.
      |> assign(:segment, segment(socket, nil))
      |> assign(:sort, %{key: "product", dir: :asc})
      |> assign(:page, 1)
      |> load_rows()}
   end
 
-  # What the page may ask for, and the role always wins. A marketing user's
-  # segment is not a filter they chose and can drop — it is the only stock they
-  # have — so a `segment=` in the address or in a form they hand-crafted is
-  # ignored rather than obeyed.
+  # Dropping the stock chip means "both", which is the one answer the picker
+  # itself cannot give: ticking neither box means the whole operation, and the
+  # chip is how somebody says that in one tap.
   defp drop_filter(socket, "search", _value), do: assign(socket, :search, "")
 
   defp drop_filter(socket, "location", value) do
@@ -568,9 +564,7 @@ defmodule EstoqueOSWeb.StockLive.Index do
     update(socket, :situations, &List.delete(&1, value))
   end
 
-  # The role always wins here too: a marketing user cannot drop the only stock
-  # they have, and `segment/2` is what says so.
-  defp drop_filter(socket, "segment", _value), do: assign(socket, :segment, segment(socket, nil))
+  defp drop_filter(socket, "segment", _value), do: assign(socket, :segment, nil)
 
   defp drop_filter(socket, _kind, _value), do: socket
 
@@ -603,13 +597,14 @@ defmodule EstoqueOSWeb.StockLive.Index do
   def segment_label("marketing"), do: gettext("Marketing")
   def segment_label(nil), do: nil
 
-  defp locked?(socket), do: Scope.segment(socket.assigns.current_scope) != nil
-
   # The role always wins: a marketing user's segment is not a filter they chose
   # and can drop, it is the only stock they have. `Scope.segment/2` is the one
   # copy of that rule, and it also answers the chips: ticking both stocks sends
   # a list, which is not a segment, which is every stock.
   defp segment(socket, asked), do: Scope.segment(socket.assigns.current_scope, asked)
+
+  defp chosen_segment(asked) when asked in ["medical", "marketing"], do: asked
+  defp chosen_segment(_asked), do: nil
 
   defp flip(:asc), do: :desc
   defp flip(:desc), do: :asc

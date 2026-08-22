@@ -53,13 +53,23 @@ defmodule EstoqueOSWeb.HomeSegmentTest do
   describe "a role that holds both stocks" do
     setup %{conn: conn}, do: register_and_log_in_operator(%{conn: conn})
 
-    test "opens on everything and is offered both", %{conn: conn} do
+    # The screen opens on the stock this role works in — surgical, for the
+    # supplies coordinator — and the whole operation is the first tab.
+    test "opens on its own stock and is offered both plus everything", %{conn: conn} do
       {:ok, _view, html} = live(conn, ~p"/")
 
       assert text(html) =~ "Compressa de gaze"
-      assert text(html) =~ "Camiseta"
+      refute text(html) =~ "Camiseta"
+      assert html =~ ~s{href="/?segment=all"}
       assert html =~ ~s{href="/?segment=marketing"}
       assert html =~ ~s{href="/?segment=medical"}
+    end
+
+    test "reads both stocks at once on the first tab", %{conn: conn} do
+      {:ok, _view, html} = live(conn, ~p"/?segment=all")
+
+      assert text(html) =~ "Compressa de gaze"
+      assert text(html) =~ "Camiseta"
     end
 
     test "the surgical tab leaves the marketing stock out", %{conn: conn} do
@@ -189,25 +199,23 @@ defmodule EstoqueOSWeb.HomeSegmentTest do
     end
   end
 
-  describe "a role that holds one stock" do
+  describe "the marketing role" do
     setup %{conn: conn}, do: register_and_log_in_as(%{conn: conn}, "marketing")
 
-    test "is never offered the other one", %{conn: conn} do
+    test "opens on its own stock", %{conn: conn} do
       {:ok, _view, html} = live(conn, ~p"/")
 
       assert text(html) =~ "Camiseta"
       refute text(html) =~ "Compressa de gaze"
-      refute html =~ "segment=medical"
     end
 
-    # The address is not a way in. `Scope.segment/2` gives the marketing role
-    # their own segment whatever arrives, so asking for the surgical overview
-    # returns the marketing one rather than an empty one.
-    test "cannot ask for the other one in the address", %{conn: conn} do
+    # The stock is a filter now, and the address is one way to change it: the
+    # marketing coordinator may look at the surgical shelf, they just do not
+    # land on it.
+    test "can ask for the other one in the address", %{conn: conn} do
       {:ok, _view, html} = live(conn, ~p"/?segment=medical")
 
-      assert text(html) =~ "Camiseta"
-      refute text(html) =~ "Compressa de gaze"
+      assert text(html) =~ "Compressa de gaze"
     end
   end
 
@@ -215,7 +223,7 @@ defmodule EstoqueOSWeb.HomeSegmentTest do
     setup %{conn: conn}, do: register_and_log_in_as(%{conn: conn}, "auditor")
 
     test "reads the whole operation and gets the tabs too", %{conn: conn} do
-      {:ok, _view, html} = live(conn, ~p"/")
+      {:ok, _view, html} = live(conn, ~p"/?segment=all")
 
       assert text(html) =~ "Compressa de gaze"
       assert text(html) =~ "Camiseta"

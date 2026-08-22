@@ -15,7 +15,7 @@ defmodule EstoqueOSWeb.InvoiceLive.Index do
      |> assign(:page_title, gettext("Invoices"))
      |> assign(
        :invoices,
-       Invoices.list_invoices(segment: Scope.segment(socket.assigns.current_scope))
+       Invoices.list_invoices(segment: Scope.default_segment(socket.assigns.current_scope))
      )}
   end
 

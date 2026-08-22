@@ -35,12 +35,7 @@ defmodule EstoqueOSWeb.HomeLive.Index do
      socket
      |> assign(:page_title, gettext("Overview"))
      |> assign(:may_review?, may_review?(socket))
-     |> assign(:may_acknowledge?, Alerts.may_acknowledge?(socket.assigns.current_scope))
-     # Whether this person has a stock to choose at all. A marketing user has
-     # one and only one, so they are never offered the tabs — the same rule the
-     # stock list uses, and the same reason: an answer that cannot change is
-     # not a question.
-     |> assign(:segment_locked?, Scope.segment(socket.assigns.current_scope) != nil)}
+     |> assign(:may_acknowledge?, Alerts.may_acknowledge?(socket.assigns.current_scope))}
   end
 
   # Which stock this overview is about, and the role always wins: `segment/2`
@@ -131,7 +126,7 @@ defmodule EstoqueOSWeb.HomeLive.Index do
            coordinator reading one number for both was reading neither. The tabs
            are the whole answer for a role that holds both stocks; a role that
            holds one never sees them and lands on their own overview. -->
-      <div :if={not @segment_locked?} role="tablist" class="tabs tabs-box w-fit">
+      <div role="tablist" class="tabs tabs-box w-fit">
         <.link
           :for={{value, label} <- segment_tabs()}
           patch={overview_path(value)}
@@ -596,7 +591,10 @@ defmodule EstoqueOSWeb.HomeLive.Index do
     ]
   end
 
-  defp overview_path(nil), do: ~p"/"
+  # "Tudo" is an answer in the address, not the absence of one: with a default
+  # per role, no `segment=` means "the stock I work in", and the way back to the
+  # whole operation has to be sayable.
+  defp overview_path(nil), do: ~p"/?segment=all"
   defp overview_path(segment), do: ~p"/?segment=#{segment}"
 
   defp bottleneck_names(bottlenecks) do

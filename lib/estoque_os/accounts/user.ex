@@ -32,15 +32,21 @@ defmodule EstoqueOS.Accounts.User do
   def roles, do: @roles
 
   @doc """
-  The stock a role is allowed to see, or `nil` for all of it.
+  The stock a role works in, or `nil` for a role with no particular one.
 
-  The whole of the marketing role's confinement is this function plus the
-  callers that pass it into a query. It is deliberately *not* expressed as
-  "hide the rows in the template": a filter in a query cannot be undone by an
-  event nobody rendered a button for.
+  A **default**, not a fence. It used to be the fence: marketing saw the
+  marketing stock and nothing else, enforced by a `where` in every query. The
+  operation asked for the other reading — everybody may look at either stock,
+  and what the role decides is which one the screen opens on. A coordinator who
+  needs to see the surgical shelf changes the filter; the filter is a filter.
+
+  What a role may *do* is a separate question and still a fence:
+  `roles_that_write/0`, `roles_that_plan/0` and `roles_that_see_money/0` are
+  unchanged.
   """
-  def segment("marketing"), do: "marketing"
-  def segment(_role), do: nil
+  def default_segment("marketing"), do: "marketing"
+  def default_segment(role) when is_binary(role), do: "medical"
+  def default_segment(_role), do: nil
 
   @doc "Roles allowed to change stock."
   def roles_that_write, do: ~w(admin manager marketing logistics)
