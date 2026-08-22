@@ -510,6 +510,7 @@ defmodule EstoqueOS.Inventory do
     |> maybe_at_location(opts[:location_id])
     |> maybe_loose_only(opts[:loose_only])
     |> maybe_at_box(opts[:box_id])
+    |> maybe_lot(opts[:lot_id])
     |> group_by([e, l], [l.id, l.lot_number, l.expires_on, e.box_id, e.location_id])
     |> having([e], sum(e.quantity) > 0)
     |> order_by([e, l], asc_nulls_last: l.expires_on, asc: l.id)
@@ -534,6 +535,12 @@ defmodule EstoqueOS.Inventory do
   # write-off screen's "take it from here specifically" override.
   defp maybe_at_box(query, nil), do: query
   defp maybe_at_box(query, id), do: where(query, [e], e.box_id == ^id)
+
+  # And to one lot. FEFO answers "which shirt goes first" with a shrug — a
+  # shirt has no expiry, so the order is by lot id and the person selling knows
+  # better than that: this print run, not the one from two campaigns ago.
+  defp maybe_lot(query, nil), do: query
+  defp maybe_lot(query, id), do: where(query, [e], e.lot_id == ^id)
 
   @doc """
   How much of a product sits in each box at a location, loose stock last.

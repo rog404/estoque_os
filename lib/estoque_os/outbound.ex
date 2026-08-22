@@ -588,11 +588,17 @@ defmodule EstoqueOS.Outbound do
     cond do
       is_nil(location_id) -> {:error, :missing_location}
       lines == [] -> {:error, :nothing_to_issue}
+      is_nil(blank_to_nil(field(attrs, :destination))) -> {:error, :missing_destination}
       sale_without_price?(lines, attrs) -> {:error, :missing_sale_price}
       true -> do_issue_many(lines, location_id, attrs)
     end
   end
 
+  # Where the goods went is the whole point of recording that they left, and a
+  # blank there is a hole nobody can fill afterwards — the goods are gone and
+  # the person who carried them has moved on. Refused here rather than only in
+  # the form, because a `required` attribute is presentation and this is a rule.
+  #
   # A sale is the one destination that carries a number, and it is the number
   # the whole record exists for: "quanto o marketing vendeu" cannot be answered
   # afterwards from a line that never said. Refused rather than posted with a
@@ -613,10 +619,12 @@ defmodule EstoqueOS.Outbound do
         {:halt, {:error, :invalid_quantity}}
       else
         box_id = to_id(field(line, :box_id))
+        lot_id = to_id(field(line, :lot_id))
 
         case Inventory.suggest_fefo_positions(product_id, quantity,
                location_id: location_id,
-               box_id: box_id
+               box_id: box_id,
+               lot_id: lot_id
              ) do
           {:insufficient_stock, _picks, missing} ->
             {:halt, {:error, {:insufficient_stock, %{missing: missing, item: product_id}}}}

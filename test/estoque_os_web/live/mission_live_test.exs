@@ -177,7 +177,12 @@ defmodule EstoqueOSWeb.MissionLiveTest do
           user_id: actor_id()
         })
 
-      {:ok, _} = Outbound.issue(gauze.id, 10, %{location_id: site.id, user_id: actor_id()})
+      {:ok, _} =
+        Outbound.issue(gauze.id, 10, %{
+          location_id: site.id,
+          user_id: actor_id(),
+          destination: "pacu"
+        })
 
       {:ok, _} =
         Outbound.issue(gauze.id, 5, %{

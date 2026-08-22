@@ -61,7 +61,8 @@ defmodule EstoqueOS.ManualIssueBoxTest do
     assert {:ok, _} =
              Outbound.issue_many([%{product_id: product.id, quantity: Decimal.new(15)}], %{
                location_id: warehouse.id,
-               user_id: actor_id()
+               user_id: actor_id(),
+               destination: "pacu"
              })
 
     # 10 from the box expiring soonest, then 5 more from the other.
@@ -80,7 +81,7 @@ defmodule EstoqueOS.ManualIssueBoxTest do
     assert {:ok, _} =
              Outbound.issue_many(
                [%{product_id: product.id, quantity: Decimal.new(4), box_id: far.id}],
-               %{location_id: warehouse.id, user_id: actor_id()}
+               %{location_id: warehouse.id, user_id: actor_id(), destination: "pacu"}
              )
 
     assert Decimal.equal?(Inventory.balance(lot_id: far_lot.id), Decimal.new(6))
@@ -96,7 +97,7 @@ defmodule EstoqueOS.ManualIssueBoxTest do
     assert {:error, {:insufficient_stock, %{missing: missing}}} =
              Outbound.issue_many(
                [%{product_id: product.id, quantity: Decimal.new(20), box_id: near.id}],
-               %{location_id: warehouse.id, user_id: actor_id()}
+               %{location_id: warehouse.id, user_id: actor_id(), destination: "pacu"}
              )
 
     assert Decimal.equal?(missing, Decimal.new(10))

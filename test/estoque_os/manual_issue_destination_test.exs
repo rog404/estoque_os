@@ -77,12 +77,15 @@ defmodule EstoqueOS.ManualIssueDestinationTest do
     assert "is invalid" in errors_on(changeset).destination
   end
 
-  test "an issue with no destination is still allowed" do
+  # It used to be. Where the goods went is the whole point of recording that
+  # they left, and a blank there is a hole nobody can fill afterwards: the goods
+  # are gone and the person who carried them has moved on.
+  test "an issue with no destination is refused" do
     {product, location} = stocked_product(5)
 
-    assert {:ok, transaction} =
+    assert {:error, :missing_destination} =
              Outbound.issue(product.id, 1, %{location_id: location.id, user_id: actor_id()})
 
-    assert is_nil(transaction.destination)
+    assert Decimal.equal?(EstoqueOS.Inventory.balance(location_id: location.id), Decimal.new(5))
   end
 end

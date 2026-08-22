@@ -216,9 +216,12 @@ defmodule EstoqueOSWeb.MarketingStockTest do
   describe "selling" do
     setup %{conn: conn}, do: register_and_log_in_as(%{conn: conn}, "marketing")
 
+    # Where the goods go is answered first now: the price field belongs to a
+    # sale, so the screen has to know it is one before a line is priced.
     defp sell(conn, product, quantity, price) do
       {:ok, view, _html} = live(conn, ~p"/issue")
 
+      view |> form("#destination-form", %{"destination" => "sale"}) |> render_change()
       view |> element("#search-form") |> render_change(%{"query" => product.name})
       view |> element("button", product.name) |> render_click()
 
@@ -226,12 +229,16 @@ defmodule EstoqueOSWeb.MarketingStockTest do
       |> element("#issue-form")
       |> render_submit(%{"quantity" => quantity, "sale_unit_price" => price})
 
-      view |> element("#basket-form") |> render_submit(%{"destination" => "sale"})
+      view |> element("#basket-form") |> render_submit(%{})
     end
 
     test "the line asks for a price, and the ledger keeps it", %{conn: conn, shirt: shirt} do
       {:ok, view, _html} = live(conn, ~p"/issue")
 
+      # The price belongs to a sale, so it appears once the write-off says it
+      # is one — which is also what lets an admin sell without the field being
+      # tied to the product's stock.
+      view |> form("#destination-form", %{"destination" => "sale"}) |> render_change()
       view |> element("#search-form") |> render_change(%{"query" => shirt.name})
       html = view |> element("button", shirt.name) |> render_click()
 
@@ -255,11 +262,12 @@ defmodule EstoqueOSWeb.MarketingStockTest do
     test "a sale with no price is refused, not posted blank", %{conn: conn, shirt: shirt} do
       {:ok, view, _html} = live(conn, ~p"/issue")
 
+      view |> form("#destination-form", %{"destination" => "sale"}) |> render_change()
       view |> element("#search-form") |> render_change(%{"query" => shirt.name})
       view |> element("button", shirt.name) |> render_click()
       view |> element("#issue-form") |> render_submit(%{"quantity" => "2"})
 
-      html = view |> element("#basket-form") |> render_submit(%{"destination" => "sale"})
+      html = view |> element("#basket-form") |> render_submit(%{})
 
       # The goods are gone either way once posted, and the price is not
       # recoverable afterwards.
