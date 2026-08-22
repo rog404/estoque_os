@@ -97,7 +97,7 @@ defmodule EstoqueOSWeb.AlertsBell do
                   phx-click="acknowledge_count"
                   phx-value-id={row.transaction.id}
                   phx-target={@myself}
-                  class="btn btn-xs btn-soft shrink-0"
+                  class="btn btn-primary btn-soft btn-xs shrink-0"
                 >
                   {gettext("Noted")}
                 </button>
@@ -120,7 +120,7 @@ defmodule EstoqueOSWeb.AlertsBell do
                 phx-click="acknowledge_lot"
                 phx-value-id={lot.id}
                 phx-target={@myself}
-                class="btn btn-xs btn-soft shrink-0"
+                class="btn btn-primary btn-soft btn-xs shrink-0"
               >
                 {gettext("Noted")}
               </button>

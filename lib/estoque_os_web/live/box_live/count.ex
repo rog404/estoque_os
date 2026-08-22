@@ -226,9 +226,9 @@ defmodule EstoqueOSWeb.BoxLive.Count do
             </:consequence>
           </.commit_action>
 
-          <button type="button" phx-click="start_over" class="btn btn-ghost">
+          <.button variant="ghost" type="button" phx-click="start_over">
             {gettext("Count again from the start")}
-          </button>
+          </.button>
         </div>
       </div>
 

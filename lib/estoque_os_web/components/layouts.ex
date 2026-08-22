@@ -68,7 +68,7 @@ defmodule EstoqueOSWeb.Layouts do
                    the menu and the account — and the bell's badge was landing on
                    top of this line. The app's own name identifies it; the
                    organisation's is not what you need while holding a box. -->
-              <span class="hidden sm:block text-[0.6875rem] uppercase tracking-[0.08em] opacity-60 truncate">
+              <span class="eyebrow hidden sm:block opacity-60 truncate">
                 {gettext("Operação Sorriso")}
               </span>
             </span>
@@ -165,7 +165,7 @@ defmodule EstoqueOSWeb.Layouts do
               </ul>
 
               <div class="px-4 pb-1">
-                <p class="text-xs font-semibold opacity-60">{gettext("Appearance")}</p>
+                <p class="eyebrow text-base-content/60">{gettext("Appearance")}</p>
                 <.theme_toggle />
               </div>
 

@@ -494,9 +494,9 @@ defmodule EstoqueOSWeb.EntryLive.New do
             <.button variant="primary" phx-disable-with={gettext("Recording...")}>
               {gettext("Take into stock")}
             </.button>
-            <button type="button" phx-click="clear" class="btn btn-ghost">
+            <.button variant="ghost" type="button" phx-click="clear">
               {gettext("Choose another product")}
-            </button>
+            </.button>
           </div>
         </div>
       </form>

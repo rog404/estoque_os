@@ -162,14 +162,10 @@ defmodule EstoqueOSWeb.InvoiceLive.Show do
             )}
           </p>
           <div class="mt-3 flex flex-wrap gap-3">
-            <.link navigate={~p"/stock"} class="btn btn-sm">{gettext("See stock")}</.link>
-            <button
-              :if={is_nil(@open_receipt)}
-              phx-click="start_receipt"
-              class="btn btn-sm btn-outline"
-            >
+            <.button navigate={~p"/stock"} class="btn-sm">{gettext("See stock")}</.button>
+            <.button :if={is_nil(@open_receipt)} phx-click="start_receipt" class="btn-sm">
               {gettext("Start conference")}
-            </button>
+            </.button>
           </div>
         </section>
 
@@ -295,14 +291,15 @@ defmodule EstoqueOSWeb.InvoiceLive.Show do
 
                 <div class="flex items-baseline gap-4 shrink-0">
                   <p class="text-lg font-semibold tabular-nums">{unit_price(item.unit_cost)}</p>
-                  <button
+                  <.button
+                    variant="ghost"
                     type="button"
                     phx-click="edit"
                     phx-value-item={item.id}
-                    class="btn btn-ghost btn-xs"
+                    class="btn-sm"
                   >
                     {gettext("Change")}
-                  </button>
+                  </.button>
                 </div>
               </div>
 
@@ -412,7 +409,7 @@ defmodule EstoqueOSWeb.InvoiceLive.Show do
                       type="button"
                       phx-click="unpick"
                       phx-value-item={item.id}
-                      class="btn btn-ghost btn-xs btn-square"
+                      class="btn btn-ghost btn-square btn-sm"
                       title={gettext("Change")}
                       aria-label={gettext("Change")}
                     >
@@ -513,15 +510,15 @@ defmodule EstoqueOSWeb.InvoiceLive.Show do
                          room and lets it wrap on a phone like everything else
                          in this row. -->
                     <div class="fieldset ml-auto flex-row gap-2">
-                      <button
+                      <.button
                         :if={item.product_id}
+                        variant="ghost"
                         type="button"
                         phx-click="cancel_edit"
                         phx-value-item={item.id}
-                        class="btn btn-ghost"
                       >
                         {gettext("Cancel")}
-                      </button>
+                      </.button>
                       <.button variant="primary" phx-disable-with={gettext("Saving...")}>
                         {gettext("Confirm")}
                       </.button>
@@ -595,14 +592,14 @@ defmodule EstoqueOSWeb.InvoiceLive.Show do
             </li>
           </ul>
 
-          <button
+          <.button
             :if={is_nil(@open_receipt)}
             phx-click="start_receipt"
-            class="btn btn-outline btn-sm mt-3"
+            class="btn-sm mt-3"
             phx-disable-with={gettext("Opening...")}
           >
             {gettext("Start conference")}
-          </button>
+          </.button>
         </section>
       </div>
     </Layouts.app>

@@ -114,7 +114,11 @@ nothing. The page header was a tinted band and is now a line — the section is
 still named by colour on the rail, the rule and the nav underline, but a field
 of colour at the top of every screen competes with the data underneath it.
 Radii are tight (`box` 0.375rem, `field` 0.25rem): soft corners read as
-friendly, and this is a tool.
+friendly, and this is a tool. **Two radii, and they are both tokens** — a panel,
+a card, a tinted note and a drop zone all take `rounded-box`; an input, a select
+and a button take `radius-field` from daisyUI without being asked. Tailwind's own
+`rounded-lg` is 0.5rem, a third radius nobody decided on, and the invoice
+importer had three of them.
 
 daisyUI paints the root with `--root-bg`, and a painted root stops the body's
 background from propagating to the canvas. `--root-bg` is set to `base-200`
@@ -122,10 +126,34 @@ rather than fought with a selector.
 
 ### Control sizing
 
-`--size-field` and `--size-selector` are both **0.25rem**, so a field is 2.5rem
-tall and a checkbox is 1.5rem. They were 0.21875rem, which made a 22px checkbox
-sit beside a 37px input — and four screens shrank it further with `checkbox-sm`.
-These are sized for a gloved hand in a warehouse, not a mouse in an office.
+`--size-field` and `--size-selector` are both **0.21875rem**, so a field — and
+the button and the select beside it — is 2.1875rem, which is 37px at the 17px
+base. One token sizes all three, which is the whole reason it is a token: an
+input and the button that submits it are never two heights.
+
+They were 0.25rem (2.5rem, 42px) for a while, on the argument that a warehouse
+is a gloved hand and not a mouse. 42px turned out to read as a tablet kiosk —
+the fields dwarfed the values inside them, and a two-control row took a third
+of a phone's height. The earlier complaint that produced 0.25rem was never
+really about the field: it was a 22px checkbox sitting beside a 37px input, and
+what fixes that is `.check-field` giving the box the field's own height and
+border, not making every input in the app taller.
+
+**A phone drops the base to 16px.** Everything is in rem, so one declaration
+takes the type, the fields, the buttons and the row heights down together —
+which is what puts another line of the list on a 390px screen instead of the
+same line in larger type. It stops at 16px and not below: under 16px iOS zooms
+the page the moment an input takes focus, and a screen that jumps while
+somebody is typing a count is worse than a screen that fits less.
+
+The one control deliberately taller than the token is the field inside a data
+table's mobile card — 2.5rem, because it is typed into one-handed while holding
+a box — and the button beside it takes that height too, so the exception does
+not reintroduce the mismatch.
+
+Cards on a phone keep the desktop cell's `px-3` on their sides. Zeroing it glued
+every value, and every button in an action cell, to the panel border: a control
+flush against the edge of the phone reads as a control cut in half.
 
 ## 2. Components
 
@@ -159,7 +187,8 @@ adding one is a decision made once, in `UI.status_spec/1`.
 |---|---|---|
 | `:expired` | error | |
 | `:expiring` | warning | |
-| `:controlled` | **neutral, solid** | A Portaria 344 substance is not a problem and not a warning — it is a legal class that changes who may touch the box. Seven screens had picked `badge-error` for it independently. |
+| `:controlled` | **neutral, quiet** | A Portaria 344 substance is not a problem and not a warning — it is a legal class that changes who may touch the box. Eight screens had picked `badge-error` for it independently; the eighth was the box list, which kept a private `reason_class/1` beside the vocabulary and painted every controlled item red. It renders `<.status kind={kind} detail={label} />` now, so a counted label — "3 item(s) controlado(s)" — still reads as the state it is. |
+| `:stale` | quiet, muted dot | A box that has gone a while without a count. Deliberately quiet: most boxes in a real warehouse are stale, and a fill that lights nine rows in ten stops being read. |
 | `:presumed` | outline | Never on the stock table — see below. |
 | `:counted` | success | |
 | `:in_kit`, `:in_transit`, `:under_way` | info | Movement, not trouble. |
@@ -222,7 +251,65 @@ to look up per screen:
 |---|---|
 | A page's own actions, in the header | default (unsized `.btn`) |
 | An action scoped to one card or table row | `btn-sm` |
-| An icon-only control repeated down a list | `btn-ghost btn-square btn-xs` |
+| An icon-only control repeated down a list | `btn-ghost btn-square btn-sm` |
+
+One exception, and it is the shared-slot rule: where a `commit_action/1` word
+trigger and its counterpart take turns in the same fixed-width slot — the
+Deactivate/Reactivate pair on `/locations` — both take the trigger's size, which
+is the unsized default, not `btn-sm`. `commit_action/1` only shrinks itself when
+it is an icon. The pair had one of each: a default-size "Desativar" beside a
+`btn-sm` "Reativar", so the type went smaller on exactly the rows where the
+place was already retired. Two controls that swap in one slot are one control as
+far as the operator is concerned, and one control has one size.
+
+**And one width.** Both fill the slot — `class="w-full"`, which is why
+`commit_action/1` takes a `class` at all. Natural widths made a 110px
+"Desativar" and a 119px "Reativar" land on different edges as the list was
+filtered, which is the same flicker the fixed-width slot was introduced to
+stop; sizing the slot and then letting the buttons inside it be as wide as
+their words only moves the problem in one level.
+
+The icon-only row control was `btn-xs`, and `commit_action/1` — the one
+component that renders exactly that control — had always drawn it `btn-square
+btn-sm`. Two answers to one question, and the smaller one was a 24px target on
+a screen §5 promises 2.5rem on. It is `btn-sm` everywhere now, and the doc
+follows the component rather than the other way round.
+
+Classes are written in the order `btn` → colour → shape → size, so the same
+control greps the same way on every screen. `btn btn-sm btn-ghost btn-square`
+and `btn btn-ghost btn-square btn-sm` render identically and read as two
+different patterns.
+
+### The button is the component, and it never takes a colour in `class`
+
+`button/1` *adds* the caller's class to what makes a button, so a colour passed
+in `class` does not replace the variant — it joins it. Four controls on the
+login confirmation screen were `<.button class="btn btn-primary w-full">`, which
+shipped `btn-primary btn-soft` **and** `btn-primary`: the solid fill the author
+wanted, fighting the soft one the omitted variant supplies, and which of the two
+won depended on stylesheet order. Colour goes in `variant`. `class` is for
+layout — `w-full`, `btn-block`, a margin, a size.
+
+`type` and `form` are on `button/1`'s `:global` include list because they are
+not global HTML attributes and every `<.button type="button">` in the app was
+compiling with a warning. A warning on the correct spelling is an argument for
+the wrong one, and hand-written `class="btn ..."` is what people wrote instead.
+
+### The resting tier had three spellings
+
+`btn-outline` and a bare colourless `.btn` were both in use, alongside the
+documented soft primary, for the same job: a control that is present without
+being the loudest thing on the screen. Three spellings of one tier is how a
+screen ends up with an outline button beside a soft one beside a base-200 one,
+all meaning "secondary" — and the bare `.btn` was the worst of them, because
+`base-200` on the `base-200` ground is a control that does not read as a
+control. Both are gone: twenty-two of them across fifteen screens are `<.button>`
+with no variant.
+
+The one exception is a `<summary>` that opens a dropdown — the stock screen's
+filter trigger. It cannot be a `<button>` element, so it keeps the plain
+`.btn` classes, and it is a *toggle* rather than an action: it does not belong
+to the action vocabulary at all.
 
 ## 3. The data table
 
@@ -341,7 +428,8 @@ warehouses and hospital storage rooms. No formal standard has been agreed with
 the ONG yet — an open decision. Honored today: labelled controls, keyboard-
 reachable actions, status conveyed by **text and icon, never by colour alone**
 (every `status/1` carries a word, and most carry a shape), icon-only buttons
-carrying `aria-label`, and a 2.5rem minimum control height.
+carrying `aria-label`, and a 2.1875rem minimum control height — 2.5rem for a
+field typed into on a phone.
 
 ## 6. What is not decided
 

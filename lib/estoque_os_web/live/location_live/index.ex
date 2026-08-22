@@ -174,10 +174,10 @@ defmodule EstoqueOSWeb.LocationLive.Index do
                 aria-label={gettext("New name for %{name}", name: location.name)}
                 phx-mounted={JS.focus()}
               />
-              <button class="btn btn-sm btn-primary">{gettext("Save")}</button>
-              <button type="button" phx-click="cancel_rename" class="btn btn-sm btn-ghost">
+              <.button variant="primary" class="btn-sm">{gettext("Save")}</.button>
+              <.button variant="ghost" type="button" phx-click="cancel_rename" class="btn-sm">
                 {gettext("Cancel")}
-              </button>
+              </.button>
             </form>
             <span :if={@editing != location.id}>{location.name}</span>
             <!-- Said on the row rather than by living in a second table: a
@@ -256,6 +256,7 @@ defmodule EstoqueOSWeb.LocationLive.Index do
                     :if={location.active}
                     id={"deactivate-#{location.id}"}
                     form={"deactivate-form-#{location.id}"}
+                    class="w-full"
                     label={gettext("Deactivate")}
                     title={gettext("Deactivate %{name}?", name: location.name)}
                     confirm_label={gettext("Deactivate")}
@@ -275,15 +276,15 @@ defmodule EstoqueOSWeb.LocationLive.Index do
                        location typed in with the same name, which the database
                        refuses and which would split the history in two if it
                        did not. -->
-                  <button
+                  <.button
                     :if={not location.active}
                     type="button"
                     phx-click="reactivate"
                     phx-value-id={location.id}
-                    class="btn btn-sm w-full"
+                    class="w-full"
                   >
                     {gettext("Reactivate")}
-                  </button>
+                  </.button>
                 </div>
               </div>
             </.write_gate>

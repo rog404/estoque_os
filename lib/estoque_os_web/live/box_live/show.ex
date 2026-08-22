@@ -52,12 +52,12 @@ defmodule EstoqueOSWeb.BoxLive.Show do
                  this screen only offered the second. Somebody standing in front
                  of the box is already here; the blind count is a route away and
                  was reachable only from the mini-audit list. -->
-            <.link navigate={~p"/boxes/#{@box}/count"} class="btn btn-primary btn-sm">
+            <.button navigate={~p"/boxes/#{@box}/count"} variant="primary" class="btn-sm">
               {gettext("Count this box")}
-            </.link>
-            <button phx-click="verify" class="btn btn-outline btn-sm">
+            </.button>
+            <.button phx-click="verify" class="btn-sm">
               {gettext("Mark as counted")}
-            </button>
+            </.button>
 
             <!-- Carrying the whole box somewhere else is an action on this box,
                  so it sits with the other two rather than floating between the
@@ -82,9 +82,9 @@ defmodule EstoqueOSWeb.BoxLive.Show do
                   {location.name}
                 </option>
               </select>
-              <button class="btn btn-outline btn-sm" phx-disable-with={gettext("Moving...")}>
+              <.button class="btn-sm" phx-disable-with={gettext("Moving...")}>
                 {gettext("Carry the box there")}
-              </button>
+              </.button>
             </form>
           </.write_gate>
         </:actions>
@@ -139,9 +139,9 @@ defmodule EstoqueOSWeb.BoxLive.Show do
                   list_id="sibling-boxes"
                   label={gettext("Box to move into")}
                 />
-                <button class="btn btn-sm" phx-disable-with={gettext("Moving...")}>
+                <.button class="btn-sm" phx-disable-with={gettext("Moving...")}>
                   {gettext("Move")}
-                </button>
+                </.button>
 
                 <!-- Grows the row it's in, unlike the tick above — a deliberate
                      exception to "always render, never :if". The tick is a
@@ -207,9 +207,9 @@ defmodule EstoqueOSWeb.BoxLive.Show do
                   class="input input-sm input-bordered w-20 text-right"
                   aria-label={gettext("How much of %{product} to put in", product: row.product)}
                 />
-                <button class="btn btn-sm" phx-disable-with={gettext("Storing...")}>
+                <.button class="btn-sm" phx-disable-with={gettext("Storing...")}>
                   {gettext("Put in %{box}", box: @box.code)}
-                </button>
+                </.button>
               </form>
             </.write_gate>
           </:col>

@@ -26,13 +26,14 @@ defmodule EstoqueOSWeb.UserLive.Confirmation do
             name={@form[:remember_me].name}
             value="true"
             phx-disable-with={gettext("Confirming...")}
-            class="btn btn-primary w-full"
+            variant="primary"
+            class="w-full"
           >
             {gettext("Confirm and stay logged in")}
           </.button>
           <.button
             phx-disable-with={gettext("Confirming...")}
-            class="btn btn-primary btn-soft w-full mt-2"
+            class="w-full mt-2"
           >
             {gettext("Confirm and log in only this time")}
           </.button>
@@ -57,13 +58,14 @@ defmodule EstoqueOSWeb.UserLive.Confirmation do
               name={@form[:remember_me].name}
               value="true"
               phx-disable-with={gettext("Logging in...")}
-              class="btn btn-primary w-full"
+              variant="primary"
+              class="w-full"
             >
               {gettext("Keep me logged in on this device")}
             </.button>
             <.button
               phx-disable-with={gettext("Logging in...")}
-              class="btn btn-primary btn-soft w-full mt-2"
+              class="w-full mt-2"
             >
               {gettext("Log me in only this time")}
             </.button>

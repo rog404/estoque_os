@@ -192,7 +192,14 @@ defmodule EstoqueOSWeb.CoreComponents do
       <.button phx-click="remove" variant="danger">Remove</.button>
       <.button navigate={~p"/"}>Home</.button>
   """
-  attr :rest, :global, include: ~w(href navigate patch method download name value disabled)
+  # `type` and `form` are on the include list because they are not global
+  # attributes: a `<button type="button">` inside a form, and a submit that
+  # lives outside the form it posts, are both ordinary here, and without this
+  # every one of them compiled with a warning and tempted somebody back to a
+  # hand-written `class="btn"`.
+  attr :rest, :global,
+    include: ~w(href navigate patch method download name value disabled type form target)
+
   attr :class, :any, default: nil, doc: "added to the button classes, not a replacement for them"
   attr :variant, :string, values: ~w(primary commit danger ghost)
   slot :inner_block, required: true
@@ -598,6 +605,18 @@ defmodule EstoqueOSWeb.CoreComponents do
     twenty-eight Remove buttons keeps it.
     """
 
+  attr :class, :any,
+    default: nil,
+    doc: """
+    added to the trigger's classes, never a replacement for them — and to the
+    tooltip wrapper as well, because the wrapper exists only to carry the
+    `title` a disabled button cannot show, and a `w-full` trigger inside a
+    natural-width wrapper does not fill anything.
+
+    For a trigger that shares a fixed-width slot with another control: the two
+    have to be the same width or the column jumps as the list is filtered.
+    """
+
   attr :rest, :global
 
   slot :consequence, doc: "what will happen, in numbers"
@@ -618,12 +637,12 @@ defmodule EstoqueOSWeb.CoreComponents do
          swallows pointer events, so its own `title` never appears — which is
          how a "disabled with a reason" turns back into a dead end nobody can
          read. `inline-flex` so it does not change the button's box. -->
-    <span title={@disabled && @reason} class="inline-flex">
+    <span title={@disabled && @reason} class={["inline-flex", @class]}>
       <button
         type="button"
         data-confirm-open={@id}
         disabled={@disabled}
-        class={["btn", @tone_class, @fill_class, @icon && "btn-square btn-sm"]}
+        class={["btn", @tone_class, @fill_class, @icon && "btn-square btn-sm", @class]}
         aria-label={@icon && @label}
         title={(@disabled && @reason) || (@icon && @label)}
         {@rest}

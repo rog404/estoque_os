@@ -224,14 +224,14 @@ defmodule EstoqueOSWeb.ProductLive.Show do
               class="input input-sm input-bordered w-24 text-right"
               aria-label={gettext("Minimum a mission is expected to carry")}
             />
-            <button
+            <.button
               :if={may_plan?(@current_scope)}
-              class="btn btn-sm"
+              class="btn-sm"
               disabled={not @controls_enabled?}
               phx-disable-with={gettext("Saving...")}
             >
               {gettext("Save")}
-            </button>
+            </.button>
           </form>
           <p class="text-xs opacity-60 mt-1">
             {gettext("what a mission is expected to carry")}
@@ -348,9 +348,9 @@ defmodule EstoqueOSWeb.ProductLive.Show do
                   class="input input-sm input-bordered w-20 text-right"
                   aria-label={gettext("How much to put in")}
                 />
-                <button class="btn btn-sm" phx-disable-with={gettext("Storing...")}>
+                <.button class="btn-sm" phx-disable-with={gettext("Storing...")}>
                   {gettext("Put away")}
-                </button>
+                </.button>
               </form>
             </.write_gate>
           </:col>

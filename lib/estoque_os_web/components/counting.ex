@@ -40,6 +40,7 @@ defmodule EstoqueOSWeb.Counting do
   use Phoenix.Component
   use Gettext, backend: EstoqueOSWeb.Gettext
 
+  import EstoqueOSWeb.CoreComponents, only: [button: 1]
   import EstoqueOSWeb.UI, only: [status: 1]
 
   @doc """
@@ -89,9 +90,9 @@ defmodule EstoqueOSWeb.Counting do
 
   def reveal_expected(assigns) do
     ~H"""
-    <button :if={@available?} phx-click="reveal" class="btn btn-sm btn-outline">
+    <.button :if={@available?} phx-click="reveal" class="btn-sm">
       {gettext("Show what the ledger expects")}
-    </button>
+    </.button>
     <.status :if={@revealed?} kind={:presumed} detail={gettext("expected shown")} />
     """
   end
