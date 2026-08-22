@@ -68,7 +68,7 @@ defmodule EstoqueOSWeb.KitLive.Index do
         </label>
       </form>
 
-      <.write_gate may={@role_may_write?} allowed={@writable?} reason={@write_block}>
+      <.write_gate may={@role_may_write?} allowed={@controls_enabled?}>
         <form
           id="new-kit"
           phx-submit="create"

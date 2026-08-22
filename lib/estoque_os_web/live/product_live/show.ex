@@ -152,9 +152,12 @@ defmodule EstoqueOSWeb.ProductLive.Show do
     Scope.effective_role(scope) in User.roles_that_plan()
   end
 
+  # Borrowing a role does not disable anything any more — the screen looks like
+  # the borrowed person's and the refusal happens on the event. What is left
+  # here is the one reason that is about the role itself.
   defp plan_block(scope) do
     if may_plan?(scope) do
-      EstoqueOSWeb.UserAuth.write_block(scope)
+      nil
     else
       gettext("Only a manager changes the minimum.")
     end
@@ -216,7 +219,7 @@ defmodule EstoqueOSWeb.ProductLive.Show do
               value={quantity(@history.product.min_stock_override)}
               inputmode="decimal"
               data-numeric
-              disabled={not may_plan?(@current_scope) or not @writable?}
+              disabled={not may_plan?(@current_scope) or not @controls_enabled?}
               title={plan_block(@current_scope)}
               class="input input-sm input-bordered w-24 text-right"
               aria-label={gettext("Minimum a mission is expected to carry")}
@@ -224,7 +227,7 @@ defmodule EstoqueOSWeb.ProductLive.Show do
             <button
               :if={may_plan?(@current_scope)}
               class="btn btn-sm"
-              disabled={not @writable?}
+              disabled={not @controls_enabled?}
               phx-disable-with={gettext("Saving...")}
             >
               {gettext("Save")}
@@ -313,7 +316,7 @@ defmodule EstoqueOSWeb.ProductLive.Show do
             field={:block}
             group
           >
-            <.write_gate may={is_nil(row.box_id)} allowed={@writable?} reason={@write_block}>
+            <.write_gate may={is_nil(row.box_id)} allowed={@controls_enabled?}>
               <form
                 id={"stow-#{row.lot_id}-#{row.location_id}"}
                 phx-submit="stow"

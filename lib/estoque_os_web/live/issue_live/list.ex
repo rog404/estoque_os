@@ -165,7 +165,9 @@ defmodule EstoqueOSWeb.IssueLive.List do
 
           <:col :let={row} label={gettext("Certificate")} hide_label_on_card={true}>
             <.link
-              :if={row.transaction.destination == "donation" and UserAuth.operator?(@current_scope)}
+              :if={
+                row.transaction.destination == "donation" and UserAuth.role_may_write?(@current_scope)
+              }
               href={~p"/issues/#{row.transaction.id}/termo/doacao"}
               target="_blank"
               class="btn btn-ghost btn-sm"

@@ -480,8 +480,13 @@ defmodule EstoqueOSWeb.CoreComponents do
 
   Two questions, and both are needed. `may` is whether this role writes here at
   all — false removes the markup, because a reader has no business seeing an
-  action they will never have. `allowed` is whether *this session* may act now;
-  false renders everything and disables it.
+  action they will never have. `allowed` is whether the controls are drawn as
+  usable; false renders everything and disables it.
+
+  Borrowing a role no longer disables anything: "ver como" answers *what does
+  this person see*, and a greyed-out copy answers something else. The refusal
+  moved to the one place it cannot be faked — the event hook — so the screen can
+  look exactly like the borrowed person's.
 
   A `<fieldset disabled>` is what does the disabling, and it does it to every
   control underneath including nested forms — one attribute instead of an

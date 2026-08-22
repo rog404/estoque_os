@@ -258,18 +258,26 @@ defmodule EstoqueOSWeb.UserAuth do
   # the day somebody adds a handler and forgets the list, which is exactly how
   # this hole appeared in the first place.
   def on_mount(:guard_writes, _params, _session, socket) do
-    # Two questions, and they used to be one. `@role_may_write?` decides whether
-    # the control exists on this screen at all; `@writable?` decides whether this
-    # session may press it, and the hook refuses the event either way. Deriving
-    # all of it from here is what stops a hidden button and an open handler
-    # drifting apart.
+    # Three answers from one place, so a hidden button and an open handler
+    # cannot drift apart:
+    #
+    #   * `@role_may_write?` — does the role being shown write here at all. False
+    #     removes the markup: a reader has no business seeing an action they
+    #     will never have.
+    #   * `@controls_enabled?` — does the screen *look* usable. Borrowing a role
+    #     is supposed to show that person's app, and a wall of greyed-out
+    #     controls is a different app. So the buttons look exactly as they look
+    #     to them.
+    #   * `@writable?` — may this session actually write. Still false the whole
+    #     time an admin is wearing somebody else's role, and it is what the
+    #     handlers and the contexts ask.
     scope = socket.assigns[:current_scope]
 
     socket =
       socket
       |> Phoenix.Component.assign(:writable?, operator?(scope))
+      |> Phoenix.Component.assign(:controls_enabled?, controls_enabled?(scope))
       |> Phoenix.Component.assign(:role_may_write?, role_may_write?(scope))
-      |> Phoenix.Component.assign(:write_block, write_block(scope))
 
     {:cont,
      Phoenix.LiveView.attach_hook(socket, :guard_writes, :handle_event, fn
@@ -439,10 +447,10 @@ defmodule EstoqueOSWeb.UserAuth do
   made the page worth visiting was gone. You could not tell a permission you
   lack from a feature that does not exist from a bug.
 
-  So the control is rendered, and disabled, with `write_block/1` saying why.
-  The refusal itself does not move: `operator?/1` still says no, the event hook
-  still refuses, and an admin standing in somebody else's shoes still cannot
-  post a transaction.
+  So the control is rendered, and — since the operation asked for it — rendered
+  usable, exactly as the person whose screen it is sees it. The refusal itself
+  does not move: `operator?/1` still says no, the event hook still refuses, and
+  an admin standing in somebody else's shoes still cannot post a transaction.
   """
   def role_may_write?(%Scope{} = scope),
     do: Scope.effective_role(scope) in Accounts.User.roles_that_write()
@@ -450,19 +458,16 @@ defmodule EstoqueOSWeb.UserAuth do
   def role_may_write?(_scope), do: false
 
   @doc """
-  Why the controls on this screen are disabled, or `nil` when they are not.
+  Whether the controls are drawn as usable.
 
-  Only one reason exists today, and it is the one worth saying out loud: you
-  are borrowing a role. A reader who never had the button does not reach this —
-  `role_may_write?/1` has already removed it.
+  They are, for the role that writes here — including an admin borrowing it.
+  "Ver como" exists to answer *what does this person see*, and a screen full of
+  disabled controls answers a different question: it shows the app somebody
+  else would be refused by, not the app they use. So the screen looks the same
+  and the refusal happens where it cannot be faked, on the way in.
   """
-  def write_block(%Scope{} = scope) do
-    if role_may_write?(scope) and not operator?(scope) do
-      gettext("You are seeing the app as another role. Nothing here can be recorded.")
-    end
-  end
-
-  def write_block(_scope), do: nil
+  def controls_enabled?(%Scope{} = scope), do: role_may_write?(scope)
+  def controls_enabled?(_scope), do: false
 
   @doc """
   Whether this scope may see what anything cost.

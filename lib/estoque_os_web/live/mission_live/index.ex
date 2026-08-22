@@ -42,7 +42,7 @@ defmodule EstoqueOSWeb.MissionLive.Index do
         </:subtitle>
       </.header>
 
-      <.write_gate may={@role_may_write?} allowed={@writable?} reason={@write_block}>
+      <.write_gate may={@role_may_write?} allowed={@controls_enabled?}>
         <form
           id="new-mission"
           phx-submit="create"

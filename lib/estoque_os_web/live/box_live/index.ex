@@ -93,7 +93,7 @@ defmodule EstoqueOSWeb.BoxLive.Index do
         </:subtitle>
       </.header>
 
-      <.write_gate may={@role_may_write?} allowed={@writable?} reason={@write_block}>
+      <.write_gate may={@role_may_write?} allowed={@controls_enabled?}>
         <form
           id="new-box"
           phx-submit="create"
@@ -194,7 +194,7 @@ defmodule EstoqueOSWeb.BoxLive.Index do
           </:col>
 
           <:col :let={row} label={gettext("Counting")}>
-            <.write_gate may={@role_may_write?} allowed={@writable?} reason={@write_block}>
+            <.write_gate may={@role_may_write?} allowed={@controls_enabled?}>
               <.link navigate={~p"/boxes/#{row.box}/count"} class="btn btn-sm">
                 {gettext("Count")}
               </.link>
@@ -202,7 +202,7 @@ defmodule EstoqueOSWeb.BoxLive.Index do
           </:col>
 
           <:col :let={row} label={gettext("Move to")}>
-            <.write_gate may={@role_may_write?} allowed={@writable?} reason={@write_block}>
+            <.write_gate may={@role_may_write?} allowed={@controls_enabled?}>
               <form
                 id={"move-#{row.box.id}"}
                 phx-submit="move"
