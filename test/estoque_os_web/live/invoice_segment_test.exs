@@ -75,15 +75,16 @@ defmodule EstoqueOSWeb.InvoiceSegmentTest do
       assert length(shown.items) == length(Invoices.get_invoice!(invoice.id).items)
     end
 
-    # The toggle exists for the coordinator who receives the other side's
-    # delivery. It is not a way out of the role.
-    test "cannot import into the surgical stock", %{conn: conn} do
+    # The toggle is for the coordinator who receives the other side's delivery,
+    # and either coordinator may be that person: the stock is a filter, and
+    # this is the moment somebody states which one a document belongs to.
+    test "can import into the surgical stock when the delivery is that", %{conn: conn} do
       {:ok, view, _html} = live(conn, ~p"/invoices/import")
 
       render_click(view, "segment", %{"segment" => "medical"})
       upload_invoice(view)
 
-      assert Invoices.get_invoice_by_access_key(@access_key).segment == "marketing"
+      assert Invoices.get_invoice_by_access_key(@access_key).segment == "medical"
     end
   end
 

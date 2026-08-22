@@ -23,26 +23,23 @@ defmodule EstoqueOSWeb.InvoiceLive.Show do
 
   import EstoqueOS.Coercion, only: [to_decimal: 1, blank_to_nil: 1]
 
-  alias EstoqueOS.Accounts.Scope
   alias EstoqueOS.{Catalog, Invoices, Receiving}
 
   alias EstoqueOS.Inventory.Locations
 
   @impl true
   def mount(%{"id" => id}, _session, socket) do
-    segment = Scope.segment(socket.assigns.current_scope)
+    # The whole document, whichever stock the reader works in. A delivery used
+    # to be refused when none of its lines were yours, which is the fence the
+    # operation asked to take down — and which barred the marketing coordinator
+    # from the invoice they had just imported, since a fresh one has no
+    # resolved line at all.
+    #
+    # The lines are still shown per stock further down, because a mixed
+    # delivery is two people's work and each of them confirms their own.
     invoice = Invoices.get_invoice!(id)
 
-    if Invoices.visible?(invoice, segment) do
-      mount_invoice(socket, Invoices.get_invoice!(id, segment), segment)
-    else
-      # A delivery with nothing of yours on it is a list of somebody else's
-      # purchase prices. Refused here rather than rendered empty.
-      {:ok,
-       socket
-       |> put_flash(:error, gettext("You don't have permission to access this page."))
-       |> push_navigate(to: ~p"/invoices")}
-    end
+    mount_invoice(socket, invoice, invoice.segment)
   end
 
   defp mount_invoice(socket, invoice, segment) do

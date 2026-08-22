@@ -85,7 +85,10 @@ defmodule EstoqueOSWeb.MarketingStockTest do
   describe "the marketing role" do
     setup %{conn: conn}, do: register_and_log_in_as(%{conn: conn}, "marketing")
 
-    test "sees only its own stock, and cannot ask for the other", %{
+    # The stock is a filter now, not a fence: the screen opens on marketing
+    # because that is where this person works, and the surgical shelf is one
+    # tap away because the operation asked for it that way.
+    test "opens on its own stock and can ask for the other", %{
       conn: conn,
       gauze: gauze,
       shirt: shirt
@@ -95,70 +98,86 @@ defmodule EstoqueOSWeb.MarketingStockTest do
       assert html =~ shirt.name
       refute text(html) =~ gauze.name
 
-      # Asked for by hand, in the address and then over the socket. Neither is
-      # a way out: the role decides, not the page.
       {:ok, _view, asked} = live(conn, ~p"/stock?segment=medical")
-      refute text(asked) =~ gauze.name
+      assert text(asked) =~ gauze.name
 
       filtered =
         view
         |> element("#filter-form")
         |> render_submit(%{"segment" => "medical"})
 
-      refute text(filtered) =~ gauze.name
+      assert text(filtered) =~ gauze.name
     end
 
-    test "is not offered a filter for a stock it does not have", %{conn: conn} do
+    test "is offered the filter, already on its own stock", %{conn: conn} do
       {:ok, _view, html} = live(conn, ~p"/stock")
 
-      refute html =~ ~s(name="segment")
+      assert html =~ ~s(name="segment")
+      assert html =~ ~s(value="marketing" checked)
     end
 
-    test "cannot search the surgical catalog to write it off", %{conn: conn, gauze: gauze} do
+    # The write-off screen is narrowed to the stock it is showing, and the
+    # address is what changes which one that is — the refusal is about the
+    # screen's state, not about the person.
+    test "searches the stock the screen is showing", %{conn: conn, gauze: gauze} do
       {:ok, view, _html} = live(conn, ~p"/issue")
 
       html = view |> element("#search-form") |> render_change(%{"query" => "compressa"})
       refute text(html) =~ gauze.name
 
-      # And the id typed straight into the event is refused out loud rather
-      # than quietly ignored.
       refused = render_click(view, "pick", %{"product" => "#{gauze.id}"})
       assert refused =~ "não está neste estoque"
+
+      {:ok, surgical, _html} = live(conn, ~p"/issue?segment=medical")
+      found = surgical |> element("#search-form") |> render_change(%{"query" => "compressa"})
+
+      assert text(found) =~ gauze.name
     end
 
-    test "cannot search the surgical catalog to take it in", %{conn: conn, gauze: gauze} do
+    test "takes goods in for the stock the screen is showing", %{conn: conn, gauze: gauze} do
       {:ok, view, _html} = live(conn, ~p"/entry")
 
       html = view |> element("#search-form") |> render_change(%{"query" => "compressa"})
       refute text(html) =~ gauze.name
+
+      {:ok, surgical, _html} = live(conn, ~p"/entry?segment=medical")
+      found = surgical |> element("#search-form") |> render_change(%{"query" => "compressa"})
+
+      assert text(found) =~ gauze.name
     end
 
-    test "cannot open a surgical product's page", %{conn: conn, gauze: gauze, shirt: shirt} do
-      assert {:error, {:live_redirect, %{to: "/stock"}}} = live(conn, ~p"/products/#{gauze.id}")
+    test "opens any product's page", %{conn: conn, gauze: gauze, shirt: shirt} do
+      {:ok, _view, surgical} = live(conn, ~p"/products/#{gauze.id}")
+      assert surgical =~ gauze.name
 
       {:ok, _view, html} = live(conn, ~p"/products/#{shirt.id}")
       assert html =~ shirt.name
     end
 
-    test "cannot open the boxes, the kits or the missions", %{conn: conn} do
+    # A mission mixes marketing material and surgical supply in the same box,
+    # and the person who packed the shirts is the person who counts them.
+    test "opens the boxes, the locations and the missions", %{conn: conn} do
       for path <- ~w(/boxes /locations /kits /missions /reports/audit) do
-        assert {:error, {:redirect, %{to: "/"}}} = live(conn, path),
-               "#{path} opened for the marketing role"
+        assert {:ok, _view, _html} = live(conn, path),
+               "#{path} was refused to the marketing role"
       end
     end
 
-    test "cannot open the load-out or a count", %{conn: conn} do
-      for path <- ~w(/conferences /returns /load-out /reports/data) do
-        assert {:error, {:redirect, %{to: _}}} = live(conn, path),
-               "#{path} opened for the marketing role"
+    test "opens the conference, the load-out and the return", %{conn: conn} do
+      for path <- ~w(/conferences /returns /load-out) do
+        assert {:ok, _view, _html} = live(conn, path),
+               "#{path} was refused to the marketing role"
       end
     end
 
-    # An NF-e is a supplier's document, not a stock, so it belongs to whichever
-    # stocks its lines landed in. Marketing buys shirts with a nota like anyone
-    # else; what they may not read is a delivery of gauze, because reading it is
-    # reading the ONG's purchase prices for the surgical supply.
-    test "opens the invoices, and sees only deliveries with its own goods", %{
+    # Writing the whole warehouse at once is a planning act, and planning is
+    # still admin and manager. That gate is about what a role *does*, which is
+    # a different question from which stock it works in.
+    test "still cannot import a whole spreadsheet", %{conn: conn} do
+      assert {:error, {:redirect, %{to: _}}} = live(conn, ~p"/reports/data")
+    end
+
+    test "opens the invoices, listing its own deliveries first", %{
       conn: conn,
       gauze: gauze,
       shirt: shirt
@@ -174,11 +193,12 @@ defmodule EstoqueOSWeb.MarketingStockTest do
       {:ok, _view, html} = live(conn, ~p"/invoices/#{theirs.id}")
       assert html =~ shirt.name
 
-      assert {:error, {:live_redirect, %{to: "/invoices"}}} =
-               live(conn, ~p"/invoices/#{surgical.id}")
+      # And the other delivery opens rather than being refused: it is a
+      # document of the same operation.
+      assert {:ok, _view, _html} = live(conn, ~p"/invoices/#{surgical.id}")
     end
 
-    test "gets an export of its own stock and no more", %{conn: conn, gauze: gauze} do
+    test "gets an export of the stock it is looking at", %{conn: conn, gauze: gauze} do
       response = get(conn, ~p"/stock/export.xlsx")
 
       assert response.status == 200
@@ -289,11 +309,23 @@ defmodule EstoqueOSWeb.MarketingStockTest do
   describe "the roles that have both stocks" do
     setup %{conn: conn}, do: register_and_log_in_operator(%{conn: conn})
 
-    test "see everything by default", %{conn: conn, gauze: gauze, shirt: shirt} do
-      {:ok, _view, html} = live(conn, ~p"/stock")
+    # The surgical stock is where the supplies coordinator works, so that is
+    # where the screen opens — and both stocks are one filter away.
+    test "open on the surgical stock and reach the other in one filter", %{
+      conn: conn,
+      gauze: gauze,
+      shirt: shirt
+    } do
+      {:ok, view, html} = live(conn, ~p"/stock")
 
       assert html =~ gauze.name
-      assert html =~ shirt.name
+      refute text(html) =~ shirt.name
+
+      # Ticking neither stock is how the panel says "both".
+      both = view |> element("#filter-form") |> render_submit(%{"segment" => ""})
+
+      assert text(both) =~ gauze.name
+      assert text(both) =~ shirt.name
     end
 
     test "can narrow to one stock and back", %{conn: conn, gauze: gauze, shirt: shirt} do

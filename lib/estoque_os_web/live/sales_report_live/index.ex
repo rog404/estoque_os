@@ -25,7 +25,6 @@ defmodule EstoqueOSWeb.SalesReportLive.Index do
 
   import EstoqueOS.Coercion, only: [blank_to_nil: 1, parse_date: 2]
 
-  alias EstoqueOS.Accounts.Scope
   alias EstoqueOS.Reports
   alias EstoqueOSWeb.StockLive
 
@@ -43,14 +42,9 @@ defmodule EstoqueOSWeb.SalesReportLive.Index do
   end
 
   # Marketing is the default view because marketing is the stock that is sold —
-  # but a manager may look at either, and a surgical item that was sold is
-  # exactly the thing a report should not hide.
-  defp segment(socket, asked) do
-    case Scope.segment(socket.assigns.current_scope) do
-      nil -> asked
-      forced -> forced
-    end
-  end
+  # and a surgical item that was sold is exactly the thing a report should not
+  # hide, so either stock is a filter away for anybody.
+  defp segment(_socket, asked), do: asked
 
   defp load_report(socket) do
     %{from: from, to: to, segment: segment} = socket.assigns
@@ -84,7 +78,7 @@ defmodule EstoqueOSWeb.SalesReportLive.Index do
         </label>
         <!-- Absent for a role with one stock, like every other segment picker:
              a question with one answer is not a question. -->
-        <label :if={is_nil(Scope.segment(@current_scope))} class="fieldset">
+        <label class="fieldset">
           <span class="label">{gettext("Stock")}</span>
           <select name="segment" class="select select-bordered">
             <option value="marketing" selected={@segment == "marketing"}>

@@ -206,8 +206,10 @@ defmodule EstoqueOSWeb.WriteOffRulesTest do
   describe "the movement" do
     setup :register_and_log_in_operator
 
+    # The screen opens on the stock this role works in — surgical — so a
+    # marketing line is written off from the marketing filter.
     test "records the lot the operator pinned", %{conn: conn, shirt: shirt, new: new} do
-      {:ok, view, _html} = live(conn, ~p"/issue")
+      {:ok, view, _html} = live(conn, ~p"/issue?segment=marketing")
 
       choose(view, "donation")
       pick(view, shirt)

@@ -383,7 +383,7 @@ defmodule EstoqueOSWeb.Layouts do
             label: gettext("Conference"),
             path: ~p"/conferences",
             icon: "hero-clipboard-document-list",
-            roles: ~w(admin manager logistics)
+            roles: ~w(admin manager logistics marketing)
           },
           %{
             label: gettext("Write off"),
@@ -400,13 +400,13 @@ defmodule EstoqueOSWeb.Layouts do
             label: gettext("Send a load"),
             path: ~p"/load-out",
             icon: "hero-truck",
-            roles: ~w(admin manager logistics)
+            roles: ~w(admin manager logistics marketing)
           },
           %{
             label: gettext("Receive a load"),
             path: ~p"/returns",
             icon: "hero-arrow-uturn-left",
-            roles: ~w(admin manager logistics)
+            roles: ~w(admin manager logistics marketing)
           }
         ]
       },
@@ -429,25 +429,25 @@ defmodule EstoqueOSWeb.Layouts do
           # `:everyone` used to mean everyone, and then a role arrived that has
           # one stock and no boxes, kits or missions in it. These now name the
           # four roles the surgical operation is made of — the same list the
-          # `:surgical_read` live_session carries, and `nav_roles_test.exs`
+          # `:warehouse_read` live_session carries, and `nav_roles_test.exs`
           # walks every entry with every role to hold the two together.
           %{
             label: gettext("Boxes"),
             path: ~p"/boxes",
             icon: "hero-cube",
-            roles: ~w(admin manager logistics auditor)
+            roles: ~w(admin manager logistics auditor marketing)
           },
           %{
             label: gettext("Locations"),
             path: ~p"/locations",
             icon: "hero-map-pin",
-            roles: ~w(admin manager logistics auditor)
+            roles: ~w(admin manager logistics auditor marketing)
           },
           %{
             label: gettext("Kits"),
             path: ~p"/kits",
             icon: "hero-rectangle-stack",
-            roles: ~w(admin manager logistics auditor)
+            roles: ~w(admin manager logistics auditor marketing)
           }
         ]
       },
@@ -480,18 +480,21 @@ defmodule EstoqueOSWeb.Layouts do
           # was a record the system holding the stock could not answer it.
           # The four roles the surgical operation is made of, like the boxes and
           # the missions: a load on the road is going to or coming from one of
-          # those, and the marketing stock does not travel.
+          # A load carries whatever was packed into the boxes, and a mission
+          # box mixes the two stocks — so the marketing coordinator reads this
+          # for the same reason as everyone else: to know where their material
+          # is.
           %{
             label: gettext("In transit"),
             path: ~p"/reports/transit",
             icon: "hero-truck",
-            roles: ~w(admin manager logistics auditor)
+            roles: ~w(admin manager logistics auditor marketing)
           },
           %{
             label: gettext("Audit report"),
             path: ~p"/reports/audit",
             icon: "hero-clipboard-document-list",
-            roles: ~w(admin manager logistics auditor)
+            roles: ~w(admin manager logistics auditor marketing)
           },
           %{
             label: gettext("Manual issues"),
@@ -503,7 +506,7 @@ defmodule EstoqueOSWeb.Layouts do
             label: gettext("Missions"),
             path: ~p"/missions",
             icon: "hero-map",
-            roles: ~w(admin manager logistics auditor)
+            roles: ~w(admin manager logistics auditor marketing)
           }
         ]
       }

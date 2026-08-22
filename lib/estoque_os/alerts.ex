@@ -36,8 +36,8 @@ defmodule EstoqueOS.Alerts do
   counter is only useful if the number leads somewhere.
   """
   def pending(scope, opts \\ []) do
-    segment = Scope.segment(scope)
-    surgical? = is_nil(segment)
+    segment = Scope.default_segment(scope)
+    surgical? = segment != "marketing"
 
     [
       counts_alert(surgical?),
@@ -140,7 +140,7 @@ defmodule EstoqueOS.Alerts do
   """
   def list_open_lots(scope, opts \\ []) do
     scope
-    |> Scope.segment()
+    |> Scope.default_segment()
     |> open_lots()
     |> order_by([l], desc: l.id)
     |> limit(^(opts[:limit] || 5))

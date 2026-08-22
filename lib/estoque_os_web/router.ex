@@ -93,10 +93,14 @@ defmodule EstoqueOSWeb.Router do
 
     # The hands-on flows: what the person holding the boxes does. Logistics is
     # here because counting, loading out and receiving a return *is* their job.
+    #
+    # Marketing is here too. Boxes used to be the surgical operation's alone;
+    # they are not — a mission mixes marketing material and supplies in the same
+    # box, and the person who packed the shirts is the person who counts them.
     live_session :operational,
       on_mount: [
         {EstoqueOSWeb.UserAuth, :require_authenticated},
-        {EstoqueOSWeb.UserAuth, {:require_role, ~w(admin manager logistics)}},
+        {EstoqueOSWeb.UserAuth, {:require_role, ~w(admin manager logistics marketing)}},
         {EstoqueOSWeb.UserAuth, :current_path},
         {EstoqueOSWeb.UserAuth, :guard_writes},
         {EstoqueOSWeb.UserAuth, :require_password_not_pending}
@@ -244,19 +248,17 @@ defmodule EstoqueOSWeb.Router do
       live "/users/settings/confirm-email/:token", UserLive.Settings, :confirm_email
     end
 
-    # The screens whose whole subject is the surgical operation: the boxes it
-    # travels in, the kits it packs, the trips it makes, the counts an auditor
-    # reads. Every one of them lists products, and the marketing role is defined
-    # by not seeing those — so the honest gate is the route, not a filter
-    # inside eight screens that would each have to remember.
+    # The warehouse's own screens: the boxes stock travels in, the kits it
+    # packs, the trips it makes, the counts an auditor reads.
     #
-    # The four screens above stay open to everyone because each one is scoped
-    # by segment: the overview, the stock list, the write-offs and a product's
-    # own page.
-    live_session :surgical_read,
+    # These used to be closed to marketing, back when the marketing role was
+    # defined by not seeing the surgical stock. That fence is gone — both
+    # stocks share the warehouse, the boxes and the missions, and a box with
+    # shirts and gauze in it belongs to both of the people who packed it.
+    live_session :warehouse_read,
       on_mount: [
         {EstoqueOSWeb.UserAuth, :require_authenticated},
-        {EstoqueOSWeb.UserAuth, {:require_role, ~w(admin manager logistics auditor)}},
+        {EstoqueOSWeb.UserAuth, {:require_role, ~w(admin manager logistics auditor marketing)}},
         {EstoqueOSWeb.UserAuth, :current_path},
         {EstoqueOSWeb.UserAuth, :guard_writes},
         {EstoqueOSWeb.UserAuth, :require_password_not_pending}

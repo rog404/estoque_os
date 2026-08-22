@@ -22,13 +22,15 @@ defmodule EstoqueOSWeb.StockController do
     # their job — so what leaves is the sheet they have always had on paper.
     money? = EstoqueOSWeb.UserAuth.sees_money?(conn.assigns[:current_scope])
 
-    # The same narrowing the stock screen applies, and read from the same place:
-    # a role confined to one stock must not be able to walk out of it by asking
-    # for the file instead of the page. `on_mount` never runs for a controller,
-    # which is exactly how a hole like this gets left.
+    # The same narrowing the stock screen applies, and read from the same place.
+    # It is a filter now rather than a fence, so what the address asks for wins
+    # and the role only decides the default — but the file and the page must
+    # still agree, or "exporta e confere" stops being a check.
     segment =
-      EstoqueOS.Accounts.Scope.segment(conn.assigns[:current_scope]) ||
+      EstoqueOS.Accounts.Scope.segment(
+        conn.assigns[:current_scope],
         segment_param(params["segment"])
+      )
 
     case Reports.export_stock(location_id: location_id, segment: segment, money: money?) do
       {:ok, binary} ->
