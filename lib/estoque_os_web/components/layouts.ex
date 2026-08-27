@@ -614,7 +614,17 @@ defmodule EstoqueOSWeb.Layouts do
     end
   end
 
-  @doc "The section's own name, for the eyebrow above a page title."
+  @doc """
+  The section's own name, for the phone bar.
+
+  The docstring said "for the eyebrow above a page title" and no page title has
+  ever carried one: the only caller is the bar's own label, shown at the width
+  where the menu is behind a hamburger and the section colour would otherwise
+  be the only clue. A kicker over a heading is a device this system does not
+  use — the rail, the scoring and the nav underline name the section three
+  times already, and a fourth in words above every title would be the section
+  shouting its own name.
+  """
   def section_label(current_path, groups \\ nav_groups())
 
   def section_label(nil, _groups), do: nil
