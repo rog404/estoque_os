@@ -148,6 +148,34 @@ defmodule EstoqueOSWeb.ProductLive.Show do
   # records what physically happened; the minimum a mission carries is a
   # planning decision argued with the ONG team, and the dashboard raises alarms
   # off it. The auditor is the mirror image — reads everything, changes nothing.
+  # The log had one sentence and assumed every row in it was the minimum, so the
+  # first other kind of change would have read "minimum true → false".
+  defp change_line(%{field: "active", to_value: "true"}), do: gettext("put back in the catalog")
+  defp change_line(%{field: "active"}), do: gettext("taken out of the catalog")
+
+  defp change_line(%{field: "min_stock_override"} = change) do
+    gettext("minimum %{from} → %{to}",
+      from: change.from_value || gettext("unknown"),
+      to: change.to_value || gettext("unknown")
+    )
+  end
+
+  defp change_line(change) do
+    gettext("%{field}: %{from} → %{to}",
+      field: change.field,
+      from: change.from_value || gettext("unknown"),
+      to: change.to_value || gettext("unknown")
+    )
+  end
+
+  # Which shelf, not just "it has stock": the fix is to move it or write it off,
+  # and the person reading this is the one who has to decide which.
+  defp stock_block([]), do: nil
+
+  defp stock_block(positions) do
+    gettext("Still %{count} position(s) in stock. Empty them first.", count: length(positions))
+  end
+
   defp may_plan?(scope) do
     Scope.effective_role(scope) in User.roles_that_plan()
   end
@@ -175,6 +203,7 @@ defmodule EstoqueOSWeb.ProductLive.Show do
           {gettext("Counted in %{unit}", unit: @history.product.stock_unit)}
           <span :if={@history.product.sector}>· {@history.product.sector}</span>
           <.status :if={@history.product.controlled} kind={:controlled} class="ml-1" />
+          <.status :if={not @history.product.active} kind={:deactivated} class="ml-1" />
           <span :if={not @history.product.expiry_expected} class="badge badge-ghost badge-sm ml-1">
             {gettext("no expiry expected")}
           </span>
@@ -194,15 +223,55 @@ defmodule EstoqueOSWeb.ProductLive.Show do
              disagree about who is allowed through. -->
         <:actions>
           <.button
-            :if={Layouts.may_access?(@current_scope, ~p"/issue")}
+            :if={Layouts.may_access?(@current_scope, ~p"/issue") and @history.product.active}
             navigate={~p"/issue?product=#{@history.product.id}"}
             variant="primary"
           >
             <.icon name="hero-arrow-up-tray" class="size-4" />
             {gettext("Write off")}
           </.button>
+
+          <!-- Taking a product out of the catalog is a manager's decision, like
+               the minimum below and unlike anything else on this page: it
+               removes the product from every picker in the app at once. It is
+               refused while any of it is still on a shelf, and the reason says
+               which shelf — a greyed-out button with nothing to hover is the
+               same dead end as a hidden one.
+
+               The trigger is soft and the dialog's confirm is solid: this is
+               reversible from this same screen, so the loud red belongs on the
+               button that actually does it. -->
+          <.write_gate may={may_plan?(@current_scope)} allowed={@controls_enabled?}>
+            <.commit_action
+              :if={@history.product.active}
+              id="deactivate-product"
+              form="deactivate-product-form"
+              label={gettext("Deactivate")}
+              title={gettext("Deactivate %{name}?", name: @history.product.name)}
+              tone={:danger}
+              disabled={@history.positions != []}
+              reason={stock_block(@history.positions)}
+            >
+              <:consequence>
+                {gettext(
+                  "It leaves every picker — the invoice matcher, the manual entry, the write-off, the kits. Movements already recorded keep naming it, and this page keeps opening, so a recall can still be answered."
+                )}
+              </:consequence>
+            </.commit_action>
+
+            <.button :if={not @history.product.active} phx-click="reactivate">
+              {gettext("Reactivate")}
+            </.button>
+          </.write_gate>
         </:actions>
       </.header>
+
+      <form
+        :if={@history.product.active and @history.positions == []}
+        id="deactivate-product-form"
+        phx-submit="deactivate"
+        class="hidden"
+      />
 
       <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-6">
         <.stat label={gettext("On hand")} value={quantity(on_hand(@history))} dense />
@@ -266,10 +335,7 @@ defmodule EstoqueOSWeb.ProductLive.Show do
         </summary>
         <ul class="mt-2 space-y-1">
           <li :for={change <- @changes} class="text-base-content/80">
-            {gettext("minimum %{from} → %{to}",
-              from: change.from_value || gettext("unknown"),
-              to: change.to_value || gettext("unknown")
-            )} · {datetime(change.inserted_at)}
+            {change_line(change)} · {datetime(change.inserted_at)}
             <span :if={change.user}>· {change.user.email}</span>
           </li>
         </ul>
@@ -508,6 +574,46 @@ defmodule EstoqueOSWeb.ProductLive.Show do
     end
   end
 
+  def handle_event("deactivate", _params, socket) do
+    with_catalog_rights(socket, fn product, scope ->
+      case Catalog.deactivate_product(product, user_id: scope.user.id) do
+        {:ok, _updated} ->
+          reload_product(
+            socket,
+            product,
+            gettext("%{name} left the catalog.", name: product.name)
+          )
+
+        {:error, :in_stock} ->
+          {:noreply,
+           put_flash(
+             socket,
+             :error,
+             gettext("%{name} still has stock. Empty it first.", name: product.name)
+           )}
+
+        {:error, _reason} ->
+          {:noreply, put_flash(socket, :error, gettext("That could not be saved."))}
+      end
+    end)
+  end
+
+  def handle_event("reactivate", _params, socket) do
+    with_catalog_rights(socket, fn product, scope ->
+      case Catalog.reactivate_product(product, user_id: scope.user.id) do
+        {:ok, _updated} ->
+          reload_product(
+            socket,
+            product,
+            gettext("%{name} is back in the catalog.", name: product.name)
+          )
+
+        {:error, _reason} ->
+          {:noreply, put_flash(socket, :error, gettext("That could not be saved."))}
+      end
+    end)
+  end
+
   def handle_event("set_minimum", %{"min_stock_override" => value}, socket) do
     scope = socket.assigns.current_scope
 
@@ -516,6 +622,26 @@ defmodule EstoqueOSWeb.ProductLive.Show do
     else
       {:noreply, put_flash(socket, :error, gettext("You don't have permission to do that."))}
     end
+  end
+
+  # The same two questions the minimum asks, and asked here rather than trusted
+  # to the markup: the button can be absent and the event still arrive.
+  defp with_catalog_rights(socket, fun) do
+    scope = socket.assigns.current_scope
+
+    if socket.assigns.writable? and may_plan?(scope) do
+      fun.(socket.assigns.history.product, scope)
+    else
+      {:noreply, put_flash(socket, :error, gettext("You don't have permission to do that."))}
+    end
+  end
+
+  defp reload_product(socket, product, message) do
+    {:noreply,
+     socket
+     |> put_flash(:info, message)
+     |> assign(:history, ProductHistory.for_product(product.id))
+     |> assign(:changes, Catalog.product_changes(product.id))}
   end
 
   defp save_minimum(socket, value, scope) do

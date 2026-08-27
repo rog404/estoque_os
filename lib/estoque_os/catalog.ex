@@ -23,7 +23,7 @@ defmodule EstoqueOS.Catalog do
     UnitConversion
   }
 
-  alias EstoqueOS.Inventory.{Lot, TransactionEntry}
+  alias EstoqueOS.Inventory.{Lot, StockSnapshot, TransactionEntry}
   alias EstoqueOS.Repo
 
   # A derived unit cost this far from the product's history is almost always
@@ -358,6 +358,87 @@ defmodule EstoqueOS.Catalog do
         field: "min_stock_override",
         from_value: decimal_to_string(product.min_stock_override),
         to_value: decimal_to_string(updated.min_stock_override)
+      })
+    end)
+    |> Repo.transaction()
+    |> case do
+      {:ok, %{product: updated}} -> {:ok, updated}
+      {:error, _step, reason, _changes} -> {:error, reason}
+    end
+  end
+
+  @doc """
+  Takes a product out of the catalog without taking it out of the history.
+
+  Every picker in the app already asks for `active` — the invoice matcher, the
+  manual entry, the write-off, the kit editor — so this one flag is the whole
+  mechanism. Nothing is deleted: the movements that named this product keep
+  naming it, and its page still opens by id, because a recall asks about goods
+  that left years ago and a row that vanished cannot answer.
+
+  Refused while any of it is still on a shelf. Like a location that still holds
+  boxes, this is a fact about the ledger rather than about the row, so it is
+  checked here and not in the changeset: a hand-crafted event must not be able
+  to take stock out of every picker and leave it sitting in a box.
+  """
+  def deactivate_product(%Product{} = product, opts \\ []) do
+    if in_stock?(product) do
+      {:error, :in_stock}
+    else
+      set_active(product, false, opts)
+    end
+  end
+
+  @doc """
+  Puts a product back in the catalog.
+
+  The way back is this and not a second row: an identifier is unique, and the
+  row that owns it is the one holding the history.
+  """
+  def reactivate_product(%Product{} = product, opts \\ []) do
+    set_active(product, true, opts)
+  end
+
+  @doc """
+  Whether any lot of this product is still on a shelf.
+
+  `!= 0` rather than `> 0`: a negative balance is a bug somebody has to look at,
+  and quietly treating it as "nothing here" would let the product leave the
+  catalog with the bug still in it.
+  """
+  def in_stock?(%Product{} = product), do: in_stock?(product.id)
+
+  def in_stock?(product_id) do
+    Repo.exists?(
+      from s in StockSnapshot,
+        join: l in Lot,
+        on: l.id == s.lot_id,
+        where: l.product_id == ^product_id and s.quantity != 0
+    )
+  end
+
+  # Both halves in one transaction, for the same reason `set_min_stock/3` does
+  # it: a product that left the catalog with nobody's name on it is the state
+  # this is here to prevent. The row lands in the same log the page already
+  # renders.
+  defp set_active(%Product{} = product, active, opts) do
+    # Reloaded first, and this is not a nicety. A caller holding the struct it
+    # read a moment ago hands us `active: true` for a row that is already
+    # false, the changeset sees no change, and `Repo.update` cheerfully returns
+    # the struct without writing anything — a Reactivate that reports success
+    # and does nothing. Both the write and the `from_value` in the log have to
+    # be about the row as the database has it.
+    product = Repo.reload!(product)
+
+    Ecto.Multi.new()
+    |> Ecto.Multi.update(:product, Product.changeset(product, %{active: active}))
+    |> Ecto.Multi.insert(:change, fn %{product: updated} ->
+      ProductChange.changeset(%ProductChange{}, %{
+        product_id: updated.id,
+        user_id: opts[:user_id],
+        field: "active",
+        from_value: to_string(product.active),
+        to_value: to_string(updated.active)
       })
     end)
     |> Repo.transaction()
