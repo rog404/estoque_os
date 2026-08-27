@@ -179,6 +179,17 @@ classes, so a `<form>` that needs to be a panel wears the same clothes as the
 
 ### The status vocabulary
 
+**A refusal names the thing to fix, and a control that cannot act says so
+before it is pressed.** The write-off had both halves wrong: its trigger opened
+a confirmation dialog for a write the context would refuse, and the refusal came
+back as "não foi possível registrar a baixa" — the destination select was the
+only thing missing, and nothing said so. `commit_action/1` already takes
+`disabled` and `reason` for exactly this, the way `/locations` uses them, and
+the context was already returning `{:error, :missing_destination}` to a
+LiveView clause that did not exist. Compare the receiving conference, which got
+this right on its own: "A caixa PR01 está em outro local. Mova-a antes, ou use
+outra."
+
 A screen **names a state**; it never picks a colour. The list is deliberately
 closed — a state that is not here is a state nobody has agreed on yet, and
 adding one is a decision made once, in `UI.status_spec/1`.
@@ -217,6 +228,17 @@ Colour says what the button *does*, not how important it is.
 | `danger` | error | removes, deactivates, cancels |
 | `ghost` | none | dismiss, cancel a dialog |
 | *(omitted)* | soft primary | present, not the loudest thing in the room |
+
+**The dialog carries no form of its own.** Its backdrop was
+`<form method="dialog" class="modal-backdrop">`, which is what daisyUI
+documents — and four screens render the dialog *inside* a form: the write-off
+basket, the load-out, the return, the invoice. The HTML parser drops a nested
+form outright, so on those four the backdrop disappeared, taking
+click-outside-to-close with it, and the bare button inside it was reparented
+onto the page as a stray "Fechar" sitting in plain view under the dialog. It is
+a `<button class="modal-backdrop">` now, named by `aria-label` and silent on
+screen, and a component test holds the invariant, because this one is invisible
+in review: the markup is correct, and the browser rewrites it.
 
 `commit_action/1` colours its trigger **and** its dialog's confirm from one
 `tone`: a red trigger opening a green confirm tells the operator, at the last

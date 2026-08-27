@@ -304,7 +304,7 @@ defmodule EstoqueOSWeb.KitLive.Show do
       <p :if={@role_may_write? and @assembled_count > 0} class="alert alert-info mt-6">
         {gettext(
           "%{count} kit(s) already assembled are in stock. Editing the recipe does not touch them.",
-          count: @assembled_count
+          count: quantity(@assembled_count)
         )}
       </p>
 

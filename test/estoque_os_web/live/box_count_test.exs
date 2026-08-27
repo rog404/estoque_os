@@ -120,6 +120,51 @@ defmodule EstoqueOSWeb.BoxCountTest do
       assert Repo.reload!(box).last_verified_at
     end
 
+    # The dialog counted every line somebody typed into, so a count where one of
+    # two lines agreed with the ledger promised "2 lote(s) mudam" and then
+    # recorded "1 lote(s) corrigido(s) de 2 contado(s)". What the confirmation
+    # promises is the last thing read before an irreversible write, so it has to
+    # be the number the write actually produces.
+    test "the confirmation counts what changes, not what was typed", %{
+      conn: conn,
+      warehouse: warehouse,
+      plain_box: box,
+      plain_lot: agreeing
+    } do
+      other = product_fixture(%{name: "Luva de procedimento"})
+      diverging = lot_fixture(%{product_id: other.id, expires_on: ~D[2029-06-30]})
+
+      {:ok, _} =
+        Inventory.post_transaction(%{
+          type: "purchase_in",
+          user_id: actor_id(),
+          entries: [
+            %{
+              lot_id: diverging.id,
+              box_id: box.id,
+              location_id: warehouse.id,
+              quantity: Decimal.new(50)
+            }
+          ]
+        })
+
+      {:ok, view, _html} = live(conn, ~p"/boxes/#{box}/count")
+
+      counts = %{"#{agreeing.id}" => "300", "#{diverging.id}" => "44"}
+      view |> element("#count-form") |> render_submit(%{"counts" => counts})
+
+      html =
+        view
+        |> element("#recount-form")
+        |> render_submit(%{"counts" => %{"#{diverging.id}" => "44"}})
+
+      assert html =~ "1 lote(s) mudam"
+      refute html =~ "2 lote(s) mudam"
+
+      html = view |> element("#commit-form") |> render_submit()
+      assert html =~ "1 lote(s) corrigido(s) de 2 contado(s)"
+    end
+
     test "a blank line is not counted", %{conn: conn, plain_box: box, plain_lot: lot} do
       {:ok, view, _html} = live(conn, ~p"/boxes/#{box}/count")
 

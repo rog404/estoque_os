@@ -450,6 +450,8 @@ defmodule EstoqueOSWeb.IssueLive.Index do
             label={gettext("Write off")}
             title={gettext("Take these goods out of stock?")}
             emphasis={:loud}
+            disabled={is_nil(@destination)}
+            reason={if is_nil(@destination), do: gettext("Say where the goods are going first.")}
           >
             <:consequence>
               <p>
@@ -812,6 +814,16 @@ defmodule EstoqueOSWeb.IssueLive.Index do
 
       {:error, :nothing_to_issue} ->
         {:noreply, put_flash(socket, :error, gettext("Add something to the list first."))}
+
+      # Both of these were already refused by the context, with the reason
+      # named, and both landed in the catch-all below: the operator got "não foi
+      # possível registrar a baixa" and no idea that the destination select was
+      # the thing standing in the way.
+      {:error, :missing_destination} ->
+        {:noreply, put_flash(socket, :error, gettext("Say where the goods are going first."))}
+
+      {:error, :missing_location} ->
+        {:noreply, put_flash(socket, :error, gettext("Say which stock they leave first."))}
 
       {:error, :missing_sale_price} ->
         {:noreply,
