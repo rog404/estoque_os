@@ -80,12 +80,46 @@ defmodule EstoqueOSWeb.Movement do
         if(assigns.movement, do: kind_label(assigns.movement), else: label(assigns.type))
       )
 
+    assigns = assign(assigns, :fold, fold(assigns.type || assigns.movement.type))
+
     ~H"""
-    <span class={["badge badge-sm whitespace-nowrap", tone(@type || @movement.type), @class]}>
+    <!-- The crease, and this is the one place where the fold and the ledger are
+         the same object rather than a metaphor about one.
+
+         A Miura sheet has exactly two kinds of line, and every crease chart
+         ever printed draws them as two *strokes* — solid for the mountain,
+         dashed for the valley — precisely so a folder can read the sheet in a
+         bad light without turning it over or naming a colour. A stock ledger
+         has the same binary: goods arrived, goods left. It was drawn as four
+         badge hues, which is four things to memorise where the sheet needs
+         none.
+
+         The hue stays. It is a closed, tested vocabulary and it carries the
+         *kind* of movement; the stroke carries the direction, which is the
+         question somebody scanning a column of forty movements is actually
+         asking. Two channels, and neither is colour alone. -->
+    <span class={[
+      "badge badge-sm whitespace-nowrap",
+      tone(@type || @movement.type),
+      @fold,
+      @class
+    ]}>
       {@label}
     </span>
     """
   end
+
+  @doc """
+  Which way the sheet folds: `in` for goods arriving, `out` for goods leaving,
+  and nothing at all for a movement where nothing physically moved.
+
+  An adjustment is deliberately creaseless. The ledger corrected itself, no
+  goods crossed a door, and drawing a fold on it would claim a direction the
+  transaction does not have.
+  """
+  def fold(type) when type in ~w(purchase_in donation_in return_in), do: "fold-in"
+  def fold(type) when type in ~w(load_out manual_out kit_consumption), do: "fold-out"
+  def fold(_other), do: nil
 
   @doc "Why stock changed without goods moving."
   def reason_label("expiry"), do: gettext("expiry")

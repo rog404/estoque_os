@@ -193,33 +193,6 @@ defmodule EstoqueOSWeb.HomeLive.Index do
         </.link>
       </div>
 
-      <!-- The day's work, as one pull.
-
-           This screen listed five things that need attention and linked to not
-           one of the five acts that answer them: every write in this app was
-           two clicks into a dropdown, from a landing screen that knew exactly
-           what was wrong. A dashboard that can name the problem and cannot
-           open the door is a report.
-
-           Only what this role may actually reach: an operator who cannot post
-           an invoice is not shown the button, because a door that refuses is
-           the same dead end as one that is hidden — worse, because it wastes
-           the tap first. `Layouts.may_access?/2` is the same table the menu
-           reads, so this row and the menu can never disagree. -->
-      <nav
-        :if={@quick_actions != []}
-        class="quick-row"
-        aria-label={gettext("Start a job")}
-      >
-        <.link :for={action <- @quick_actions} navigate={action.path} class="quick-action">
-          <.icon name={action.icon} class="size-5 shrink-0" />
-          <span class="min-w-0">
-            <span class="block font-medium leading-tight truncate">{action.label}</span>
-            <span class="eyebrow block text-base-content/50 mt-0.5 truncate">{action.note}</span>
-          </span>
-        </.link>
-      </nav>
-
       <.field_block>
         <.stat
           label={catalog_label(@segment)}
@@ -272,6 +245,33 @@ defmodule EstoqueOSWeb.HomeLive.Index do
           href={~p"/reports/sales"}
         />
       </.field_block>
+
+      <!-- The day's work, as one pull.
+
+           This screen listed five things that need attention and linked to not
+           one of the five acts that answer them: every write in this app was
+           two clicks into a dropdown, from a landing screen that knew exactly
+           what was wrong. A dashboard that can name the problem and cannot
+           open the door is a report.
+
+           Only what this role may actually reach: an operator who cannot post
+           an invoice is not shown the button, because a door that refuses is
+           the same dead end as one that is hidden — worse, because it wastes
+           the tap first. `Layouts.may_access?/2` is the same table the menu
+           reads, so this row and the menu can never disagree. -->
+      <nav
+        :if={@quick_actions != []}
+        class="quick-row"
+        aria-label={gettext("Start a job")}
+      >
+        <.link :for={action <- @quick_actions} navigate={action.path} class="quick-action">
+          <.icon name={action.icon} class="size-5 shrink-0" />
+          <span class="min-w-0">
+            <span class="block font-medium leading-tight truncate">{action.label}</span>
+            <span class="eyebrow block text-base-content/50 mt-0.5 truncate">{action.note}</span>
+          </span>
+        </.link>
+      </nav>
 
       <!-- Above everything else, and only when it is not empty. A count that was
            repeated and still disagreed is either goods leaving unrecorded or a

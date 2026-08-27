@@ -630,17 +630,23 @@ defmodule EstoqueOSWeb.CoreComponents do
       assigns
       |> assign(:confirm_label, assigns.confirm_label || assigns.label)
       |> assign(:tone_class, if(assigns.tone == :danger, do: "btn-error", else: "btn-success"))
-      # `:loud` is the packet — the one control on a screen that writes to the
-      # ledger, cut at the fold angle and carrying foil. It is never a size
-      # change: `btn-lg` made the completing action taller than everything
-      # around it, which reads as importance rather than as a different kind of
-      # act. The packet reads as a different kind of act.
+      # The packet is the commit. Not the `:loud` one alone — that put the
+      # app's signature control behind a single call site, on a screen state
+      # that needs a full basket before it renders, so the geometry the whole
+      # system is named after appeared nowhere a person would meet it.
+      #
+      # Every `:commit` trigger is a write to an append-only ledger and there
+      # is never more than one on a screen, which is the same guarantee that
+      # made this control safe to make loud in the first place. `:danger`
+      # keeps the soft tint: those repeat down a table, and twenty-eight
+      # foil-cut blocks is the shouting this component was written to avoid.
       |> assign(
         :fill_class,
-        if(assigns.emphasis == :loud and assigns.tone == :commit,
-          do: "is-packet",
-          else: if(assigns.emphasis == :loud, do: "btn-lg", else: "btn-soft")
-        )
+        cond do
+          assigns.tone == :commit and is_nil(assigns.icon) -> "is-packet"
+          assigns.emphasis == :loud -> "btn-lg"
+          true -> "btn-soft"
+        end
       )
 
     ~H"""

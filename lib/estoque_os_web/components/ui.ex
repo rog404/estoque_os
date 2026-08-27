@@ -73,7 +73,7 @@ defmodule EstoqueOSWeb.UI do
     <header class={["page-head px-4 sm:px-5 py-4", @class]}>
       <div class="flex flex-wrap items-start justify-between gap-x-6 gap-y-3 min-h-[3.5rem]">
         <div class="flex items-stretch gap-3 min-w-0">
-          <div class="section-rail w-1 shrink-0" aria-hidden="true" />
+          <div class="section-rail shrink-0" aria-hidden="true" />
           <div class="min-w-0">
             <!-- A ghost button, not a quiet inline link: every other control
                  on this screen gets a visible hover box the moment a pointer

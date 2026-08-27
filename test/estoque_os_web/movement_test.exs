@@ -89,6 +89,31 @@ defmodule EstoqueOSWeb.MovementTest do
     assert Movement.label("something_new") == "something_new"
   end
 
+  describe "fold/1" do
+    # The stroke is the second channel and it answers the question a column of
+    # forty movements is actually being scanned for: which way did the goods
+    # go. Colour keeps saying what *kind* of movement it was.
+    test "arriving folds one way and leaving the other" do
+      assert Movement.fold("purchase_in") == "fold-in"
+      assert Movement.fold("donation_in") == "fold-in"
+      assert Movement.fold("return_in") == "fold-in"
+
+      assert Movement.fold("load_out") == "fold-out"
+      assert Movement.fold("manual_out") == "fold-out"
+      assert Movement.fold("kit_consumption") == "fold-out"
+    end
+
+    # No goods crossed a door, so there is no direction to draw. A crease here
+    # would claim one the transaction does not have.
+    test "a movement where nothing physically moved has no crease" do
+      assert Movement.fold("adjustment") == nil
+      assert Movement.fold("inventory_import") == nil
+      assert Movement.fold("transfer") == nil
+      assert Movement.fold("kit_assembly") == nil
+      assert Movement.fold("something_new") == nil
+    end
+  end
+
   describe "tone/1" do
     # Four colours and not ten. What the eye scans a ledger for is direction,
     # and ten colours is a legend nobody memorises.

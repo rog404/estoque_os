@@ -283,14 +283,24 @@ html { font-size: 17px; }
   background: repeating-linear-gradient(
     60deg,
     transparent 0 1.125rem,
-    oklch(52% calc(0.15 * var(--section-c)) var(--section-h) / 0.13) 1.125rem 1.1875rem
+    oklch(48% calc(0.15 * var(--section-c)) var(--section-h) / 0.2) 1.125rem 1.1875rem
   );
-  /* Fades out before the rule, so the scoring never fights the hairline that
-     ends the band. */
-  mask-image: linear-gradient(to bottom, #000 0%, #000 55%, transparent 100%);
+  /* Carried most of the band before it goes. At 13% under a mask that ended at
+     55% the scoring read as a rendering artifact rather than as a material —
+     the thing you notice and assume is a bug. A score line is meant to be
+     seen; it is the mark of a sheet that has been measured. */
+  mask-image: linear-gradient(to bottom, #000 0%, #000 78%, transparent 100%);
 }
 
-.section-rail { background: oklch(52% calc(0.15 * var(--section-c)) var(--section-h)); }
+/* A hairline, not a bar. Four pixels of colour down the left of every page
+   header is the accent-rail reflex — the one device that says "this block is
+   important" about a block that is simply the title. The scoring behind the
+   title and the rule under it already name the section, twice; the rail's job
+   is to start the reading, and 1px starts it. */
+.section-rail {
+  width: 1px;
+  background: oklch(52% calc(0.15 * var(--section-c)) var(--section-h));
+}
 .section-label { color: oklch(42% calc(0.13 * var(--section-c)) var(--section-h)); }
 .section-mark { background: oklch(72% calc(0.15 * var(--section-c)) var(--section-h)); }
 
@@ -331,6 +341,11 @@ html { font-size: 17px; }
    hairline that divides a surface.
    ========================================================================== */
 :root {
+  /* The three tones of a turned corner, near edge to far. Lit from the same
+     side as everything else on the page. */
+  --fold-face-near: oklch(96.8% 0.005 85);
+  --fold-face-mid: oklch(93% 0.008 82);
+  --fold-face-far: oklch(84% 0.011 82);
   --fold-valley: oklch(93% 0.028 245);
   --fold-valley-line: oklch(62% 0.09 245);
   --fold-mountain: oklch(93% 0.008 82);
@@ -348,7 +363,15 @@ html { font-size: 17px; }
   );
 }
 
+/* Night is a register of the sheet, not the absence of one. The dog-ear was
+   invisible in the dark because the fold's underside was darker than the panel
+   it sits on — under a bulb the turned corner catches the light instead. */
 [data-theme="dark"] {
+  /* Inverted, because a fold in the dark is lit rather than shaded: the turned
+     corner is the one surface angled toward the lamp. */
+  --fold-face-near: oklch(19% 0.005 80);
+  --fold-face-mid: oklch(33% 0.008 82);
+  --fold-face-far: oklch(44% 0.011 82);
   --fold-valley: oklch(32% 0.035 245);
   --fold-valley-line: oklch(62% 0.09 245);
   --fold-mountain: oklch(29% 0.007 82);
@@ -499,9 +522,9 @@ body {
      the gradient is what makes it read as paper. */
   background: linear-gradient(
     225deg,
-    var(--color-base-200) 0%,
-    var(--fold-mountain) 42%,
-    var(--fold-mountain-line) 100%
+    var(--fold-face-near) 0%,
+    var(--fold-face-mid) 42%,
+    var(--fold-face-far) 100%
   );
   clip-path: polygon(0 0, 0 100%, 100% 0);
   border-top-right-radius: calc(var(--radius-box) - 1px);
@@ -1093,14 +1116,26 @@ th, td { font-feature-settings: "tnum" 1; }
     padding: 0.25rem 0;
   }
 
-  /* A cell the operator types into keeps a thumb-sized target, and the control
-     beside it takes the same height — a 2.5rem field next to a 2.1875rem button
-     is the mismatch the size token exists to prevent, and it shows up here
-     because this is the one place a control is deliberately taller than the
-     token. */
-  .data-table td.is-field :is(input, select, textarea):not([type="checkbox"]):not([type="radio"]),
-  .data-table td.is-field .btn {
-    min-height: 2.5rem;
+  /* Every control in a row, not only the fields.
+
+     This is CLAUDE.md's fifth recorded mistake wearing a different hat: the
+     rule was written for a field typed into one-handed, so a `btn-sm` action
+     in a plain cell — Separar, Contar, Mover — kept its desktop 1.75rem and
+     came out a 28px target on a phone, in a warehouse, with the next product
+     already under the thumb. A row action is a thumb target whether or not
+     there is an input beside it.
+
+     2.75rem rather than 2.5: the 44px floor every touch guideline agrees on,
+     and this is the one context where the screen is held rather than looked
+     at. */
+  .data-table td .btn,
+  .data-table td.is-field :is(input, select, textarea):not([type="checkbox"]):not([type="radio"]) {
+    min-height: 2.75rem;
+  }
+
+  /* A square icon button needs the width too, or it is a 44px-tall sliver. */
+  .data-table td .btn.btn-square {
+    min-width: 2.75rem;
   }
 
   .data-table td.is-field :is(input, select, textarea):not([type="checkbox"]):not([type="radio"]) {
@@ -1364,19 +1399,36 @@ a:focus-visible {
    went out. Text still says which — this is a second channel, never the only
    one.
    ========================================================================== */
-.fold-in {
-  box-shadow: inset 2px 0 0 0 var(--fold-valley-line);
+/* Drawn on the badge's leading edge, where the eye starts the word. Solid is
+   the valley — goods arriving, pressed into the sheet. Dashed is the mountain —
+   goods leaving, the fold raised and broken. The `padding-left` is what stops
+   the stroke sitting on the first letter. */
+.badge.fold-in,
+.badge.fold-out {
+  padding-left: 0.5rem;
+  position: relative;
 }
 
-.fold-out {
-  background-image: linear-gradient(
+.badge.fold-in::before,
+.badge.fold-out::before {
+  content: "";
+  position: absolute;
+  left: 0.1875rem;
+  top: 0.1875rem;
+  bottom: 0.1875rem;
+  width: 2px;
+  border-radius: 1px;
+  background: currentColor;
+  opacity: 0.75;
+}
+
+/* The mountain is a broken line: the same stroke, interrupted. */
+.badge.fold-out::before {
+  background: repeating-linear-gradient(
     to bottom,
-    var(--fold-mountain-line) 0 0.25rem,
-    transparent 0.25rem 0.5rem
+    currentColor 0 0.1875rem,
+    transparent 0.1875rem 0.34375rem
   );
-  background-size: 2px 0.5rem;
-  background-repeat: repeat-y;
-  background-position: left top;
 }
 
 /* The packet. Foil, with the crease pattern scored into it — the sheet folded
