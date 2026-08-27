@@ -1355,6 +1355,36 @@ form.phx-change-loading input[type="search"] {
   filter: none;
 }
 
+/* The packet's neighbour.
+
+   A commit screen has exactly two controls — the one that writes and the one
+   that backs out — and once the packet took foil and a chamfer, the ghost
+   beside it read as a sentence somebody had left on the page. A control that
+   does not look like a control is the Operate failure the whole mode exists to
+   prevent, and it was introduced by making its neighbour loud.
+
+   A box, then: the sheet's own edge, no fill. Quiet next to foil and still
+   unmistakably a thing you press.
+*/
+/* `:has()`, because the packet is wrapped: `commit_action/1` puts its trigger
+   inside a `<span>` that carries the disabled tooltip, so the ghost beside it
+   is never an adjacent sibling of the button itself — only of the wrapper.
+   And a general sibling, not an adjacent one: `commit_action/1` emits its
+   `<dialog>` between the trigger and whatever follows, so `+` skips nothing
+   and matches nothing. Two spellings of this rule looked right in the
+   stylesheet and did nothing on the page before the DOM was actually read. */
+:has(> .btn.is-packet) ~ .btn.btn-ghost,
+.btn.is-packet ~ .btn.btn-ghost {
+  border: 1px solid var(--color-base-300);
+  background: var(--color-base-100);
+}
+
+:has(> .btn.is-packet) ~ .btn.btn-ghost:hover,
+.btn.is-packet ~ .btn.btn-ghost:hover {
+  background: var(--fold-valley);
+  border-color: var(--fold-valley-line);
+}
+
 /* ==========================================================================
    THE VALLEY — focus, and what is selected
 
@@ -1460,10 +1490,17 @@ a:focus-visible {
 .field-block {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  background: var(--color-base-100);
-  border: 1px solid var(--color-base-300);
-  border-radius: var(--radius-box);
-  overflow: hidden;
+  /* No card. This block was a bordered, rounded box holding four bordered
+     cells, which is the KPI-card row wearing one frame instead of four — and
+     moving it to the top of the page, where the contract wants it, made that
+     the opening statement rather than a detail.
+
+     A title block on a drawing is not a card: it is the sheet, ruled. So the
+     ground shows through, and the only marks are the rules between the fields
+     and the ones that close the block top and bottom. Nothing is boxed, and
+     nothing has a corner. */
+  border-top: 1px solid var(--color-base-300);
+  border-bottom: 1px solid var(--color-base-300);
 }
 
 @media (min-width: 1024px) {
@@ -1474,12 +1511,28 @@ a:focus-visible {
   display: flex;
   flex-direction: column;
   gap: 0.125rem;
-  padding: 0.875rem 1rem 1rem;
+  padding: 0.875rem 0 1rem;
   min-width: 0;
-  /* The crease between two fields, drawn on two sides and trimmed at the
-     block's edge by the overflow above. */
+  /* The rule between two fields, and only between: the last cell in a row has
+     none, so the block ends on the sheet rather than in a box. Padding is
+     inset from the rule rather than from a border, which is what makes the
+     figures line up with the prose above and below the block. */
   border-right: 1px solid var(--color-base-300);
-  border-bottom: 1px solid var(--color-base-300);
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+.field-cell:nth-child(2n) { border-right: 0; }
+.field-cell:first-child { padding-left: 0; }
+
+@media (min-width: 1024px) {
+  .field-cell:nth-child(2n) { border-right: 1px solid var(--color-base-300); }
+  .field-cell:nth-child(4n) { border-right: 0; }
+}
+
+/* The rule that divides the two rows on a phone, where the block wraps. */
+@media (max-width: 1023px) {
+  .field-cell:nth-child(-n + 2) { border-bottom: 1px solid var(--color-base-300); }
 }
 
 .field-cell.is-dense { padding: 0.625rem 0.75rem 0.75rem; }

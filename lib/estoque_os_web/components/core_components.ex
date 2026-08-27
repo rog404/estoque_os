@@ -640,6 +640,11 @@ defmodule EstoqueOSWeb.CoreComponents do
       # made this control safe to make loud in the first place. `:danger`
       # keeps the soft tint: those repeat down a table, and twenty-eight
       # foil-cut blocks is the shouting this component was written to avoid.
+      # An icon trigger is never the packet, and this is a rule rather than an
+      # accident of the condition: `icon` is what a commit becomes when it
+      # repeats on every row of a table, and the packet's whole meaning is that
+      # there is one of it. Twelve foil chamfers down a list would say
+      # "irreversible" twelve times on a screen where it is true once.
       |> assign(
         :fill_class,
         cond do
