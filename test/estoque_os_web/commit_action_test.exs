@@ -40,6 +40,31 @@ defmodule EstoqueOSWeb.CommitActionTest do
     assert confirm == "Remover"
   end
 
+  # Four screens render this dialog inside a form — the write-off basket, the
+  # load-out, the return, the invoice — and the HTML parser drops a nested form
+  # outright. The backdrop was one, so on those screens it vanished, taking
+  # click-outside-to-close with it, and its bare button was reparented onto the
+  # page as a stray "Fechar" sitting in plain view under the dialog. The
+  # invariant is cheap to state and invisible in review: this component renders
+  # no form of its own.
+  test "carries no form of its own, so it survives being rendered inside one" do
+    html = dialog(%{id: "post", form: "post-form", label: "Lançar", title: "Lançar?"})
+
+    refute html =~ "<form"
+    assert html =~ "modal-backdrop"
+  end
+
+  # And the backdrop is a click target, not a labelled control: the word used to
+  # be its visible text.
+  test "the backdrop is named for a screen reader and says nothing on screen" do
+    html = dialog(%{id: "post", form: "post-form", label: "Lançar", title: "Lançar?"})
+
+    [backdrop] = Regex.run(~r{<button[^>]*modal-backdrop[^>]*>[^<]*</button>}, html)
+
+    assert backdrop =~ ~s(aria-label="Fechar")
+    assert String.replace(backdrop, ~r{<[^>]*>}, "") |> String.trim() == ""
+  end
+
   test "an icon trigger keeps its label on the confirm button" do
     html =
       dialog(%{

@@ -675,9 +675,24 @@ defmodule EstoqueOSWeb.CoreComponents do
         </div>
       </div>
 
-      <form method="dialog" class="modal-backdrop">
-        <button aria-label={gettext("Close")}>{gettext("Close")}</button>
-      </form>
+      <%!-- A button, and deliberately not the `<form method="dialog">` daisyUI
+         documents. Four screens render this dialog *inside* a form — the
+         write-off basket, the load-out, the return, the invoice — and the HTML
+         parser drops a nested form outright: the backdrop vanished, taking
+         click-outside-to-close with it, and its bare button was reparented onto
+         the page as a stray "Fechar" sitting under the dialog in plain view.
+         The delegated `data-confirm-close` handler already closes the dialog,
+         so the form was never doing any work the button cannot do.
+
+         Written with `<%!-- --%>`, which is not rendered: the same sentence in
+      an HTML comment shipped the word "form" to the browser and the test
+      below found it in the comment explaining why it is not there. --%>
+      <button
+        type="button"
+        data-confirm-close
+        class="modal-backdrop"
+        aria-label={gettext("Close")}
+      ></button>
     </dialog>
     """
   end

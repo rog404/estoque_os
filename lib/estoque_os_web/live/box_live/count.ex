@@ -220,7 +220,7 @@ defmodule EstoqueOSWeb.BoxLive.Count do
             <:consequence>
               <p>
                 {gettext("%{count} lot(s) change; the box is marked as counted today.",
-                  count: length(@preview)
+                  count: changing(@preview)
                 )}
               </p>
             </:consequence>
@@ -259,12 +259,6 @@ defmodule EstoqueOSWeb.BoxLive.Count do
       <p :if={@step == :done and @divergences == []} class="alert alert-success mt-8">
         {gettext("Every line counted matched what the ledger presumed.")}
       </p>
-
-      <div class="mt-6 flex gap-4">
-        <.link navigate={~p"/boxes/#{@box}"} class="link link-hover text-sm">
-          {gettext("See the box")}
-        </.link>
-      </div>
     </Layouts.app>
     """
   end
@@ -387,6 +381,14 @@ defmodule EstoqueOSWeb.BoxLive.Count do
 
   # The ledger rows know the numbers; the count sheet knows what the things are
   # called. The screen needs both.
+  # What the dialog promises has to be what the result reports. It counted every
+  # line somebody typed into, so a count where one of two lines matched the
+  # ledger announced "2 lote(s) mudam" and then recorded "1 lote(s)
+  # corrigido(s) de 2 contado(s)".
+  defp changing(preview) do
+    Enum.count(preview, &(not Decimal.equal?(&1.difference, 0)))
+  end
+
   defp describe(rows, lines) do
     Enum.map(lines, fn line ->
       row = Enum.find(rows, &(&1.lot_id == line.lot_id)) || %{product: "—", lot_number: nil}
