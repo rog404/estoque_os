@@ -630,7 +630,18 @@ defmodule EstoqueOSWeb.CoreComponents do
       assigns
       |> assign(:confirm_label, assigns.confirm_label || assigns.label)
       |> assign(:tone_class, if(assigns.tone == :danger, do: "btn-error", else: "btn-success"))
-      |> assign(:fill_class, if(assigns.emphasis == :loud, do: "btn-lg", else: "btn-soft"))
+      # `:loud` is the packet — the one control on a screen that writes to the
+      # ledger, cut at the fold angle and carrying foil. It is never a size
+      # change: `btn-lg` made the completing action taller than everything
+      # around it, which reads as importance rather than as a different kind of
+      # act. The packet reads as a different kind of act.
+      |> assign(
+        :fill_class,
+        if(assigns.emphasis == :loud and assigns.tone == :commit,
+          do: "is-packet",
+          else: if(assigns.emphasis == :loud, do: "btn-lg", else: "btn-soft")
+        )
+      )
 
     ~H"""
     <!-- The tooltip goes on the wrapper, not the button: a disabled button

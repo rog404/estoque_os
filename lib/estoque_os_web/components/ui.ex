@@ -176,10 +176,7 @@ defmodule EstoqueOSWeb.UI do
     <.link
       :if={@href}
       navigate={@href}
-      class={[
-        "panel flex flex-col gap-0.5 transition hover:border-primary/60 hover:shadow-md",
-        if(@dense, do: "px-3 py-2", else: "px-4 py-3")
-      ]}
+      class={["field-cell is-linked", if(@dense, do: "is-dense", else: nil)]}
     >
       <.stat_face
         label={@label}
@@ -192,10 +189,7 @@ defmodule EstoqueOSWeb.UI do
       />
     </.link>
 
-    <div
-      :if={is_nil(@href)}
-      class={["panel flex flex-col gap-0.5", if(@dense, do: "px-3 py-2", else: "px-4 py-3")]}
-    >
+    <div :if={is_nil(@href)} class={["field-cell", if(@dense, do: "is-dense", else: nil)]}>
       <.stat_face
         label={@label}
         value={@value}
@@ -205,6 +199,31 @@ defmodule EstoqueOSWeb.UI do
         tone={@tone}
         money={@money}
       />
+    </div>
+    """
+  end
+
+  @doc """
+  The identification block: the figures a screen is worth knowing by, ruled into
+  one strip.
+
+  Every technical sheet opens with this — SHEET, PATTERN, MATERIAL, RATIO, named
+  in the margin and ruled into cells so the eye reads across them as one
+  statement. It is not four things; it is one block with four fields.
+
+  It replaces four floating cards with drop shadows, which is what this screen
+  had and what every admin template ships. Cards say "these are four separate
+  objects, each of which might be clicked"; three of these four are not
+  clickable and never were. A ruled block says what is true: one reading, taken
+  at one moment.
+  """
+  attr :class, :any, default: nil
+  slot :inner_block, required: true
+
+  def field_block(assigns) do
+    ~H"""
+    <div class={["field-block", @class]}>
+      {render_slot(@inner_block)}
     </div>
     """
   end
@@ -219,19 +238,24 @@ defmodule EstoqueOSWeb.UI do
 
   defp stat_face(assigns) do
     ~H"""
-    <p class="eyebrow text-base-content/60 flex items-center gap-1.5">
+    <p class="eyebrow text-base-content/55 flex items-center gap-1.5">
       <.icon :if={@icon} name={@icon} class="size-3.5" />
       {@label}
     </p>
+    <!-- Tabular after all, and the earlier note is wrong about why.
+         Proportional figures were chosen so a lone 3xl number would not read
+         loose — but these four sit in one ruled strip and are read down as
+         much as across, and a strip of readings whose digits do not align is
+         a strip nobody trusts. A measurement is set in the measuring face. -->
     <p class={[
-      "font-semibold leading-none mt-1",
-      if(@dense, do: "text-xl", else: "text-3xl"),
+      "field-figure",
+      if(@dense, do: "text-xl", else: "text-[1.75rem]"),
       stat_tone(@tone)
     ]}>
       <.amount :if={@money} value={@value} />
       <span :if={not @money}>{@value}</span>
     </p>
-    <p :if={@hint} class="text-xs text-base-content/60 mt-1">{@hint}</p>
+    <p :if={@hint} class="text-xs text-base-content/55 mt-1 leading-snug">{@hint}</p>
     """
   end
 
@@ -834,7 +858,7 @@ defmodule EstoqueOSWeb.UI do
     attr :label, :string, required: true
     attr :key, :string, doc: "sortable field; omit to make the column fixed"
     attr :align, :atom, values: [:left, :right]
-    attr :emphasis, :atom, values: [:identity, :primary, :muted]
+    attr :emphasis, :atom, values: [:identity, :primary, :muted, :code]
     attr :hide_label_on_card, :boolean
     attr :group, :boolean, doc: "starts a new column family; draws a rule to its left"
 
@@ -920,6 +944,7 @@ defmodule EstoqueOSWeb.UI do
               col[:emphasis] == :identity && "is-identity font-medium",
               col[:emphasis] == :primary && "is-primary font-semibold tabular-nums",
               col[:emphasis] == :muted && "text-sm text-base-content/80",
+              col[:emphasis] == :code && "is-code",
               col[:field] && "is-field",
               col[:field] == :block && "is-block",
               col[:group] && "group-start"

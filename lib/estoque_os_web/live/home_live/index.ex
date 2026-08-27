@@ -35,7 +35,8 @@ defmodule EstoqueOSWeb.HomeLive.Index do
      socket
      |> assign(:page_title, gettext("Overview"))
      |> assign(:may_review?, may_review?(socket))
-     |> assign(:may_acknowledge?, Alerts.may_acknowledge?(socket.assigns.current_scope))}
+     |> assign(:may_acknowledge?, Alerts.may_acknowledge?(socket.assigns.current_scope))
+     |> assign_quick_actions()}
   end
 
   # Which stock this overview is about, and the role always wins: `segment/2`
@@ -97,6 +98,60 @@ defmodule EstoqueOSWeb.HomeLive.Index do
     |> assign_readiness()
   end
 
+  # The five acts this operation performs, in the order a week runs: goods
+  # arrive, they are counted in, they are counted on the shelf, they leave for
+  # a mission, and some of them leave for good.
+  #
+  # Filtered by the same table the menu reads. Never a sixth: the row is a
+  # shortcut to what somebody came here to do, and a row of nine is a second
+  # menu that happens to be lower down the page.
+  defp assign_quick_actions(socket) do
+    scope = socket.assigns.current_scope
+
+    actions =
+      [
+        %{
+          path: ~p"/invoices/import",
+          # Gated by the place it lives in, not by itself. The menu names
+          # places and importing is a step, so `/invoices/import` is not a nav
+          # destination and `may_access?/2` — which reads the menu — has never
+          # heard of it. Asking about `/invoices` asks the question that is
+          # actually being asked: may this person work with invoices at all.
+          gate: ~p"/invoices",
+          icon: "hero-document-arrow-down",
+          label: gettext("Import invoice"),
+          note: gettext("the XML becomes stock")
+        },
+        %{
+          path: ~p"/conferences",
+          icon: "hero-clipboard-document-check",
+          label: gettext("Conference"),
+          note: gettext("count a delivery")
+        },
+        %{
+          path: ~p"/boxes",
+          icon: "hero-archive-box",
+          label: gettext("Count a box"),
+          note: gettext("the queue is ranked")
+        },
+        %{
+          path: ~p"/load-out",
+          icon: "hero-truck",
+          label: gettext("Send a load"),
+          note: gettext("to the next mission")
+        },
+        %{
+          path: ~p"/issue",
+          icon: "hero-arrow-up-tray",
+          label: gettext("Write off"),
+          note: gettext("goods leaving for good")
+        }
+      ]
+      |> Enum.filter(&EstoqueOSWeb.Layouts.may_access?(scope, &1[:gate] || &1.path))
+
+    assign(socket, :quick_actions, actions)
+  end
+
   # Whose problem a disputed count is. Admin and manager: the two roles that
   # decide what to do about it — chase the supplier, or accept the loss.
   defp may_review?(socket) do
@@ -138,7 +193,34 @@ defmodule EstoqueOSWeb.HomeLive.Index do
         </.link>
       </div>
 
-      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <!-- The day's work, as one pull.
+
+           This screen listed five things that need attention and linked to not
+           one of the five acts that answer them: every write in this app was
+           two clicks into a dropdown, from a landing screen that knew exactly
+           what was wrong. A dashboard that can name the problem and cannot
+           open the door is a report.
+
+           Only what this role may actually reach: an operator who cannot post
+           an invoice is not shown the button, because a door that refuses is
+           the same dead end as one that is hidden — worse, because it wastes
+           the tap first. `Layouts.may_access?/2` is the same table the menu
+           reads, so this row and the menu can never disagree. -->
+      <nav
+        :if={@quick_actions != []}
+        class="quick-row"
+        aria-label={gettext("Start a job")}
+      >
+        <.link :for={action <- @quick_actions} navigate={action.path} class="quick-action">
+          <.icon name={action.icon} class="size-5 shrink-0" />
+          <span class="min-w-0">
+            <span class="block font-medium leading-tight truncate">{action.label}</span>
+            <span class="eyebrow block text-base-content/50 mt-0.5 truncate">{action.note}</span>
+          </span>
+        </.link>
+      </nav>
+
+      <.field_block>
         <.stat
           label={catalog_label(@segment)}
           value={@summary.products}
@@ -189,7 +271,7 @@ defmodule EstoqueOSWeb.HomeLive.Index do
           hint={gettext("what the sales brought in")}
           href={~p"/reports/sales"}
         />
-      </div>
+      </.field_block>
 
       <!-- Above everything else, and only when it is not empty. A count that was
            repeated and still disagreed is either goods leaving unrecorded or a

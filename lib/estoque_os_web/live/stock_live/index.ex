@@ -362,7 +362,7 @@ defmodule EstoqueOSWeb.StockLive.Index do
             </span>
           </:col>
 
-          <:col :let={row} label={gettext("Lot")} key="lot" group width="w-[9%]">
+          <:col :let={row} label={gettext("Lot")} emphasis={:code} key="lot" group width="w-[9%]">
             <!-- "desconhecido" is a complaint, and it is only true of goods that
                  should have carried a lot number. A t-shirt has none to read, so
                  for those the cell says nothing rather than accusing somebody of

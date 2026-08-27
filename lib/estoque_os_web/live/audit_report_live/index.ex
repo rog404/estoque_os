@@ -133,7 +133,7 @@ defmodule EstoqueOSWeb.AuditReportLive.Index do
 
       <!-- The period's size before its detail. An auditor asks "how much moved"
            long before "what moved", and the answer was buried in a table. -->
-      <div class="grid grid-cols-4 gap-3 mt-6">
+      <.field_block class="mt-6">
         <.stat label={gettext("Movements")} value={quantity(@totals.events)} />
         <.stat label={gettext("Units in")} value={quantity(@totals.units_in)} />
         <.stat label={gettext("Units out")} value={quantity(@totals.units_out)} />
@@ -142,7 +142,7 @@ defmodule EstoqueOSWeb.AuditReportLive.Index do
           value={quantity(@totals.adjustments)}
           hint={gettext("stock changed without goods moving")}
         />
-      </div>
+      </.field_block>
 
       <.panel title={gettext("Movements by type")}>
         <.data_table rows={@summary} row_id={&"summary-#{&1.type}"}>
@@ -200,7 +200,9 @@ defmodule EstoqueOSWeb.AuditReportLive.Index do
           </:empty>
 
           <:col :let={row} label={gettext("Product")} emphasis={:identity}>{row.product}</:col>
-          <:col :let={row} label={gettext("Lot")}>{row.lot_number || gettext("unknown")}</:col>
+          <:col :let={row} label={gettext("Lot")} emphasis={:code}>
+            {row.lot_number || gettext("unknown")}
+          </:col>
           <:col :let={row} label={gettext("Expiry")}>{date(row.expires_on)}</:col>
           <:col :let={row} label={gettext("Location")}>{row.location}</:col>
           <:col :let={row} label={gettext("Box")}>{row.box || "—"}</:col>

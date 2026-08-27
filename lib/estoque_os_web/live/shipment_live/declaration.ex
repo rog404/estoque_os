@@ -180,7 +180,7 @@ defmodule EstoqueOSWeb.ShipmentLive.Declaration do
             <span class="text-sm opacity-70">{row.unit}</span>
           </:col>
 
-          <:col :let={row} label={gettext("Lot")}>{row.lot_number || "—"}</:col>
+          <:col :let={row} label={gettext("Lot")} emphasis={:code}>{row.lot_number || "—"}</:col>
           <:col :let={row} label={gettext("Box")}>{row.box || gettext("loose")}</:col>
 
           <:col :let={row} label={gettext("Quantity")} align={:right} emphasis={:primary}>

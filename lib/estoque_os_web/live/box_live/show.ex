@@ -100,7 +100,9 @@ defmodule EstoqueOSWeb.BoxLive.Show do
           </:empty>
 
           <:col :let={row} label={gettext("Product")} emphasis={:identity}>{row.product}</:col>
-          <:col :let={row} label={gettext("Lot")}>{row.lot_number || gettext("unknown")}</:col>
+          <:col :let={row} label={gettext("Lot")} emphasis={:code}>
+            {row.lot_number || gettext("unknown")}
+          </:col>
           <:col :let={row} label={gettext("Expiry")}>{date(row.expires_on)}</:col>
           <:col :let={row} label={gettext("Quantity")} align={:right} emphasis={:primary}>
             <span class="figure">{quantity(row.quantity)}</span>
@@ -182,7 +184,9 @@ defmodule EstoqueOSWeb.BoxLive.Show do
             {row.product}
             <.status :if={row.controlled} kind={:controlled} />
           </:col>
-          <:col :let={row} label={gettext("Lot")}>{row.lot_number || gettext("unknown")}</:col>
+          <:col :let={row} label={gettext("Lot")} emphasis={:code}>
+            {row.lot_number || gettext("unknown")}
+          </:col>
           <:col :let={row} label={gettext("Expiry")}>{date(row.expires_on)}</:col>
           <:col :let={row} label={gettext("Loose")} align={:right} emphasis={:primary}>
             <span class="figure">{quantity(row.quantity)}</span>

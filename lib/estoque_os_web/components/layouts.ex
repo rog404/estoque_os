@@ -155,9 +155,25 @@ defmodule EstoqueOSWeb.Layouts do
                of a menu item as `display: grid`, which silently overrode the
                toggle's own flex layout and threw its sliding indicator out of
                line with the buttons. -->
-            <div class="dropdown-content z-50 mt-2 w-56 rounded-box bg-base-100 shadow-lg border border-base-300 text-base-content">
+            <!-- `overflow-hidden`, and the reason is a phone bug that had been
+                 shipping for a while: an account e-mail is long, daisyUI lays a
+                 menu item out as a grid, and `truncate` on a grid item without
+                 `min-w-0` does not truncate — it widens. The 14rem panel came
+                 out at 18rem, and because a `position: absolute` box still
+                 counts toward the document's scroll width, the whole page grew
+                 with it: at 390px the overview scrolled to 923px and the
+                 quantity column of every list panel sat off the right edge,
+                 which is the one number those panels exist to show. -->
+            <div class="dropdown-content z-50 mt-2 w-56 overflow-hidden rounded-box bg-base-100 shadow-lg border border-base-300 text-base-content">
               <ul class="menu w-full">
-                <li class="menu-title truncate">{@current_scope.user.email}</li>
+                <!-- The truncation lives on a block inside the item, not on
+                     the item: daisyUI lays a menu item out as a grid, and a
+                     grid item sizes to its content whatever `overflow` says. A
+                     plain block inside it takes the width it is given and
+                     ellipsises like anything else. -->
+                <li class="menu-title">
+                  <span class="block w-full truncate">{@current_scope.user.email}</span>
+                </li>
                 <li><.link navigate={~p"/users/settings"}>{gettext("Settings")}</.link></li>
                 <li :if={admin?(@current_scope)}>
                   <.link navigate={~p"/admin/users"}>{gettext("Manage users")}</.link>
@@ -237,24 +253,33 @@ defmodule EstoqueOSWeb.Layouts do
   The mark — PROVISIONAL, like the palette it sits in.
 
   Operação Sorriso has an official logo and we do not have the file (see
-  PRODUCT.md), so this stands in and must never be presented as theirs. It is a
-  box drawn as an open carton, because a box is the noun this whole system turns
-  on: everything here is something in a box, going somewhere, coming back.
+  PRODUCT.md), so this stands in and must never be presented as theirs.
 
-  Deliberately geometric and one colour, so replacing it is dropping in an
-  `<img>` and deleting this function.
+  It is the Miura crease pattern on foil: the packet, drawn the way a crease
+  chart draws it. Two line families — the zig-zag rows and the verticals that
+  link them — are the whole reason the fold works, and they are the geometry
+  this operation runs on: a stock that leaves the warehouse folded into boxes,
+  deploys across a mission in one pull, and comes back partly open.
+
+  Deliberately two-colour and geometric, so replacing it is dropping the real
+  asset in and deleting this function body.
   """
   def mark(assigns) do
     ~H"""
-    <span class="grid size-9 shrink-0 place-items-center rounded-[0.5rem] bg-primary text-primary-content">
-      <svg viewBox="0 0 24 24" fill="none" class="size-5" aria-hidden="true">
-        <path
-          d="M3 7.5 12 3l9 4.5v9L12 21l-9-4.5v-9Z"
-          stroke="currentColor"
-          stroke-width="1.75"
-          stroke-linejoin="round"
-        />
-        <path d="M3 7.5 12 12l9-4.5M12 12v9" stroke="currentColor" stroke-width="1.75" />
+    <span class="mark-packet grid size-9 shrink-0 place-items-center">
+      <svg viewBox="0 0 24 24" fill="none" class="size-6" aria-hidden="true">
+        <!-- The Miura crease pattern, drawn as it is drawn on a crease chart:
+             three zig-zag rows and the verticals that link them. It is the
+             actual pattern, not a suggestion of one — the whole reason this
+             fold exists is that these two line families make a sheet deploy in
+             one pull, and a stock that leaves whole and returns in pieces is
+             the same geometry. -->
+        <g stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M2.5 6.6 8 4.6 13.5 6.6 19 4.6" />
+          <path d="M2.5 12.6 8 10.6 13.5 12.6 19 10.6" />
+          <path d="M2.5 18.6 8 16.6 13.5 18.6 19 16.6" />
+          <path d="M8 4.6v12M13.5 6.6v12" opacity="0.55" />
+        </g>
       </svg>
     </span>
     """
@@ -608,6 +633,8 @@ defmodule EstoqueOSWeb.Layouts do
   # `/stock` belongs to two entries — the surgical stock and the marketing one
   # — and which section it lights up is a question about who is looking.
   defp matching_group(current_path, groups) do
+    current_path = adopt(current_path)
+
     groups
     |> Enum.flat_map(fn group ->
       Enum.map(group.items, &{String.length(&1.path), without_query(&1.path), group})
@@ -618,6 +645,30 @@ defmodule EstoqueOSWeb.Layouts do
       nil -> nil
       {_len, _path, group} -> group
     end
+  end
+
+  # The screens the menu cannot claim.
+  #
+  # Three of them, and they are the three deepest in the app: a product opened
+  # from a stock row, a receipt opened from the conference list, the declaration
+  # that travels with a load. None has a menu entry above it — `/products/42`
+  # has no `/products` — so `matching_group/2` found nothing and they rendered
+  # with no section at all: no rail colour, no scoring hue, and on a phone,
+  # where the menu is behind a hamburger, no answer to "where am I" whatsoever.
+  # The screens that most need the answer were the three without it.
+  #
+  # Adopted rather than given menu entries, because the menu names places you
+  # can go and none of these is one: you arrive at them from a row.
+  @adopted [
+    {"/products", "/stock"},
+    {"/receipts", "/conferences"},
+    {"/shipments", "/reports/transit"}
+  ]
+
+  defp adopt(current_path) do
+    Enum.find_value(@adopted, current_path, fn {orphan, home} ->
+      if prefix?(current_path, orphan), do: home
+    end)
   end
 
   # "/boxes" claims "/boxes/42" but must not claim "/boxes-archive", and the

@@ -448,7 +448,9 @@ defmodule EstoqueOSWeb.ProductLive.Show do
           <:col :let={row} label={gettext("Supplier")}>
             {supplier_name(row.transaction)}
           </:col>
-          <:col :let={row} label={gettext("Lot")}>{row.lot_number || gettext("unknown")}</:col>
+          <:col :let={row} label={gettext("Lot")} emphasis={:code}>
+            {row.lot_number || gettext("unknown")}
+          </:col>
           <:col :let={row} label={gettext("Quantity")} align={:right}>
             {quantity(row.quantity)}
           </:col>
@@ -487,7 +489,7 @@ defmodule EstoqueOSWeb.ProductLive.Show do
               {Movement.reason_label(entry.transaction.reason_code)}
             </span>
           </:col>
-          <:col :let={entry} label={gettext("Lot")}>
+          <:col :let={entry} label={gettext("Lot")} emphasis={:code}>
             {entry.lot.lot_number || gettext("unknown")}
           </:col>
           <:col :let={entry} label={gettext("Where")}>

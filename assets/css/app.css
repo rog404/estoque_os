@@ -46,8 +46,38 @@
     U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
 }
 
+/* Chivo Mono is Archivo's own monospaced sister — same foundry, same
+   skeleton, drawn to sit beside it. It carries the identifiers this operation
+   says out loud: a box code, a lot number, an invoice number, a GTIN. Those are
+   *crease ids*, not words: you read them character by character, you compare
+   them down a column, and you copy one onto cardboard in marker pen. A
+   proportional face makes 0 and O argue and lets L2000 and L2009 look alike at
+   a glance; a mono ends both arguments and lines the column up for free. */
+@font-face {
+  font-family: "Chivo Mono";
+  font-style: normal;
+  font-weight: 300 700;
+  font-display: swap;
+  src: url("/fonts/chivo-mono-latin.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+    U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+    U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: "Chivo Mono";
+  font-style: normal;
+  font-weight: 300 700;
+  font-display: swap;
+  src: url("/fonts/chivo-mono-latin-ext.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF,
+    U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020,
+    U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
 @theme {
   --font-sans: "Archivo", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Chivo Mono", ui-monospace, SFMono-Regular, monospace;
 }
 
 /* Theme — PROVISIONAL.
@@ -64,31 +94,42 @@
   default: true;
   prefersdark: false;
   color-scheme: "light";
-  /* Cool near-white content surface, with a second, cooler layer for bars and
-     panels so toolbars read as a different plane from the data. */
-  --color-base-100: oklch(99% 0.003 250);
-  --color-base-200: oklch(96.5% 0.006 250);
-  --color-base-300: oklch(91.5% 0.011 250);
-  /* Deep navy ink rather than gray: same family as the brand, ~15:1 on white. */
-  --color-base-content: oklch(26% 0.028 258);
-  --color-primary: oklch(52% 0.17 252);
-  --color-primary-content: oklch(98% 0.01 250);
-  --color-secondary: oklch(46% 0.035 256);
-  --color-secondary-content: oklch(98% 0.005 250);
-  /* Warm accent, spent only where the work is humane: donations and
-     confirmations. Never decoration. */
-  --color-accent: oklch(64% 0.15 38);
-  --color-accent-content: oklch(99% 0.01 60);
-  --color-neutral: oklch(38% 0.03 257);
-  --color-neutral-content: oklch(98% 0.003 250);
-  --color-info: oklch(55% 0.13 236);
-  --color-info-content: oklch(98% 0.012 236);
-  --color-success: oklch(52% 0.13 160);
-  --color-success-content: oklch(98% 0.014 160);
-  --color-warning: oklch(62% 0.16 68);
-  --color-warning-content: oklch(99% 0.02 90);
-  --color-error: oklch(53% 0.21 25);
-  --color-error-content: oklch(98% 0.015 20);
+  /* The sheet, and the table it lies on. Warm, because paper is warm: the ink
+     carries a trace of the same warmth so nothing on the page reads as a
+     screen colour that wandered in. The previous palette was cool blue-grey
+     throughout, which is the ground every admin template ships. */
+  --color-base-100: oklch(99.2% 0.0025 85);
+  --color-base-200: oklch(96.8% 0.005 85);
+  /* Mountain grey: the crease seen from the raised side, and every hairline in
+     the app. It is the sheet's own fold, not a border colour. */
+  --color-base-300: oklch(87% 0.009 82);
+  --color-base-content: oklch(19% 0.006 80);
+  /* Valley blue, taken down to where it can carry an action. The pale wash it
+     comes from stays as `--fold-valley` and paints the selected state, exactly
+     as the crease chart uses it. */
+  --color-primary: oklch(46% 0.115 248);
+  --color-primary-content: oklch(99% 0.005 250);
+  --color-secondary: oklch(44% 0.02 80);
+  --color-secondary-content: oklch(99% 0.003 85);
+  /* Foil gold. The packet's face — the sheet folded, sealed, ready to travel —
+     and in this operation that is the donation certificate: the paper that
+     closes a mission. Spent only where the work is humane, as before; it is
+     the hue that changed, not the discipline. */
+  --color-accent: oklch(70% 0.115 86);
+  --color-accent-content: oklch(20% 0.03 86);
+  --color-neutral: oklch(30% 0.012 80);
+  --color-neutral-content: oklch(98% 0.003 85);
+  --color-info: oklch(52% 0.115 245);
+  --color-info-content: oklch(99% 0.008 245);
+  --color-success: oklch(50% 0.115 158);
+  --color-success-content: oklch(99% 0.012 158);
+  /* Pushed off the gold: an amber warning beside a foil accent is two golds
+     arguing. Warmer, redder, and carrying twice the chroma, so the two never
+     read as the same ink even at badge size. */
+  --color-warning: oklch(63% 0.165 56);
+  --color-warning-content: oklch(99% 0.015 60);
+  --color-error: oklch(52% 0.2 27);
+  --color-error-content: oklch(99% 0.012 20);
   --radius-selector: 0.1875rem;
   --radius-field: 0.25rem;
   --radius-box: 0.375rem;
@@ -115,26 +156,29 @@
   default: false;
   prefersdark: true;
   color-scheme: "dark";
-  --color-base-100: oklch(24% 0.022 258);
-  --color-base-200: oklch(20.5% 0.02 258);
-  --color-base-300: oklch(17% 0.018 258);
-  --color-base-content: oklch(94% 0.012 250);
-  --color-primary: oklch(68% 0.15 252);
-  --color-primary-content: oklch(18% 0.04 255);
-  --color-secondary: oklch(72% 0.03 255);
-  --color-secondary-content: oklch(20% 0.02 255);
-  --color-accent: oklch(72% 0.14 45);
-  --color-accent-content: oklch(20% 0.04 40);
-  --color-neutral: oklch(32% 0.025 257);
-  --color-neutral-content: oklch(95% 0.005 250);
-  --color-info: oklch(70% 0.12 236);
-  --color-info-content: oklch(18% 0.03 236);
-  --color-success: oklch(70% 0.13 162);
-  --color-success-content: oklch(18% 0.03 162);
-  --color-warning: oklch(76% 0.14 70);
-  --color-warning-content: oklch(20% 0.04 70);
-  --color-error: oklch(68% 0.18 22);
-  --color-error-content: oklch(18% 0.04 20);
+  /* The same sheet in a mission storage room with one bulb: graphite rather
+     than navy, so the paper's warmth survives the lamp instead of turning
+     into a second brand colour. */
+  --color-base-100: oklch(23% 0.006 80);
+  --color-base-200: oklch(19% 0.005 80);
+  --color-base-300: oklch(31% 0.007 80);
+  --color-base-content: oklch(93% 0.006 85);
+  --color-primary: oklch(70% 0.125 248);
+  --color-primary-content: oklch(17% 0.03 250);
+  --color-secondary: oklch(72% 0.012 82);
+  --color-secondary-content: oklch(18% 0.006 80);
+  --color-accent: oklch(78% 0.115 86);
+  --color-accent-content: oklch(18% 0.03 86);
+  --color-neutral: oklch(30% 0.008 80);
+  --color-neutral-content: oklch(95% 0.004 85);
+  --color-info: oklch(72% 0.11 245);
+  --color-info-content: oklch(17% 0.03 245);
+  --color-success: oklch(70% 0.12 160);
+  --color-success-content: oklch(17% 0.03 160);
+  --color-warning: oklch(74% 0.145 58);
+  --color-warning-content: oklch(19% 0.04 55);
+  --color-error: oklch(68% 0.175 25);
+  --color-error-content: oklch(17% 0.04 22);
   --radius-selector: 0.1875rem;
   --radius-field: 0.25rem;
   --radius-box: 0.375rem;
@@ -200,45 +244,135 @@ html { font-size: 17px; }
      edge   89% / 0.045  that band's bottom rule
      mark   74% / 0.15   read against the near-black bar
    ========================================================================== */
-:root { --section-h: 252; }
-[data-section="incoming"] { --section-h: 200; }
-[data-section="operation"] { --section-h: 295; }
-[data-section="stock"] { --section-h: 252; }
-[data-section="reports"] { --section-h: 75; }
+/* Chroma is a variable now, not only hue. Reports takes the mountain grey —
+   the crease seen from the raised side — because it is the one section where
+   nothing is written: it is read. A near-achromatic section is a legible
+   statement in a four-colour scheme, and it keeps the gold foil for the
+   accent instead of spending it on a menu.
+
+   The other three are the valley: cyan, blue, indigo, one progression rather
+   than three unrelated hues. The violet that used to name Operation belonged
+   to no world; it was just the next colour along. */
+:root { --section-h: 262; --section-c: 1; }
+[data-section="incoming"] { --section-h: 208; --section-c: 1; }
+[data-section="operation"] { --section-h: 248; --section-c: 1; }
+[data-section="stock"] { --section-h: 268; --section-c: 1; }
+[data-section="reports"] { --section-h: 82; --section-c: 0.12; }
 
 .page-head {
-  border-bottom: 1px solid oklch(89% 0.045 var(--section-h));
+  border-bottom: 1px solid oklch(87% calc(0.04 * var(--section-c)) var(--section-h));
+  position: relative;
 }
 
-.section-rail { background: oklch(56% 0.15 var(--section-h)); }
-.section-label { color: oklch(44% 0.13 var(--section-h)); }
-.section-mark { background: oklch(74% 0.15 var(--section-h)); }
+/* The crease field.
 
+   A Miura sheet is scored before it is ever folded, and the scoring is what
+   you see when it lies flat: parallel rules at a constant angle, catching the
+   light. Every page header carries that scoring at 1px and 4% ink — enough to
+   read as a material at arm's length, not enough to compete with a single
+   character of the title over it.
+
+   `ANG-60` is the board's own angle and it is constant across the app: the
+   section changes the hue of the scoring, never its angle, because the angle
+   is the identity and the hue is the wayfinding. */
+.page-head::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    60deg,
+    transparent 0 1.125rem,
+    oklch(52% calc(0.15 * var(--section-c)) var(--section-h) / 0.13) 1.125rem 1.1875rem
+  );
+  /* Fades out before the rule, so the scoring never fights the hairline that
+     ends the band. */
+  mask-image: linear-gradient(to bottom, #000 0%, #000 55%, transparent 100%);
+}
+
+.section-rail { background: oklch(52% calc(0.15 * var(--section-c)) var(--section-h)); }
+.section-label { color: oklch(42% calc(0.13 * var(--section-c)) var(--section-h)); }
+.section-mark { background: oklch(72% calc(0.15 * var(--section-c)) var(--section-h)); }
+
+/* The nav's active tab takes the valley wash and its own crease under it — the
+   pale blue fill the crease chart uses for a valley fold, which is what the
+   board does with a selected tab. On the near-black bar the wash is an ink
+   mix rather than the light blue itself. */
 .app-bar .btn.btn-active {
-  box-shadow: inset 0 -3px 0 0 oklch(74% 0.15 var(--section-h));
+  box-shadow: inset 0 -2px 0 0 oklch(72% calc(0.15 * var(--section-c)) var(--section-h));
 }
 
 [data-theme="dark"] .page-head {
-  border-bottom-color: oklch(36% 0.05 var(--section-h));
+  border-bottom-color: oklch(36% calc(0.05 * var(--section-c)) var(--section-h));
 }
 
-[data-theme="dark"] .section-rail { background: oklch(70% 0.14 var(--section-h)); }
-[data-theme="dark"] .section-label { color: oklch(80% 0.11 var(--section-h)); }
+[data-theme="dark"] .page-head::before {
+  background: repeating-linear-gradient(
+    60deg,
+    transparent 0 1.125rem,
+    oklch(78% calc(0.13 * var(--section-c)) var(--section-h) / 0.13) 1.125rem 1.1875rem
+  );
+}
+
+[data-theme="dark"] .section-rail { background: oklch(70% calc(0.14 * var(--section-c)) var(--section-h)); }
+[data-theme="dark"] .section-label { color: oklch(80% calc(0.11 * var(--section-c)) var(--section-h)); }
+
+/* ==========================================================================
+   THE CREASE
+
+   Two tokens the whole app folds along. A Miura sheet has exactly two kinds of
+   line — the mountain, raised toward you, and the valley, pressed away — and
+   every crease chart in the world draws them in two colours so a folder can
+   read the sheet without turning it over.
+
+   This app has the same binary and never drew it: goods come in and goods go
+   out, and the ledger is nothing but those two. `--fold-valley` washes what
+   arrives and what is selected; `--fold-mountain` rules what leaves and every
+   hairline that divides a surface.
+   ========================================================================== */
+:root {
+  --fold-valley: oklch(93% 0.028 245);
+  --fold-valley-line: oklch(62% 0.09 245);
+  --fold-mountain: oklch(93% 0.008 82);
+  --fold-mountain-line: oklch(66% 0.012 82);
+  /* Foil. The packet face, and the only metallic in the system: a hairline
+     gradient rather than a flat yellow, because foil is a surface that turns
+     the light and a flat fill of the same hue is just mustard. */
+  --foil: linear-gradient(
+    104deg,
+    oklch(74% 0.1 92) 0%,
+    oklch(86% 0.115 92) 26%,
+    oklch(68% 0.105 82) 55%,
+    oklch(84% 0.11 90) 78%,
+    oklch(72% 0.1 86) 100%
+  );
+}
+
+[data-theme="dark"] {
+  --fold-valley: oklch(32% 0.035 245);
+  --fold-valley-line: oklch(62% 0.09 245);
+  --fold-mountain: oklch(29% 0.007 82);
+  --fold-mountain-line: oklch(48% 0.01 82);
+}
 
 :root {
   /* The bar is the one constant: whatever section you are in, the app is the
      same app. Deep enough to sit under the status bar of a phone without
      looking like a light theme that lost its way. */
-  --bar: oklch(28% 0.045 258);
-  --bar-ink: oklch(97% 0.008 250);
-  --bar-edge: oklch(38% 0.05 258);
+  /* Graphite, not navy. The bar is the one plane that is not paper, so it is
+     the pencil the sheet was drawn with — near-black carrying the same faint
+     warmth as the ink, which is what stops it reading as a second brand
+     colour parked at the top of every screen. */
+  --bar: oklch(24% 0.006 80);
+  --bar-ink: oklch(97% 0.004 85);
+  --bar-edge: oklch(34% 0.007 80);
   --app-bar-h: 3.5rem;
 }
 
 [data-theme="dark"] {
-  --bar: oklch(18% 0.025 258);
-  --bar-ink: oklch(95% 0.008 250);
-  --bar-edge: oklch(29% 0.03 258);
+  --bar: oklch(16% 0.004 80);
+  --bar-ink: oklch(95% 0.004 85);
+  --bar-edge: oklch(27% 0.006 80);
 }
 
 /* ==========================================================================
@@ -303,19 +437,84 @@ body {
 }
 
 /* A panel is the one container. Everything that used to be `card bg-base-100
-   border border-base-300` in twenty-six different spellings is this. */
+   border border-base-300` in twenty-six different spellings is this.
+
+   It is a sheet, and its top-right corner is turned back.
+
+   The dog-ear is drawn, not clipped: `clip-path` would cut every dropdown and
+   tooltip that opens inside a panel, and this app has both. Two triangles do
+   it instead — the ground showing through where the corner is gone, and the
+   underside of the fold catching light — so the panel keeps `overflow:
+   visible` and loses nothing.
+
+   One fold per panel and no more. A page of eight panels each with a turned
+   corner is a page of decoration; one turned corner per sheet is a material
+   telling you it is paper. */
 .panel {
+  position: relative;
+  /* A grid or flex item is `min-width: auto` by default, which means it refuses
+     to shrink below its widest unbreakable content — and a panel's content is a
+     mission kit's limiting component, forty characters of catalogue name with
+     no spaces to break at. A panel in a one-column grid at 390px was measuring
+     907px, stretching the track, the container and the document with it: the
+     overview scrolled sideways to 923px and the quantity column of every list
+     panel sat off the right edge of the phone. The number those panels exist to
+     show was the part that left the screen.
+
+     A panel never widens what holds it. It is the container; it takes the width
+     it is given and its own content wraps or truncates inside it. */
+  min-width: 0;
   background: var(--color-base-100);
   border: 1px solid var(--color-base-300);
   border-radius: var(--radius-box);
+  --dog-ear: 1.375rem;
+}
+
+/* The corner that is no longer there: the ground, showing through. */
+.panel::before {
+  content: "";
+  position: absolute;
+  top: -1px;
+  right: -1px;
+  width: var(--dog-ear);
+  height: var(--dog-ear);
+  background: var(--color-base-200);
+  border-left: 1px solid var(--color-base-300);
+  border-bottom: 1px solid var(--color-base-300);
+  clip-path: polygon(100% 0, 0 100%, 100% 100%);
+  pointer-events: none;
+}
+
+/* The underside of the turned corner. Slightly darker than the sheet, because
+   you are looking at its back. */
+.panel::after {
+  content: "";
+  position: absolute;
+  top: -1px;
+  right: -1px;
+  width: var(--dog-ear);
+  height: var(--dog-ear);
+  /* The underside of a turned corner catches the light along its diagonal and
+     falls away from it. A flat fill reads as a grey triangle somebody drew;
+     the gradient is what makes it read as paper. */
+  background: linear-gradient(
+    225deg,
+    var(--color-base-200) 0%,
+    var(--fold-mountain) 42%,
+    var(--fold-mountain-line) 100%
+  );
+  clip-path: polygon(0 0, 0 100%, 100% 0);
+  border-top-right-radius: calc(var(--radius-box) - 1px);
+  pointer-events: none;
 }
 
 .panel-head {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.75rem 1rem;
-  border-bottom: 1px solid var(--color-base-200);
+  /* Room for the dog-ear, so a panel title never runs under its own fold. */
+  padding: 0.75rem 1.75rem 0.75rem 1rem;
+  border-bottom: 1px solid var(--color-base-300);
 }
 
 .panel-body {
@@ -552,12 +751,17 @@ th, td { font-feature-settings: "tnum" 1; }
    micro-label is the one place where narrow type is easier to read at size, not
    harder. It also puts the register of a stencilled crate label into the app
    without a second family. */
+/* The spec legend. On a crease chart every field is named in mono above its
+   value — SHEET, PATTERN, MATERIAL, RATIO — and the naming is what makes a
+   sheet of numbers readable without a caption. Mono here rather than condensed
+   Archivo, so a legend is never mistaken for short body copy: the two faces
+   answer "is this a label or a value" before you have read either. */
 .eyebrow {
-  font-size: 0.6875rem;
-  font-weight: 600;
-  letter-spacing: 0.08em;
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  font-weight: 500;
+  letter-spacing: 0.11em;
   text-transform: uppercase;
-  font-stretch: 82%;
 }
 
 /* ==========================================================================
@@ -611,12 +815,15 @@ th, td { font-feature-settings: "tnum" 1; }
    ========================================================================== */
 .box-code {
   display: inline-block;
-  font-stretch: 78%;
-  font-weight: 600;
-  font-size: 0.8125rem;
-  letter-spacing: 0.07em;
+  /* A crease id. `M-128` on the chart, `PR01` on the cardboard — the same
+     object, and mono is what lets you compare two of them down a column
+     without reading either one twice. */
+  font-family: var(--font-mono);
+  font-weight: 500;
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
-  line-height: 1.3;
+  line-height: 1.35;
   padding: 0.0625rem 0.375rem;
   /* Its own right margin, because it is almost always followed by the place the
      box is in and HEEx collapses the whitespace between two inline elements to
@@ -1061,4 +1268,257 @@ form.phx-change-loading input[type="search"] {
   .flash-item {
     transition: none;
   }
+}
+
+/* ==========================================================================
+   THE PACKET — the commit button
+
+   In the crease chart the packet is the folded sheet: gold foil, hand-sized,
+   the whole structure held closed until somebody pulls it. Pulling it is the
+   only irreversible act in the system, and this app has exactly one class of
+   irreversible act: a write to the ledger.
+
+   So `commit` is the packet. It is the one control cut at the fold angle, the
+   one that carries foil, and there is never more than one on a screen —
+   `commit_action/1` already guarantees that. Every other button in the app
+   stays a rectangle, because a page of angled buttons is a page where the
+   angle has stopped meaning anything.
+   ========================================================================== */
+.btn.is-packet {
+  --pull: 0.5rem;
+  clip-path: polygon(0 0, 100% 0, calc(100% - var(--pull)) 100%, 0 100%);
+  padding-inline: 1rem calc(1rem + var(--pull));
+  background: var(--foil);
+  border: 0;
+  color: oklch(20% 0.03 86);
+  text-shadow: none;
+  font-weight: 600;
+  transition: filter 140ms ease, transform 140ms ease;
+}
+
+.btn.is-packet:hover {
+  filter: brightness(1.06);
+  background: var(--foil);
+}
+
+/* Pressed is the pull: the packet gives by a hair. Not a lift — a fold does
+   not rise off the table when you tug it. */
+.btn.is-packet:active {
+  transform: translateX(1px);
+  filter: brightness(0.97);
+}
+
+.btn.is-packet:focus-visible {
+  outline: 2px solid var(--color-base-content);
+  outline-offset: 2px;
+}
+
+.btn.is-packet[disabled],
+.btn.is-packet:disabled {
+  background: var(--fold-mountain);
+  color: color-mix(in oklch, var(--color-base-content) 42%, transparent);
+  filter: none;
+}
+
+/* ==========================================================================
+   THE VALLEY — focus, and what is selected
+
+   A valley fold is the crease pressed away from you, and the chart washes it
+   pale blue. This app presses one field at a time: the one under the cursor.
+   Focus was a ring floating outside the control; now it is the control itself
+   sitting in its crease, which is both quieter and easier to find, because a
+   filled field is visible in peripheral vision and a 2px ring is not.
+   ========================================================================== */
+.input:focus,
+.input:focus-within,
+.select:focus,
+.textarea:focus,
+.check-field:focus-within {
+  outline: none;
+  border-color: var(--fold-valley-line);
+  background: var(--fold-valley);
+  box-shadow: inset 0 1px 0 0 color-mix(in oklch, var(--fold-valley-line) 30%, transparent);
+}
+
+/* Keyboard focus still needs to be findable on a control that is not a field.
+   The sheet's own ink, offset — no colour, because colour here would be a
+   fifth channel in a system that already spends three. */
+.btn:focus-visible,
+summary:focus-visible,
+a:focus-visible {
+  outline: 2px solid var(--color-base-content);
+  outline-offset: 2px;
+}
+
+/* ==========================================================================
+   MOUNTAIN AND VALLEY — the ledger's two directions
+
+   The one idea this world hands the product for free. A Miura sheet has
+   exactly two kinds of crease, and a stock ledger has exactly two kinds of
+   movement. Every crease chart ever printed draws them as two line weights so
+   a folder can read the sheet without turning it over; this app drew them as
+   four badge colours and a plus or minus sign.
+
+   The rule reaches the movement badge and the difference column, and it is
+   drawn on the left edge of the row: solid for what came in, dashed for what
+   went out. Text still says which — this is a second channel, never the only
+   one.
+   ========================================================================== */
+.fold-in {
+  box-shadow: inset 2px 0 0 0 var(--fold-valley-line);
+}
+
+.fold-out {
+  background-image: linear-gradient(
+    to bottom,
+    var(--fold-mountain-line) 0 0.25rem,
+    transparent 0.25rem 0.5rem
+  );
+  background-size: 2px 0.5rem;
+  background-repeat: repeat-y;
+  background-position: left top;
+}
+
+/* The packet. Foil, with the crease pattern scored into it — the sheet folded
+   down to something you can hold, which is what the whole system is for. */
+.mark-packet {
+  background: var(--foil);
+  color: oklch(22% 0.03 86);
+  border-radius: 0.25rem;
+  box-shadow: inset 0 0 0 1px oklch(58% 0.09 82 / 0.5);
+}
+
+/* ==========================================================================
+   THE IDENTIFICATION BLOCK
+
+   Four readings ruled into one strip, the way every technical sheet names its
+   own parameters in the margin. What this replaces is the KPI card row: four
+   rounded boxes with shadows and hover lifts, three of which were never
+   clickable. The lift promised an affordance that did not exist, and the gaps
+   between them said "four objects" about one reading.
+
+   The rules are mountain-grey hairlines — the sheet's own creases, not borders
+   drawn around content.
+   ========================================================================== */
+.field-block {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  background: var(--color-base-100);
+  border: 1px solid var(--color-base-300);
+  border-radius: var(--radius-box);
+  overflow: hidden;
+}
+
+@media (min-width: 1024px) {
+  .field-block { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+
+.field-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  padding: 0.875rem 1rem 1rem;
+  min-width: 0;
+  /* The crease between two fields, drawn on two sides and trimmed at the
+     block's edge by the overflow above. */
+  border-right: 1px solid var(--color-base-300);
+  border-bottom: 1px solid var(--color-base-300);
+}
+
+.field-cell.is-dense { padding: 0.625rem 0.75rem 0.75rem; }
+
+/* Only a cell that goes somewhere reacts, and it reacts by pressing into its
+   crease rather than lifting: a sheet does not float. */
+.field-cell.is-linked {
+  transition: background 120ms ease;
+}
+
+.field-cell.is-linked:hover {
+  background: var(--fold-valley);
+}
+
+.field-figure {
+  font-weight: 600;
+  font-stretch: 100%;
+  line-height: 1.05;
+  margin-top: 0.25rem;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.015em;
+}
+
+/* ==========================================================================
+   THE PULL — the day's work as one row
+
+   A Miura sheet deploys in one pull, and this row is that pull: the five acts
+   the week is made of, side by side, each one click from the screen that told
+   you it was needed.
+
+   Cut at the fold angle on the leading edge, so the row reads as a strip of
+   linked panels rather than five separate buttons — the crease pattern's own
+   logic, where one cell's edge is the next cell's edge.
+   ========================================================================== */
+/* Flex rather than a five-column grid: the row is filtered by role, so it is
+   four cells for one person and five for another, and a fixed track count
+   leaves the missing one as an empty grey cell at the end — a hole where the
+   act somebody is not allowed to perform would have been. */
+.quick-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1px;
+  background: var(--color-base-300);
+  border: 1px solid var(--color-base-300);
+  border-radius: var(--radius-box);
+  overflow: hidden;
+}
+
+.quick-action {
+  display: flex;
+  flex: 1 1 12rem;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.75rem 0.875rem;
+  min-width: 0;
+  background: var(--color-base-100);
+  color: var(--color-base-content);
+  transition: background 120ms ease, color 120ms ease;
+}
+
+.quick-action:hover {
+  background: var(--fold-valley);
+}
+
+.quick-action .size-5 {
+  color: color-mix(in oklch, var(--color-base-content) 55%, transparent);
+  transition: color 120ms ease;
+}
+
+.quick-action:hover .size-5 {
+  color: var(--fold-valley-line);
+}
+
+/* ==========================================================================
+   THE TITLE
+
+   Archivo's width axis, opened rather than narrowed. The page title was set at
+   87% — condensed, which reads as a form somebody had to fit into a box. This
+   sheet has room: 112% with the tracking opened is the drawing's own title
+   block, and it is the one place in the app where the type is allowed to take
+   space rather than save it.
+   ========================================================================== */
+.page-head h1 {
+  font-stretch: 112%;
+  font-weight: 600;
+  letter-spacing: 0.004em;
+}
+
+/* A crease id in a table cell: a lot number, an invoice number, a GTIN. Same
+   argument as the box code — you compare these down a column and copy them
+   onto paper, and a proportional face makes L2000 and L2009 the same shape at
+   a glance. The box code gets a printed label because it is shouted across a
+   warehouse; a lot number is only ever read, so it takes the face and nothing
+   else. */
+.data-table td.is-code {
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  letter-spacing: -0.01em;
 }

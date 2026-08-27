@@ -48,10 +48,27 @@ defmodule EstoqueOSWeb.NavigationTest do
     # dashboard header, and the Entradas group. The menu names where you can
     # *be*; importing is something you do once you are already in invoices, and
     # that screen offers it twice — in its header and in its empty state.
-    refute home =~ "/invoices/import"
+    #
+    # Scoped to the bar, and this narrowing is the point. The rule is about the
+    # *menu*, and the assertion was about the whole document — so it also
+    # forbade the dashboard's row of acts, which is not a menu and does not
+    # name a place: it is the five things a week is made of, each one click
+    # from the screen that just said one of them was needed. PRODUCT.md
+    # principle 5 asks for exactly that on the unit-price flow, and the old
+    # route made it the longest one in the app.
+    refute app_bar(home) =~ "/invoices/import"
+    assert home =~ "/invoices/import"
 
     {:ok, _view, invoices} = live(conn, ~p"/invoices")
     assert invoices =~ "href=\"/invoices/import\""
+  end
+
+  # Everything up to the end of the sticky bar: the menu, and nothing below it.
+  defp app_bar(html) do
+    case String.split(html, "</header>", parts: 2) do
+      [bar, _rest] -> bar
+      [whole] -> whole
+    end
   end
 
   test "appearance sits with the account, not in the bar", %{conn: conn} do

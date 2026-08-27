@@ -119,7 +119,7 @@ defmodule EstoqueOSWeb.BoxLive.Count do
           <:col :let={row} label={gettext("Product")} emphasis={:identity}>
             {row.product}
           </:col>
-          <:col :let={row} label={gettext("Lot")}>
+          <:col :let={row} label={gettext("Lot")} emphasis={:code}>
             {row.lot_number || gettext("unknown")}
           </:col>
           <:col :let={row} label={gettext("Expiry")}>
@@ -152,7 +152,7 @@ defmodule EstoqueOSWeb.BoxLive.Count do
           <:col :let={row} label={gettext("Product")} emphasis={:identity}>
             {row.product}
           </:col>
-          <:col :let={row} label={gettext("Lot")}>
+          <:col :let={row} label={gettext("Lot")} emphasis={:code}>
             {row.lot_number || gettext("unknown")}
           </:col>
           <:col :let={row} label={gettext("Count again")} align={:right} field={:inline}>
@@ -187,7 +187,7 @@ defmodule EstoqueOSWeb.BoxLive.Count do
             </:empty>
 
             <:col :let={row} label={gettext("Product")} emphasis={:identity}>{row.product}</:col>
-            <:col :let={row} label={gettext("Lot")}>
+            <:col :let={row} label={gettext("Lot")} emphasis={:code}>
               {row.lot_number || gettext("unknown")}
             </:col>
             <:col :let={row} label={gettext("Ledger presumed")} align={:right}>
@@ -241,7 +241,7 @@ defmodule EstoqueOSWeb.BoxLive.Count do
 
         <.data_table rows={@divergences} row_id={&"divergence-#{&1.lot_id}"}>
           <:col :let={row} label={gettext("Product")} emphasis={:identity}>{row.product}</:col>
-          <:col :let={row} label={gettext("Lot")}>
+          <:col :let={row} label={gettext("Lot")} emphasis={:code}>
             {row.lot_number || gettext("unknown")}
           </:col>
           <:col :let={row} label={gettext("Ledger presumed")} align={:right}>

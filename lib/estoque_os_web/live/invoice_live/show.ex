@@ -215,7 +215,7 @@ defmodule EstoqueOSWeb.InvoiceLive.Show do
               <p :if={item.product} class="text-xs opacity-60">{item.description}</p>
             </:col>
 
-            <:col :let={item} label={gettext("Lot")}>
+            <:col :let={item} label={gettext("Lot")} emphasis={:code}>
               {item.lot_number || "—"}
               <p :if={item.expires_on} class="text-xs opacity-60">{date(item.expires_on)}</p>
             </:col>
