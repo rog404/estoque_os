@@ -241,8 +241,19 @@ defmodule EstoqueOSWeb.BoxLive.Index do
     Enum.reject(priority.reasons, fn {kind, _label} -> kind == :never_counted end)
   end
 
+  # Weight, not colour.
+  #
+  # This is the `:stale` rule the design system already states and this screen
+  # was not following: most boxes in a real warehouse have gone a while without
+  # a count, so amber here lit nine rows in ten and the eye stopped reading it.
+  # A queue where every line is an alarm is a queue with no order in it — and
+  # this list *is* the order, ranked by the audit score.
+  #
+  # The row that needs attention is already the row nearest the top. What the
+  # date has to do is be legible; medium ink says "this one is overdue" without
+  # spending the alarm colour on the normal case.
   defp stale_class(box) do
-    if stale?(box), do: "text-warning", else: "opacity-70"
+    if stale?(box), do: "font-medium", else: "text-base-content/60"
   end
 
   defp stale?(%{last_verified_at: nil}), do: true

@@ -111,12 +111,20 @@
   --color-primary-content: oklch(99% 0.005 250);
   --color-secondary: oklch(44% 0.02 80);
   --color-secondary-content: oklch(99% 0.003 85);
-  /* Foil gold. The packet's face — the sheet folded, sealed, ready to travel —
-     and in this operation that is the donation certificate: the paper that
-     closes a mission. Spent only where the work is humane, as before; it is
-     the hue that changed, not the discipline. */
-  --color-accent: oklch(70% 0.115 86);
-  --color-accent-content: oklch(20% 0.03 86);
+  /* The gold is gone.
+
+     Foil was the packet's face in the crease chart, and it read as luxury on a
+     surgical charity's stock screen — the one association this operation has no
+     use for. The world loses nothing: a Miura sheet is paper, ink and two
+     kinds of crease, and the fold is what carries it. Gold was the only
+     borrowed note.
+
+     The accent is deep indigo now: the valley taken to its darkest, so it
+     stays inside the world's own family and still cannot be mistaken for the
+     blue that means "go on" or the warning that means "soon". Spent only where
+     the work is humane. */
+  --color-accent: oklch(38% 0.13 268);
+  --color-accent-content: oklch(98% 0.01 268);
   --color-neutral: oklch(30% 0.012 80);
   --color-neutral-content: oklch(98% 0.003 85);
   --color-info: oklch(52% 0.115 245);
@@ -167,8 +175,8 @@
   --color-primary-content: oklch(17% 0.03 250);
   --color-secondary: oklch(72% 0.012 82);
   --color-secondary-content: oklch(18% 0.006 80);
-  --color-accent: oklch(78% 0.115 86);
-  --color-accent-content: oklch(18% 0.03 86);
+  --color-accent: oklch(74% 0.12 268);
+  --color-accent-content: oklch(17% 0.03 268);
   --color-neutral: oklch(30% 0.008 80);
   --color-neutral-content: oklch(95% 0.004 85);
   --color-info: oklch(72% 0.11 245);
@@ -341,37 +349,31 @@ html { font-size: 17px; }
    hairline that divides a surface.
    ========================================================================== */
 :root {
-  /* The three tones of a turned corner, near edge to far. Lit from the same
-     side as everything else on the page. */
-  --fold-face-near: oklch(96.8% 0.005 85);
-  --fold-face-mid: oklch(93% 0.008 82);
-  --fold-face-far: oklch(84% 0.011 82);
   --fold-valley: oklch(93% 0.028 245);
   --fold-valley-line: oklch(62% 0.09 245);
   --fold-mountain: oklch(93% 0.008 82);
   --fold-mountain-line: oklch(66% 0.012 82);
-  /* Foil. The packet face, and the only metallic in the system: a hairline
-     gradient rather than a flat yellow, because foil is a surface that turns
-     the light and a flat fill of the same hue is just mustard. */
-  --foil: linear-gradient(
-    104deg,
-    oklch(74% 0.1 92) 0%,
-    oklch(86% 0.115 92) 26%,
-    oklch(68% 0.105 82) 55%,
-    oklch(84% 0.11 90) 78%,
-    oklch(72% 0.1 86) 100%
-  );
+  /* The packet's face. It was foil and is now ink: the sheet folded and
+     stamped rather than gilded, which is what a document that records an
+     irreversible act actually looks like. The chamfer still carries the
+     gesture — it was always the geometry doing that work, not the metal. */
+  --packet-face: oklch(21% 0.008 80);
+  --packet-ink: oklch(98% 0.004 85);
+  --packet-hover: oklch(30% 0.01 80);
 }
 
-/* Night is a register of the sheet, not the absence of one. The dog-ear was
-   invisible in the dark because the fold's underside was darker than the panel
-   it sits on — under a bulb the turned corner catches the light instead. */
 [data-theme="dark"] {
+  /* The packet inverts. It is the highest-contrast object on the screen —
+     that is its whole job, being the one control that writes — and on a
+     graphite sheet the highest contrast is paper, not more ink. Left dark it
+     was ink on ink: present in the markup, gone from the screen, and gone
+     exactly where the operator is about to commit a count. */
+  --packet-face: oklch(94% 0.005 85);
+  --packet-ink: oklch(17% 0.006 80);
+  --packet-hover: oklch(86% 0.006 85);
+
   /* Inverted, because a fold in the dark is lit rather than shaded: the turned
      corner is the one surface angled toward the lamp. */
-  --fold-face-near: oklch(19% 0.005 80);
-  --fold-face-mid: oklch(33% 0.008 82);
-  --fold-face-far: oklch(44% 0.011 82);
   --fold-valley: oklch(32% 0.035 245);
   --fold-valley-line: oklch(62% 0.09 245);
   --fold-mountain: oklch(29% 0.007 82);
@@ -462,17 +464,15 @@ body {
 /* A panel is the one container. Everything that used to be `card bg-base-100
    border border-base-300` in twenty-six different spellings is this.
 
-   It is a sheet, and its top-right corner is turned back.
+   Flat, and no turned corner.
 
-   The dog-ear is drawn, not clipped: `clip-path` would cut every dropdown and
-   tooltip that opens inside a panel, and this app has both. Two triangles do
-   it instead — the ground showing through where the corner is gone, and the
-   underside of the fold catching light — so the panel keeps `overflow:
-   visible` and loses nothing.
-
-   One fold per panel and no more. A page of eight panels each with a turned
-   corner is a page of decoration; one turned corner per sheet is a material
-   telling you it is paper. */
+   The dog-ear was the world's signature on the container and it was wrong
+   twice over: it repeated on every panel — eight of them on the overview, so
+   the material became a motif — and it was ornament on the one element that
+   should be silent. A panel's job is to hold a table steady. The world lives
+   where it does work: the scoring on the page head, the crease on a movement,
+   the chamfer on the one control that writes.
+*/
 .panel {
   position: relative;
   /* A grid or flex item is `min-width: auto` by default, which means it refuses
@@ -490,53 +490,13 @@ body {
   background: var(--color-base-100);
   border: 1px solid var(--color-base-300);
   border-radius: var(--radius-box);
-  --dog-ear: 1.375rem;
-}
-
-/* The corner that is no longer there: the ground, showing through. */
-.panel::before {
-  content: "";
-  position: absolute;
-  top: -1px;
-  right: -1px;
-  width: var(--dog-ear);
-  height: var(--dog-ear);
-  background: var(--color-base-200);
-  border-left: 1px solid var(--color-base-300);
-  border-bottom: 1px solid var(--color-base-300);
-  clip-path: polygon(100% 0, 0 100%, 100% 100%);
-  pointer-events: none;
-}
-
-/* The underside of the turned corner. Slightly darker than the sheet, because
-   you are looking at its back. */
-.panel::after {
-  content: "";
-  position: absolute;
-  top: -1px;
-  right: -1px;
-  width: var(--dog-ear);
-  height: var(--dog-ear);
-  /* The underside of a turned corner catches the light along its diagonal and
-     falls away from it. A flat fill reads as a grey triangle somebody drew;
-     the gradient is what makes it read as paper. */
-  background: linear-gradient(
-    225deg,
-    var(--fold-face-near) 0%,
-    var(--fold-face-mid) 42%,
-    var(--fold-face-far) 100%
-  );
-  clip-path: polygon(0 0, 0 100%, 100% 0);
-  border-top-right-radius: calc(var(--radius-box) - 1px);
-  pointer-events: none;
 }
 
 .panel-head {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  /* Room for the dog-ear, so a panel title never runs under its own fold. */
-  padding: 0.75rem 1.75rem 0.75rem 1rem;
+  padding: 0.75rem 1rem;
   border-bottom: 1px solid var(--color-base-300);
 }
 
@@ -1308,39 +1268,37 @@ form.phx-change-loading input[type="search"] {
 /* ==========================================================================
    THE PACKET — the commit button
 
-   In the crease chart the packet is the folded sheet: gold foil, hand-sized,
-   the whole structure held closed until somebody pulls it. Pulling it is the
-   only irreversible act in the system, and this app has exactly one class of
-   irreversible act: a write to the ledger.
+   In the crease chart the packet is the folded sheet held closed until
+   somebody pulls it. Pulling it is the only irreversible act, and this app has
+   exactly one class of irreversible act: a write to the append-only ledger.
 
-   So `commit` is the packet. It is the one control cut at the fold angle, the
-   one that carries foil, and there is never more than one on a screen —
-   `commit_action/1` already guarantees that. Every other button in the app
-   stays a rectangle, because a page of angled buttons is a page where the
-   angle has stopped meaning anything.
+   It was gold and is now ink, because gold read as luxury on a surgical
+   charity's stock screen and the geometry was always the part doing the work.
+   Solid ink, cut at the fold angle, on a page where nothing else is either —
+   the darkest object on the screen and the only angled one. There is never
+   more than one; `commit_action/1` guarantees that.
    ========================================================================== */
 .btn.is-packet {
   --pull: 0.5rem;
   clip-path: polygon(0 0, 100% 0, calc(100% - var(--pull)) 100%, 0 100%);
   padding-inline: 1rem calc(1rem + var(--pull));
-  background: var(--foil);
+  background: var(--packet-face);
   border: 0;
-  color: oklch(20% 0.03 86);
+  color: var(--packet-ink);
   text-shadow: none;
   font-weight: 600;
-  transition: filter 140ms ease, transform 140ms ease;
+  transition: background 140ms ease, transform 140ms ease;
 }
 
 .btn.is-packet:hover {
-  filter: brightness(1.06);
-  background: var(--foil);
+  background: var(--packet-hover);
 }
 
 /* Pressed is the pull: the packet gives by a hair. Not a lift — a fold does
    not rise off the table when you tug it. */
 .btn.is-packet:active {
   transform: translateX(1px);
-  filter: brightness(0.97);
+  background: var(--packet-hover);
 }
 
 .btn.is-packet:focus-visible {
@@ -1352,19 +1310,18 @@ form.phx-change-loading input[type="search"] {
 .btn.is-packet:disabled {
   background: var(--fold-mountain);
   color: color-mix(in oklch, var(--color-base-content) 42%, transparent);
-  filter: none;
 }
 
 /* The packet's neighbour.
 
    A commit screen has exactly two controls — the one that writes and the one
-   that backs out — and once the packet took foil and a chamfer, the ghost
+   that backs out — and once the packet took solid ink and a chamfer, the ghost
    beside it read as a sentence somebody had left on the page. A control that
    does not look like a control is the Operate failure the whole mode exists to
    prevent, and it was introduced by making its neighbour loud.
 
-   A box, then: the sheet's own edge, no fill. Quiet next to foil and still
-   unmistakably a thing you press.
+   A box, then: the sheet's own edge, no fill. Quiet next to the packet and
+   still unmistakably a thing you press.
 */
 /* `:has()`, because the packet is wrapped: `commit_action/1` puts its trigger
    inside a `<span>` that carries the disabled tooltip, so the ghost beside it
@@ -1466,13 +1423,14 @@ a:focus-visible {
   );
 }
 
-/* The packet. Foil, with the crease pattern scored into it — the sheet folded
-   down to something you can hold, which is what the whole system is for. */
+/* The mark: the crease pattern drawn in the sheet's own ink on the sheet's own
+   paper, sitting on the bar. It was a gold tile, and a gold tile on a surgical
+   charity's app reads as a luxury brand's monogram — the one association this
+   operation has no use for. Paper and ink is what the thing actually is. */
 .mark-packet {
-  background: var(--foil);
-  color: oklch(22% 0.03 86);
+  background: var(--color-base-100);
+  color: var(--color-base-content);
   border-radius: 0.25rem;
-  box-shadow: inset 0 0 0 1px oklch(58% 0.09 82 / 0.5);
 }
 
 /* ==========================================================================
@@ -1631,4 +1589,311 @@ a:focus-visible {
   font-family: var(--font-mono);
   font-size: 0.8125rem;
   letter-spacing: -0.01em;
+}
+
+/* ==========================================================================
+   THE CONTROL FAMILY
+
+   Every button in this app was daisyUI's default: a pill of pale blue with a
+   generous radius, three of them side by side in a table row, none of them
+   belonging to the sheet they sit on. That is what "the buttons don't match
+   the layout" means, and it was true — the world had been applied to the
+   containers and the type and not to the controls.
+
+   On a drawing, a control is a drawn box: a rule around a field of paper, with
+   ink in it. So that is what these are. The soft pastel fills are gone; what
+   distinguishes the tiers is ink weight and whether the box is filled, which
+   is how a printed form distinguishes them too.
+
+   The radius drops to the field's own 0.25rem, so a button and the input
+   beside it are the same object — they already shared a height and now they
+   share a corner.
+   ========================================================================== */
+.btn {
+  border-radius: var(--radius-field);
+  font-weight: 500;
+  letter-spacing: 0.002em;
+  transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+
+/* The resting tier: present, and not the loudest thing in the room. A drawn
+   box on the sheet. This replaces `btn-soft`'s pale-blue pill, which is the
+   control that read as decoration in every table row in the app. */
+.btn.btn-soft,
+.btn.btn-primary.btn-soft {
+  background: var(--color-base-100);
+  border: 1px solid var(--color-base-300);
+  color: var(--color-base-content);
+}
+
+.btn.btn-soft:hover,
+.btn.btn-primary.btn-soft:hover {
+  background: var(--fold-valley);
+  border-color: var(--fold-valley-line);
+  color: var(--color-base-content);
+}
+
+/* The forward action: the valley, filled. One per screen — the search, the
+   save, the go-on — and it is the only blue field on the page, which is what
+   makes it findable without being loud. */
+.btn.btn-primary:not(.btn-soft) {
+  background: var(--color-primary);
+  border: 1px solid var(--color-primary);
+  color: var(--color-primary-content);
+}
+
+.btn.btn-primary:not(.btn-soft):hover {
+  background: color-mix(in oklab, var(--color-primary) 88%, var(--color-base-content));
+  border-color: color-mix(in oklab, var(--color-primary) 88%, var(--color-base-content));
+}
+
+/* Removes, deactivates, cancels. Outlined rather than filled, because these
+   repeat down a table and a column of solid red is a screen shouting at
+   somebody who came to read it. It fills on hover — at the moment of the
+   press, and not before. */
+.btn.btn-error {
+  background: var(--color-base-100);
+  border: 1px solid color-mix(in oklab, var(--color-error) 45%, transparent);
+  color: var(--color-error);
+}
+
+.btn.btn-error:hover {
+  background: var(--color-error);
+  border-color: var(--color-error);
+  color: var(--color-error-content);
+}
+
+/* Dismiss, cancel a dialog, a row's quiet action. No box until the pointer is
+   over it, and then the sheet's own crease. */
+.btn.btn-ghost {
+  background: transparent;
+  border: 1px solid transparent;
+  color: color-mix(in oklab, var(--color-base-content) 85%, transparent);
+}
+
+.btn.btn-ghost:hover {
+  background: var(--fold-valley);
+  border-color: var(--fold-valley-line);
+  color: var(--color-base-content);
+}
+
+/* A select is a control the same as a button is, so it takes the same box —
+   they stand next to each other in every row of the box list and were drawn by
+   two different hands. */
+.select,
+.input,
+.textarea {
+  border-radius: var(--radius-field);
+  border-color: var(--color-base-300);
+  background: var(--color-base-100);
+}
+
+/* daisyUI's `btn-active` inverts; inside a table row that read as a fourth
+   tier nobody declared. */
+.btn.btn-active {
+  background: var(--fold-valley);
+  border-color: var(--fold-valley-line);
+  color: var(--color-base-content);
+}
+
+/* ==========================================================================
+   THE MARGIN NOTE — alerts
+
+   daisyUI's alert is a saturated field with white text: a solid orange block
+   the width of the page, which on a screen whose whole job is a table of
+   numbers is the loudest object by a distance and says the same thing however
+   ordinary the news is. "Nada em aberto" arrived in the same volume as "a
+   count was repeated and still disagrees".
+
+   On a sheet, this is a margin note: the paper tinted, the state's ink at the
+   edge, and the words in ink you can actually read. The state is still carried
+   by colour AND by the word, as it must be — what changes is that the note
+   reads at the weight of a note.
+   ========================================================================== */
+.alert {
+  border-radius: var(--radius-box);
+  border: 1px solid;
+  align-items: flex-start;
+  text-align: left;
+  font-weight: 400;
+  box-shadow: none;
+}
+
+.alert-info {
+  background: color-mix(in oklab, var(--color-info) 8%, var(--color-base-100));
+  border-color: color-mix(in oklab, var(--color-info) 35%, transparent);
+  color: color-mix(in oklab, var(--color-info) 78%, var(--color-base-content));
+}
+
+.alert-success {
+  background: color-mix(in oklab, var(--color-success) 8%, var(--color-base-100));
+  border-color: color-mix(in oklab, var(--color-success) 35%, transparent);
+  color: color-mix(in oklab, var(--color-success) 78%, var(--color-base-content));
+}
+
+.alert-warning {
+  background: color-mix(in oklab, var(--color-warning) 10%, var(--color-base-100));
+  border-color: color-mix(in oklab, var(--color-warning) 38%, transparent);
+  color: color-mix(in oklab, var(--color-warning) 74%, var(--color-base-content));
+}
+
+.alert-error {
+  background: color-mix(in oklab, var(--color-error) 9%, var(--color-base-100));
+  border-color: color-mix(in oklab, var(--color-error) 38%, transparent);
+  color: color-mix(in oklab, var(--color-error) 76%, var(--color-base-content));
+}
+
+/* The heading inside a note takes the full ink of its state; the sentence under
+   it stays in reading ink. A note whose every word is coloured is a note read
+   as a colour. */
+.alert :is(p, span) {
+  color: inherit;
+}
+
+.alert .font-semibold {
+  color: currentColor;
+}
+
+/* A toast is the one alert that keeps a solid fill: it is transient, it lands
+   over the page rather than in it, and it has to be seen before it leaves. */
+.flash-item .alert {
+  border: 0;
+}
+
+.flash-item .alert-info {
+  background: var(--color-base-content);
+  color: var(--color-base-100);
+}
+
+.flash-item .alert-error {
+  background: var(--color-error);
+  color: var(--color-error-content);
+}
+
+/* ==========================================================================
+   A BADGE STOPS REPEATING ITSELF
+
+   `1 lote(s) perto do vencimento` is true of nine boxes in ten, and it shipped
+   as a solid orange block on every one of those rows. Nine identical alarms
+   down a column is confetti: the eye stops reading them, and the row where the
+   news is actually different looks exactly like the eight above it.
+
+   Fill is reserved for the state that is rare on its screen. Everything the
+   status vocabulary calls a warning keeps its hue and drops the fill, which is
+   the same two-register rule `status/1` already applies — it simply was not
+   reaching daisyUI's own badge classes.
+   ========================================================================== */
+.data-table .badge.badge-warning,
+.data-table .badge.badge-info,
+.data-table .badge.badge-success {
+  background: transparent;
+  border: 1px solid currentColor;
+  font-weight: 500;
+}
+
+.data-table .badge.badge-warning { color: color-mix(in oklab, var(--color-warning) 82%, var(--color-base-content)); }
+.data-table .badge.badge-info { color: color-mix(in oklab, var(--color-info) 82%, var(--color-base-content)); }
+.data-table .badge.badge-success { color: color-mix(in oklab, var(--color-success) 82%, var(--color-base-content)); }
+
+/* Expired keeps its fill. It is the one state on the stock table that is both
+   rare and actionable, and it is the reason somebody opens the screen. */
+.data-table .badge.badge-error {
+  font-weight: 600;
+}
+
+
+/* ==========================================================================
+   THE RULED SHEET
+
+   The data table's row divider was `border-base-200` on a `base-100` panel —
+   a 1.5% difference, which is to say no rule at all. Rows floated, and on a
+   forty-row stock list the eye had nothing to travel along, which is the one
+   thing a table is for.
+
+   Mountain grey at the sheet's own weight. It is the same hairline that
+   divides every other surface in this app, and a table is the surface that
+   needs it most.
+   ========================================================================== */
+.data-table tbody td {
+  border-bottom-color: var(--color-base-300);
+}
+
+.data-table thead th {
+  border-bottom: 1px solid var(--color-base-content);
+  color: var(--color-base-content);
+  opacity: 0.75;
+}
+
+/* The head rule is the sheet's own — a column head on a drawing sits under a
+   heavier line than the rows do, because it is the line that says "the reading
+   starts here". */
+.data-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+/* ==========================================================================
+   THE BAR WINS ITS OWN CONTROLS
+
+   The control family above is written for paper, and the bar is the one plane
+   in this app that is not paper. Both sets of rules are `.app-bar .btn` and
+   `.btn.btn-ghost` — the same specificity — so the later one won, and the
+   later one was the paper rule: the menu's own labels took ink meant for a
+   white sheet and rendered near-black on a near-black bar. Entradas, Operação,
+   Estoque and Relatórios were still there and nobody could read them.
+
+   Restated here at a weight that cannot be lost, and after everything, because
+   the bar is context and context is what a cascade is for. This is the
+   collision the project's own guidance warns about: classes that cancel each
+   other out over a property neither file mentions.
+   ========================================================================== */
+.app-bar .btn,
+.app-bar .btn.btn-ghost,
+.app-bar .btn.btn-soft,
+.app-bar summary.btn {
+  background: transparent;
+  border-color: transparent;
+  color: var(--bar-ink);
+}
+
+.app-bar .btn:hover,
+.app-bar .btn.btn-ghost:hover,
+.app-bar .btn.btn-soft:hover,
+.app-bar summary.btn:hover,
+.app-bar .btn.btn-active {
+  background: color-mix(in oklab, var(--bar-ink) 14%, transparent);
+  border-color: transparent;
+  color: var(--bar-ink);
+}
+
+/* A dropdown hangs off the bar in the DOM and is painted on paper. Without
+   this it inherits the bar's near-white ink onto a white panel — present in
+   the markup, invisible on the screen, and fine in dark mode, which is how the
+   first version of this rule survived review. */
+.app-bar .dropdown-content,
+.app-bar .dropdown-content .menu {
+  color: var(--color-base-content);
+}
+
+.app-bar .dropdown-content .btn,
+.app-bar .dropdown-content .btn.btn-ghost,
+.app-bar .dropdown-content .btn.btn-soft {
+  background: var(--color-base-100);
+  border: 1px solid var(--color-base-300);
+  color: var(--color-base-content);
+}
+
+.app-bar .dropdown-content .btn:hover,
+.app-bar .dropdown-content .btn.btn-ghost:hover,
+.app-bar .dropdown-content .btn.btn-soft:hover {
+  background: var(--fold-valley);
+  border-color: var(--fold-valley-line);
+  color: var(--color-base-content);
+}
+
+/* The nav panels are sheets too: paper, a mountain hairline, and the ink the
+   page uses — not the bar's. */
+.app-bar .dropdown-content:where(ul, div) {
+  background: var(--color-base-100);
+  border: 1px solid var(--color-base-300);
+  border-radius: var(--radius-box);
 }

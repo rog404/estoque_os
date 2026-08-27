@@ -11,7 +11,8 @@ colors:
   valley-line: "oklch(62% 0.09 245)"
   mountain-fill: "oklch(93% 0.008 82)"
   mountain-line: "oklch(66% 0.012 82)"
-  foil-gold: "oklch(70% 0.115 86)"
+  packet-face: "oklch(21% 0.008 80)"
+  accent-indigo: "oklch(38% 0.13 268)"
   graphite-bar: "oklch(24% 0.006 80)"
   graphite-ink: "oklch(97% 0.004 85)"
   ledger-info: "oklch(52% 0.115 245)"
@@ -70,7 +71,6 @@ spacing:
   tight: "0.375rem"
   cell: "0.75rem"
   panel: "1rem"
-  dog-ear: "1.375rem"
   bar: "3.5rem"
 components:
   button-resting:
@@ -94,7 +94,7 @@ components:
     rounded: "{rounded.field}"
     height: "2.1875rem"
   button-packet:
-    backgroundColor: "{colors.foil-gold}"
+    backgroundColor: "{colors.packet-face}"
     textColor: "{colors.sheet-ink}"
     rounded: "0"
     padding: "0 1.5rem 0 1rem"
@@ -170,7 +170,7 @@ badge hues. Now it draws the stroke as well.
 **Mode: Operate.** Every screen exists so somebody completes a task —
 receiving a delivery, counting a box, sending a load, answering an auditor.
 Expression never obscures the task, the state, or a familiar affordance. The
-world is spent on materials (warm paper, a hairline crease, one foil seal), not
+world is spent on materials (warm paper, a hairline crease, one stamped seal), not
 on ornament laid over the data.
 
 This world replaced a cool blue-grey admin surface, and the replacement is a
@@ -187,10 +187,10 @@ colour. Status keeps its closed colour vocabulary and always carries a word.
 - Warm sheet-white ground; nothing on the page is a cool screen colour that
   wandered in.
 - Mountain-grey hairlines instead of borders and shadows: the sheet's own fold.
-- Valley-blue wash for focus and for what arrived; foil gold for the one
+- Valley-blue wash for focus and for what arrived; solid ink for the one
   irreversible act per screen.
 - One typeface on its width axis for prose, one mono for every crease id.
-- Panels are sheets with exactly one turned corner; page headers carry 60°
+- Panels are flat sheets, no turned corner; page headers carry 60°
   scoring.
 - Flat by construction. Three planes, no elevation shadows anywhere.
 
@@ -206,20 +206,21 @@ a small, findable change:
 | Palette | the two `daisyui-theme` blocks in `assets/css/app.css` | edit the oklch values in place |
 | Typefaces | the four `@font-face` blocks and `--font-sans` / `--font-mono` in `app.css` | drop in the real woff2 files, change two variables |
 | Mark | `Layouts.mark/1` | replace the inline SVG with an `<img>`, delete the function body |
-| Foil | `--foil` in `app.css` | one gradient declaration; every foil surface reads it |
+| Packet face | `--packet-face` / `--packet-ink` in `app.css` | two declarations; the commit control reads them |
 
 The mark is the Miura crease pattern itself — three zig-zag rows and the
-verticals that link them — drawn on foil. It is the actual pattern, not a
+verticals that link them — drawn in ink on paper. It is the actual pattern, not a
 suggestion of one, because the two line families are why a sheet deploys in one
 pull, and a stock that leaves whole and returns in pieces is the same geometry.
 It is a placeholder that looks designed, not a logo.
 
-**The Foil-Is-CSS Rule.** Foil is a gradient in `--foil`, never a raster asset.
-This is decided, not pending. The screens are used on phones in mission storage
-rooms on a warehouse's guest wifi, so an image request for a button face is a
-button that arrives late or not at all; and the NGO's real identity files do
-not exist yet, so shipping an image of a metallic would be inventing an asset
-that has to be thrown away.
+**The No-Gold Rule.** There is no gold in this system, and its removal is a
+decision rather than an omission. Foil was the packet's face in the crease
+chart, and on a surgical charity's stock screen it read as luxury — the one
+association this operation has no use for. The world lost nothing: a Miura
+sheet is paper, ink and two kinds of crease, and the fold is what carries it.
+Gold was the only borrowed note. The chamfer was always the part doing the
+work.
 
 ## Colors
 
@@ -247,13 +248,11 @@ held to a single act.
 
 ### Tertiary
 
-- **Foil Gold** (`{colors.foil-gold}`): the packet's face — the sheet folded,
-  sealed, ready to travel — which in this operation is the donation
-  certificate, the paper that closes a mission. It is the commit button, the
-  mark, and the `:donation` status. Nothing else. The warning colour was pushed
-  off it deliberately (`{colors.ledger-warning}`, warmer, redder, twice the
-  chroma) because an amber warning beside a foil accent is two golds arguing at
-  badge size.
+- **Accent Indigo** (`{colors.accent-indigo}`): the valley taken to its
+  darkest, so the accent stays inside the world's own family and still cannot
+  be mistaken for the blue that means "go on" or the amber that means "soon".
+  Spent only where the work is humane: a donation.
+
 
 ### Neutral
 
@@ -271,8 +270,11 @@ held to a single act.
   with, carrying the same faint warmth as the ink.
 
 Dark mode is a register of the same sheet, not the absence of one: graphite
-rather than navy, and the fold tones **invert** — in the dark a turned corner is
-the surface angled toward the lamp, so it is lit rather than shaded. The dog-ear
+rather than navy, and the packet **inverts** — it is the highest-contrast object
+on the screen, which is its whole job, and on a graphite sheet the highest
+contrast is paper rather than more ink. Left dark it was ink on ink: present in
+the markup and gone from the screen, exactly where the operator commits. The
+packet
 was invisible until this was fixed.
 
 ### Named Rules
@@ -292,7 +294,7 @@ sequenced and each group carries a hue, so on a phone in a storage room you know
 which part of the system you are in before you read the title. Incoming is cyan
 (hue 208), Operation blue (248), Stock indigo (268), and Reports is the mountain
 grey (hue 82 at 0.12 chroma) — near-achromatic, because Reports is the one
-section where nothing is written, only read, and it keeps the gold for the foil
+section where nothing is written, only read, and it keeps the palette clear for the
 instead of spending it on a menu. Three of the four are one progression along
 the valley; they are not four unrelated hues.
 
@@ -412,7 +414,7 @@ grid because the row is filtered by role, and a fixed track count leaves a hole
 where the act somebody is not allowed to perform would have been.
 
 **Rhythm.** Panel body 1rem; panel head `0.75rem 1.75rem 0.75rem 1rem` (the
-right inset is room for the dog-ear, so a panel title never runs under its own
+right inset is ordinary, since a panel title has nothing to run under. The
 fold); table cells `0.75rem`; chip and hairline gaps `0.375rem`. Field cells are
 inset from the rule rather than from a border, which is what makes the figures
 line up with the prose above and below the block.
@@ -479,9 +481,12 @@ claiming height.
 
 ### Named Rules
 
-**The One Fold Rule.** One turned corner per panel and no more. A page of eight
-panels each with a dog-ear is a page of decoration; one turned corner per sheet
-is a material telling you it is paper.
+**The Flat Panel Rule.** A panel has no turned corner. The dog-ear shipped as
+the world's signature on the container and was wrong twice: it repeated on
+every panel — eight on the overview, so the material became a motif — and it
+was ornament on the one element that should be silent. A panel holds a table
+steady. The world lives where it does work: the scoring on the page head, the
+crease on a movement, the chamfer on the one control that writes.
 
 **The Press-Don't-Lift Rule.** A sheet does not float. Interactive surfaces
 respond by pressing into their crease — a linked field cell, a quick action and
@@ -562,7 +567,7 @@ classes, so a `<form>` that needs to be a panel wears the same clothes as the
   commits.
 - **`ghost`:** no fill — dismiss, cancel a dialog. **Except beside the packet**,
   where it takes the sheet's own edge and a white fill: once the packet took
-  foil and a chamfer, the ghost next to it read as a sentence somebody had left
+  solid ink and a chamfer, the ghost next to it read as a sentence somebody had left
   on the page. A control that does not look like a control is the Operate
   failure the whole mode exists to prevent, and it was introduced by making its
   neighbour loud.
@@ -594,7 +599,7 @@ always this bug, not a style choice.
 
 ### The Packet (signature component)
 
-In the crease chart the packet is the folded sheet: gold foil, hand-sized, the
+In the crease chart the packet is the folded sheet, hand-sized, the
 whole structure held closed until somebody pulls it. Pulling it is the only
 irreversible act, and this app has exactly one class of irreversible act — a
 write to the append-only ledger.
@@ -602,18 +607,18 @@ write to the append-only ledger.
 So `commit_action/1` with tone `:commit` and no icon renders the packet: cut at
 the fold angle on its trailing edge (`clip-path` with a 0.5rem pull, and the
 padding opened by the same amount so the label is not clipped), faced with the
-`--foil` gradient, ink-on-gold at weight 600, no border, no shadow. Hover
+`--packet-face`, paper-on-ink at weight 600, no border, no shadow. Hover
 brightens by 6%. **Pressed is the pull** — `translateX(1px)` and a hair darker,
 not a lift, because a fold does not rise off the table when you tug it. Disabled
-drops to the flat mountain fill: no foil where nothing can be committed. Its
+drops to the flat mountain fill: no packet where nothing can be committed. Its
 tooltip lives on the wrapper, because a disabled button swallows pointer events
 and its own `title` never appears.
 
 **The Scarce Packet Rule.** The packet is `:commit` only, never `:danger`, and
 never an icon trigger. `:danger` repeats down a table — a kit recipe has
-twenty-eight Remove buttons, and twenty-eight foil-cut blocks is the shouting
+twenty-eight Remove buttons, and twenty-eight chamfered ink blocks is the shouting
 this component exists to avoid. An icon trigger is what a commit becomes when it
-repeats on every row, and twelve foil chamfers down a list would say
+repeats on every row, and twelve chamfers down a list would say
 "irreversible" twelve times on a screen where it is true once. The review asked
 for the chamfer on every control; it was refused, because the gesture's whole
 meaning is that there is one of it per screen.
@@ -687,7 +692,7 @@ The stroke is a second channel, never the only one. The text always says which.
 ### Cards / Containers
 
 There are no cards. `panel/1` is the one container: sheet white, one 1px
-mountain-grey edge, `box` radius, no shadow, one turned corner top-right, 1rem
+mountain-grey edge, `box` radius, no shadow, no turned corner, 1rem
 body padding, `flush` when the body is a table so the cells' own padding does the
 work. Its head takes the panel's corner radii when the body is flush.
 
@@ -858,9 +863,9 @@ from a partner outside the ONG is not rendering it at all.
 - **Don't** add a KPI-card row, a floating tile, or any resting surface with a
   drop shadow. The identification block replaced exactly that, and hover lift
   promises an affordance that usually does not exist.
-- **Don't** give a panel a second turned corner, or a page a second panel with
+- **Don't** give a panel a turned corner, or a page a second element with
   one where one sheet would do.
-- **Don't** put foil or the chamfer on anything but the single `:commit` trigger
+- **Don't** put the chamfer on anything but the single `:commit` trigger
   per screen. Not on `:danger`, not on an icon trigger, not on a secondary
   action.
 - **Don't** ship the 60° scoring at a different angle per section, or a section
@@ -875,14 +880,14 @@ from a partner outside the ONG is not rendering it at all.
   rather than replacing it, and stylesheet order decides which wins.
 - **Don't** let a control change size while it works, or grow when it is
   confirmed. Stripes, not spinners.
-- **Don't** spend green or red on navigation, or amber anywhere near the foil.
-- **Don't** ship a raster asset for the foil, the mark, or any brand surface.
+- **Don't** spend green or red on navigation, or amber anywhere near the accent.
+- **Don't** ship a raster asset for the mark or any brand surface.
 
 ## What is not decided
 
 - The real brand assets, and everything in the provisional-identity table that
   waits on them.
-- Whether the foil should keep its one-act-per-screen discipline once the ONG
+- Whether the packet should keep its one-act-per-screen discipline once the ONG
   sees it in use.
 - An accessibility standard to test against. Honored today: labelled controls,
   keyboard-reachable actions, a visible focus treatment on every control, status
