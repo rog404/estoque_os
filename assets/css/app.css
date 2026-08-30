@@ -305,6 +305,24 @@ body {
 /* A panel is the one container. Everything that used to be `card bg-base-100
    border border-base-300` in twenty-six different spellings is this. */
 .panel {
+  /* A panel never widens what holds it.
+
+     A grid or flex item is `min-width: auto` by default, which means it refuses
+     to shrink below its widest unbreakable content — and a panel's content is a
+     mission kit's limiting component: forty characters of catalogue name with
+     no space to break at. On a phone that made the panel measure 907px inside a
+     one-column grid 468px wide, and the grid, the container and the document
+     stretched with it: the overview scrolled sideways to 923px in a 500px
+     viewport.
+
+     What left the screen was the right-hand column, which is where every list
+     panel keeps its quantity — the one number those panels exist to show. The
+     page looked fine; the number was simply past the edge, and on a phone
+     nobody scrolls a page sideways to look for it.
+
+     The panel is the container. It takes the width it is given, and its own
+     content wraps or truncates inside it. */
+  min-width: 0;
   background: var(--color-base-100);
   border: 1px solid var(--color-base-300);
   border-radius: var(--radius-box);
