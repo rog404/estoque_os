@@ -487,3 +487,13 @@ Agents should search the style guide before implementing code to follow team con
 <!-- cortex-memory-rules -->
 <!-- Rules will be auto-generated here by: cx memory export -->
 <!-- /cortex-memory-rules -->
+
+## Agent skills
+
+### Issue tracker
+
+Issues live as GitHub issues in rog404/estoque_os, managed via the `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Domain docs
+
+Single-context: `CONTEXT.md` + `docs/adr/` at the repo root (neither exists yet — created lazily by `/domain-modeling`). See `docs/agents/domain.md`.
