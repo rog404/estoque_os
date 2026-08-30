@@ -12,7 +12,7 @@ defmodule EstoqueOSWeb.IssueLive.Index do
   import EstoqueOS.Coercion, only: [to_decimal: 1, to_id: 1, blank_to_nil: 1]
 
   alias EstoqueOS.Accounts.Scope
-  alias EstoqueOS.{Catalog, Inventory, Outbound}
+  alias EstoqueOS.{Catalog, Inventory, Outbound, Reports}
   alias EstoqueOS.Inventory.Locations
   alias EstoqueOS.Inventory.Transaction
 
@@ -80,7 +80,66 @@ defmodule EstoqueOSWeb.IssueLive.Index do
     end
   end
 
+  # Arrived from the end of a mission, which knows exactly which lots it wants
+  # gone: the coordinator ticked them on the mission screen and pressed "donate".
+  # The basket comes filled, the destination is already a donation, and the
+  # place is the mission site rather than the warehouse this screen defaults to.
+  #
+  # The lines are rebuilt here from the ledger rather than trusted from the
+  # address bar. A stale link — the same lot written off from the phone in the
+  # meantime — then fills a shorter basket instead of posting a quantity that is
+  # no longer there.
+  def handle_params(%{"donate" => lots, "location" => location_id} = params, _uri, socket) do
+    socket = assign_segment(socket, params)
+
+    with {location_id, ""} <- Integer.parse(location_id),
+         [_ | _] = wanted <- parse_ids(lots),
+         [_ | _] = lines <- donation_lines(location_id, wanted) do
+      {:noreply,
+       socket
+       |> assign(:location_id, location_id)
+       |> assign(:destination, "donation")
+       |> assign(:basket, lines)
+       |> load_here()}
+    else
+      _ -> {:noreply, put_flash(socket, :error, gettext("That stock is no longer here."))}
+    end
+  end
+
   def handle_params(params, _uri, socket), do: {:noreply, assign_segment(socket, params)}
+
+  defp parse_ids(value) do
+    value
+    |> String.split(",", trim: true)
+    |> Enum.flat_map(fn part ->
+      case Integer.parse(part) do
+        {id, ""} -> [id]
+        _ -> []
+      end
+    end)
+  end
+
+  # Whole positions, not partial ones: the point of the suggestion is that this
+  # lot is not worth flying home, so the quantity is however much of it is here.
+  # An operator who wants to donate half of it drops the line and adds it by
+  # hand, which is the flow that asks for a quantity.
+  defp donation_lines(location_id, wanted) do
+    [limit: nil, location_id: location_id]
+    |> Reports.expiring_soon()
+    |> Enum.filter(&(&1.lot_id in wanted))
+    |> Enum.map(fn row ->
+      %{
+        product_id: row.product_id,
+        product: row.product,
+        quantity: row.quantity,
+        box_id: row.box_id,
+        box_code: row.box,
+        lot_id: row.lot_id,
+        lot_number: row.lot_number,
+        sale_unit_price: nil
+      }
+    end)
+  end
 
   # Which stock this screen is about. The marketing menu asks for one in the
   # address; the marketing role has one whatever the address says. Everything

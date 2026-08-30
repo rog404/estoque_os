@@ -19,6 +19,7 @@ defmodule EstoqueOS.Missions do
   alias EstoqueOS.Inventory.{Location, Lot, StockSnapshot, Transaction, TransactionEntry}
   alias EstoqueOS.Missions.Mission
   alias EstoqueOS.Repo
+  alias EstoqueOS.Reports
 
   @doc "Missions, most recent departure first."
   def list_missions do
@@ -203,6 +204,27 @@ defmodule EstoqueOS.Missions do
 
   def consumption_per_table(%{mission: %Mission{tables: tables}, totals: totals}) do
     totals.consumed |> Decimal.div(tables) |> Decimal.round(2)
+  end
+
+  @doc """
+  What is still at the mission site and will not survive the trip home.
+
+  The end of a trip is the last moment donating something is still cheap: the
+  goods are already in the city that needs them, and a box flown back to the
+  warehouse to expire there helped nobody. So the suggestion is FEFO — soonest
+  expiry first — over the stock the ledger still places at the site.
+
+  The window is the same one the dashboard uses, `:expiry_alert_days`, with the
+  per-product override honoured. A second threshold to explain would buy
+  nothing: an item too close to expiry to be worth flying home is the same item
+  the warehouse would have alerted on next week.
+
+  This is a suggestion, never an instruction. Nothing here writes to the ledger
+  — the operator picks lines and the ordinary write-off flow does the writing,
+  with the reason and the certificate it already produces.
+  """
+  def donation_candidates(%Mission{} = mission) do
+    Reports.expiring_soon(location_id: mission.location_id, limit: nil)
   end
 
   @doc "Mission sites, for the picker on the mission form."

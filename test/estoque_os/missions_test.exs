@@ -481,6 +481,103 @@ defmodule EstoqueOS.MissionsTest do
     end
   end
 
+  describe "donation_candidates/1" do
+    test "suggests what is at the site and about to expire", context do
+      %{warehouse: warehouse, site: site, mission: mission, box: box} = context
+
+      soon = product_fixture(%{name: "Soro fisiológico"})
+
+      soon_lot =
+        lot_fixture(%{
+          product_id: soon.id,
+          lot_number: "L-2291",
+          expires_on: Date.add(Date.utc_today(), 20)
+        })
+
+      {:ok, _} =
+        Inventory.post_transaction(%{
+          type: "purchase_in",
+          user_id: actor_id(),
+          entries: [
+            %{
+              lot_id: soon_lot.id,
+              location_id: warehouse.id,
+              box_id: box.id,
+              quantity: Decimal.new(40)
+            }
+          ]
+        })
+
+      send_out(context)
+
+      candidates = Missions.donation_candidates(mission)
+
+      assert [%{lot_id: lot_id, product: "Soro fisiológico", quantity: quantity}] = candidates
+      assert lot_id == soon_lot.id
+      assert Decimal.equal?(quantity, Decimal.new(40))
+
+      # The gauze travelled in the same box and is at the same place. It expires
+      # in 2028, so flying it home costs nothing — suggesting it would train the
+      # coordinator to ignore the panel.
+      refute Enum.any?(candidates, &(&1.product == "Gaze estéril"))
+      assert site.id == mission.location_id
+    end
+
+    test "ignores stock that never left the warehouse", context do
+      %{warehouse: warehouse, mission: mission, box: box} = context
+
+      near = product_fixture(%{name: "Luva cirúrgica"})
+      near_lot = lot_fixture(%{product_id: near.id, expires_on: Date.add(Date.utc_today(), 10)})
+
+      {:ok, _} =
+        Inventory.post_transaction(%{
+          type: "purchase_in",
+          user_id: actor_id(),
+          entries: [
+            %{
+              lot_id: near_lot.id,
+              location_id: warehouse.id,
+              box_id: box.id,
+              quantity: Decimal.new(60)
+            }
+          ]
+        })
+
+      # No load-out: the box is still home, where the warehouse's own expiry
+      # alert already covers it. A mission cannot donate what it does not have.
+      assert Missions.donation_candidates(mission) == []
+    end
+
+    test "honours the per-product window", context do
+      %{warehouse: warehouse, mission: mission, box: box} = context
+
+      # Default window is 90 days. This one is 150 days out, so it is only a
+      # candidate because the product asks for more warning than the rest.
+      patient = product_fixture(%{name: "Insulina", expiry_alert_days_override: 200})
+
+      patient_lot =
+        lot_fixture(%{product_id: patient.id, expires_on: Date.add(Date.utc_today(), 150)})
+
+      {:ok, _} =
+        Inventory.post_transaction(%{
+          type: "purchase_in",
+          user_id: actor_id(),
+          entries: [
+            %{
+              lot_id: patient_lot.id,
+              location_id: warehouse.id,
+              box_id: box.id,
+              quantity: Decimal.new(5)
+            }
+          ]
+        })
+
+      send_out(context)
+
+      assert [%{product: "Insulina"}] = Missions.donation_candidates(mission)
+    end
+  end
+
   describe "list_mission_sites/0" do
     test "offers only mission sites, never a warehouse", %{site: site} do
       names = Missions.list_mission_sites() |> Enum.map(& &1.name)
