@@ -66,6 +66,7 @@ defmodule EstoqueOS.Reports do
       lot_number: l.lot_number,
       expires_on: l.expires_on,
       box: b.code,
+      box_id: b.id,
       box_verified_at: b.last_verified_at,
       location: loc.name,
       location_id: loc.id,
@@ -569,6 +570,11 @@ defmodule EstoqueOS.Reports do
 
   A product may override the global window: insulin nobody can replace on a
   mission deserves more warning than gauze.
+
+  `:location_id` narrows it to one place, which is what the end of a mission
+  asks: of what is still at the site, what will not survive the trip home.
+  `limit: nil` returns every row — the dashboard wants a preview, a mission
+  closing wants the whole list.
   """
   def expiring_soon(opts \\ []) do
     default_days = opts[:days] || Application.get_env(:estoque_os, :expiry_alert_days, 90)
@@ -576,16 +582,19 @@ defmodule EstoqueOS.Reports do
     horizon = Date.add(today, default_days)
 
     opts
-    |> Keyword.take([:segment])
+    |> Keyword.take([:segment, :location_id])
     |> stock_rows()
     |> Enum.filter(fn row ->
       row.expires_on &&
         Date.compare(row.expires_on, product_horizon(row, today, horizon)) != :gt
     end)
     |> Enum.sort_by(& &1.expires_on, Date)
-    |> Enum.take(opts[:limit] || 10)
+    |> take_rows(Keyword.get(opts, :limit, 10))
     |> Enum.map(&Map.put(&1, :days_left, Date.diff(&1.expires_on, today)))
   end
+
+  defp take_rows(rows, nil), do: rows
+  defp take_rows(rows, limit), do: Enum.take(rows, limit)
 
   defp product_horizon(row, today, default_horizon) do
     case row[:expiry_alert_days_override] do

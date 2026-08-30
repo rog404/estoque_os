@@ -264,4 +264,114 @@ defmodule EstoqueOSWeb.MissionLiveTest do
       assert html =~ "informe o número de mesas"
     end
   end
+
+  describe "donate before it expires" do
+    # Puts something short-dated in the travelling box and sends it to the site.
+    defp with_expiring_stock(context) do
+      %{warehouse: warehouse, site: site, box: box} = context
+
+      serum = product_fixture(%{name: "Soro fisiológico"})
+
+      lot =
+        lot_fixture(%{
+          product_id: serum.id,
+          lot_number: "L-2291",
+          expires_on: Date.add(Date.utc_today(), 20)
+        })
+
+      {:ok, _} =
+        Inventory.post_transaction(%{
+          type: "purchase_in",
+          user_id: actor_id(),
+          entries: [
+            %{
+              lot_id: lot.id,
+              location_id: warehouse.id,
+              box_id: box.id,
+              quantity: Decimal.new(40)
+            }
+          ]
+        })
+
+      {:ok, _} =
+        Outbound.load_out(%{
+          source_location_id: warehouse.id,
+          destination_location_id: site.id,
+          box_ids: [box.id],
+          user_id: actor_id()
+        })
+
+      %{serum: serum, serum_lot: lot}
+    end
+
+    test "lists what will not survive the trip home", context do
+      mission = with_mission(context)
+      %{serum_lot: lot} = with_expiring_stock(context)
+
+      {:ok, _view, html} = live(context.conn, ~p"/missions/#{mission.id}")
+
+      assert html =~ "Doar antes de vencer"
+      assert html =~ "Soro fisiológico"
+      assert html =~ "L-2291"
+      assert html =~ "em 20 dia(s)"
+      assert html =~ ~s(value="#{lot.id}")
+    end
+
+    test "carries the ticked lots to the write-off screen", context do
+      mission = with_mission(context)
+      %{serum_lot: lot} = with_expiring_stock(context)
+
+      {:ok, view, _html} = live(context.conn, ~p"/missions/#{mission.id}")
+
+      view
+      |> form("#donation-picks", %{"lots" => ["#{lot.id}"]})
+      |> render_change()
+
+      assert {:error, {:live_redirect, %{to: to}}} =
+               view |> element("button", "Doar selecionados") |> render_click()
+
+      assert to =~ "/issue?"
+      assert to =~ "donate=#{lot.id}"
+      assert to =~ "location=#{context.site.id}"
+
+      {:ok, _issue, html} = live(context.conn, to)
+
+      # The basket arrives filled: the whole position, the lot it came from, and
+      # a donation already chosen. Typing none of that back in is the point.
+      assert html =~ "Soro fisiológico"
+      assert html =~ "L-2291"
+      assert html =~ "40"
+    end
+
+    test "a stale link fills nothing rather than posting what is gone", context do
+      _mission = with_mission(context)
+      %{serum: serum, serum_lot: lot} = with_expiring_stock(context)
+
+      {:ok, _} =
+        Outbound.issue(serum.id, 40, %{
+          location_id: context.site.id,
+          user_id: actor_id(),
+          destination: "pacu"
+        })
+
+      {:ok, _issue, html} =
+        live(context.conn, ~p"/issue?donate=#{lot.id}&location=#{context.site.id}")
+
+      assert html =~ "Esse estoque não está mais aqui"
+    end
+
+    test "stays off the screen when nothing is expiring", context do
+      mission = with_mission(context)
+
+      {:ok, _view, html} = live(context.conn, ~p"/missions/#{mission.id}")
+
+      # Tags first: the words this panel is made of hide inside class names and
+      # ids all over the page, and a refute that passes on markup protects
+      # nothing.
+      text = String.replace(html, ~r{<[^>]*>}s, " ")
+
+      refute text =~ "Doar antes de vencer"
+      refute text =~ "Doar selecionados"
+    end
+  end
 end

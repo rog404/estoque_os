@@ -20,7 +20,7 @@ defmodule EstoqueOSWeb.MissionLive.Show do
 
   Reporting only.
   """
-  def viewer_events, do: ~w(filter)
+  def viewer_events, do: ~w(filter select_donation)
 
   alias EstoqueOS.Missions
 
@@ -33,12 +33,45 @@ defmodule EstoqueOSWeb.MissionLive.Show do
      |> assign(:page_title, panel.mission.name)
      |> assign(:only_open, false)
      |> assign(:error, nil)
+     |> assign(:candidates, Missions.donation_candidates(panel.mission))
+     |> assign(:selected, MapSet.new())
      |> assign(:panel, panel)}
   end
 
   @impl true
   def handle_event("filter", params, socket) do
     {:noreply, assign(socket, :only_open, params["only_open"] == "true")}
+  end
+
+  # Ticking a line moves nothing. The whole panel is a suggestion until the
+  # operator carries it over to the write-off screen, which is where a movement
+  # is actually posted and where the permissions for posting one live.
+  def handle_event("select_donation", params, socket) do
+    selected =
+      params
+      |> Map.get("lots", [])
+      |> Enum.flat_map(fn value ->
+        case Integer.parse(value) do
+          {id, ""} -> [id]
+          _ -> []
+        end
+      end)
+      |> MapSet.new()
+
+    {:noreply, assign(socket, :selected, selected)}
+  end
+
+  # A navigation, not a write: the write-off screen is the one that asks for a
+  # recipient and posts the transaction. Ticking here and pressing there is the
+  # same two-step every donation already goes through — this only skips typing
+  # six product names into a search box while standing in a hospital corridor.
+  def handle_event("donate", _params, socket) do
+    if Enum.empty?(socket.assigns.selected) do
+      {:noreply, socket}
+    else
+      {:noreply,
+       push_navigate(socket, to: donate_path(socket.assigns.panel, socket.assigns.selected))}
+    end
   end
 
   def handle_event("reschedule", params, socket) do
@@ -172,6 +205,54 @@ defmodule EstoqueOSWeb.MissionLive.Show do
         </span>
       </div>
 
+      <%!-- Shown only when the site still holds something with a short life left.
+            An empty panel on every closed mission would be a heading that means
+            "nothing to do" in a screen already full of numbers. --%>
+      <.panel :if={@candidates != []} title={gettext("Donate before it expires")} flush>
+        <p class="px-4 pt-3 text-sm text-base-content/70">
+          {gettext(
+            "Still at %{where}, soonest expiry first. Handing these over now costs a signature; flying them home costs the goods.",
+            where: @panel.mission.location.name
+          )}
+        </p>
+
+        <form id="donation-picks" phx-change="select_donation">
+          <.data_table rows={@candidates} row_id={&"candidate-#{&1.lot_id}"}>
+            <:col :let={row} label={gettext("Take")}>
+              <.check
+                name="lots[]"
+                value={to_string(row.lot_id)}
+                label={gettext("Donate")}
+                checked={MapSet.member?(@selected, row.lot_id)}
+              />
+            </:col>
+            <:col :let={row} label={gettext("Product")} emphasis={:identity}>
+              <.link navigate={~p"/products/#{row.product_id}"} class="link link-hover">
+                {row.product}
+              </.link>
+              <.status :if={row.controlled} kind={:controlled} />
+            </:col>
+            <:col :let={row} label={gettext("Lot")}>{row.lot_number}</:col>
+            <:col :let={row} label={gettext("Box")}>{row.box}</:col>
+            <:col :let={row} label={gettext("Expires")}>
+              {date(row.expires_on)}
+              <span class="block text-xs text-base-content/60">{expiry_hint(row)}</span>
+            </:col>
+            <:col :let={row} label={gettext("Quantity")} align={:right} emphasis={:primary}>
+              {quantity(row.quantity)}
+            </:col>
+          </.data_table>
+        </form>
+
+        <div class="p-4">
+          <.write_gate may={@role_may_write?} allowed={@controls_enabled?}>
+            <.button phx-click="donate" disabled={Enum.empty?(@selected)}>
+              {gettext("Donate selected")}
+            </.button>
+          </.write_gate>
+        </div>
+      </.panel>
+
       <form id="lines-filter" phx-change="filter" class="flex items-center gap-2 mt-6">
         <.check
           name="only_open"
@@ -233,6 +314,24 @@ defmodule EstoqueOSWeb.MissionLive.Show do
       nil -> gettext("record the number of tables to compare missions")
       per_table -> gettext("%{value} per table", value: quantity(per_table))
     end
+  end
+
+  # Days, not a date, because "expires 12/09" needs a calendar and "in 11 days"
+  # does not — and the question this panel asks is whether the trip home is
+  # longer than what the item has left.
+  defp expiry_hint(%{days_left: days}) when days < 0 do
+    gettext("expired %{days} day(s) ago", days: abs(days))
+  end
+
+  defp expiry_hint(%{days_left: days}), do: gettext("in %{days} day(s)", days: days)
+
+  # Lot ids in the address, not a basket carried across the socket: the write-off
+  # screen rebuilds the lines from the ledger, so a link that sat in a tab
+  # overnight cannot post yesterday's quantities.
+  defp donate_path(%{mission: mission}, selected) do
+    lots = selected |> Enum.sort() |> Enum.join(",")
+
+    ~p"/issue?donate=#{lots}&location=#{mission.location_id}"
   end
 
   defp unplaced_class(value) do

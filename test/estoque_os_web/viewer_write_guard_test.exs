@@ -190,7 +190,7 @@ defmodule EstoqueOSWeb.ViewerWriteGuardTest do
       # admin and manager may set it. Refused to a viewer like any other write.
       "product_live/show" => ~w(deactivate reactivate set_minimum stow),
       "mission_live/index" => ~w(create),
-      "mission_live/show" => ~w(reschedule)
+      "mission_live/show" => ~w(reschedule donate)
     }
 
     # The list above was hand-written, which meant a new screen was simply absent
