@@ -19,6 +19,7 @@ defmodule EstoqueOS.Seeds do
 
   import Ecto.Query
 
+  alias EstoqueOS.Accounts
   alias EstoqueOS.Catalog
   alias EstoqueOS.Catalog.Product
   alias EstoqueOS.Inventory.Location
@@ -44,6 +45,138 @@ defmodule EstoqueOS.Seeds do
       products: seed_catalog(opts[:catalog_sheet] || Samples.catalog_sheet()),
       kits: seed_kits(opts[:kits_sheet] || Samples.kits_sheet())
     }
+  end
+
+  # The four accounts a from-zero test deployment needs, one per role that has a
+  # screen worth seeing. All on a throwaway domain, all sharing one password,
+  # and all cleared of the forced first-login reset — a demo account that
+  # demands a new password before it shows anything is a demo that does not
+  # open. Real accounts the admin creates still carry the reset.
+  #
+  # The password is read from BOOTSTRAP_PASSWORD, never committed: this repo is
+  # public, so a real credential cannot live in the source. The fallback is an
+  # obvious placeholder for local dev that a deployment overrides through the
+  # environment.
+  @bootstrap_password_placeholder "trocar-em-producao"
+  @bootstrap_users [
+    %{email: "admin@estoque.local", role: "admin"},
+    %{email: "estoque@estoque.local", role: "manager"},
+    %{email: "logistica@estoque.local", role: "logistics"},
+    %{email: "marketing@estoque.local", role: "marketing"}
+  ]
+
+  # The patient kit as the mission describes it by hand (the WhatsApp list). The
+  # other kits are created by name only — their contents are raised later, in
+  # the app. Lines carry a description and a quantity; the product is matched
+  # when a catalog exists and stays unresolved until then.
+  @patient_kit_items [
+    {"Fixador de acesso venoso", 1},
+    {"Gaze Ray Tec", 1},
+    {"Luva estéril 6,0", 1},
+    {"Luva estéril 6,5", 1},
+    {"Luva estéril 7,0", 1},
+    {"Luva estéril 7,5", 1},
+    {"Luva não estéril P", 1},
+    {"Luva não estéril M", 1},
+    {"Luva não estéril G", 1},
+    {"Gaze com fio radiopaco", 30},
+    {"Gaze comum", 30},
+    {"Lâmina de bisturi 15", 1},
+    {"Lâmina de bisturi 11", 1},
+    {"Micropore", 1},
+    {"Gelco 22", 1},
+    {"Gelco 24", 1},
+    {"Extensor", 1},
+    {"Bureta", 1},
+    {"Equipo macro", 1},
+    {"Equipo micro", 1},
+    {"Fita crepe", 1},
+    {"Seringa", 1},
+    {"Álcool", 1},
+    {"Clorexidina alcoólica", 1},
+    {"Clorexidina aquosa", 1},
+    {"PVPI (antisséptico amarelo)", 1},
+    {"Soro", 1},
+    {"Compressa", 30},
+    {"Máscara", 1},
+    {"Fixador de punção", 1},
+    {"Agulha", 1},
+    {"Transferidor de soro", 1},
+    {"Tubo extensor para aspiração", 1}
+  ]
+
+  @mission_kits [
+    {"Kit Paciente", @patient_kit_items},
+    {"Kit Anestesia", []},
+    {"Kit Enfermagem", []},
+    {"Kit Pré e Pós", []},
+    {"Kit Recuperação", []}
+  ]
+
+  @doc """
+  The starting data for a from-zero deployment that will receive its real stock
+  by import: the locations, the mission kits, and the role accounts. No catalog
+  and no stock — the catalog is built by importing the adjusted control, and the
+  stock rides in on the same import.
+
+  Safe to run twice: existing rows and accounts are left alone.
+  """
+  def bootstrap do
+    %{
+      locations: seed_locations(),
+      kits: seed_mission_kits(),
+      users: seed_users()
+    }
+  end
+
+  @doc "Creates the role accounts a test deployment logs in with."
+  def seed_users do
+    Enum.map(@bootstrap_users, fn %{email: email, role: role} ->
+      case Accounts.get_user_by_email(email) do
+        nil -> create_bootstrap_user(email, role)
+        user -> user
+      end
+    end)
+  end
+
+  defp create_bootstrap_user(email, role) do
+    {:ok, {user, _password}} =
+      Accounts.create_user_with_temporary_password(email, role, password: bootstrap_password())
+
+    user
+    |> Ecto.Changeset.change(
+      must_reset_password: false,
+      confirmed_at: user.confirmed_at || DateTime.utc_now(:second)
+    )
+    |> Repo.update!()
+  end
+
+  @doc "The password every bootstrap account shares, from the environment."
+  def bootstrap_password do
+    case System.get_env("BOOTSTRAP_PASSWORD") do
+      nil -> @bootstrap_password_placeholder
+      "" -> @bootstrap_password_placeholder
+      password -> password
+    end
+  end
+
+  @doc "Creates the five mission kits; only the patient kit carries items."
+  def seed_mission_kits do
+    Enum.map(@mission_kits, fn {name, items} ->
+      case Repo.one(from k in Kit, where: fragment("lower(?)", k.name) == ^String.downcase(name)) do
+        nil ->
+          item_attrs =
+            Enum.map(items, fn {description, quantity} ->
+              %{description: description, quantity: Decimal.new(quantity)}
+            end)
+
+          {:ok, kit} = Kits.create_kit(%{name: name, items: item_attrs})
+          kit
+
+        kit ->
+          kit
+      end
+    end)
   end
 
   def seed_locations do

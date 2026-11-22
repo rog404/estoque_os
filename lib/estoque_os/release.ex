@@ -91,7 +91,7 @@ defmodule EstoqueOS.Release do
         {:ok, seeded?, _} = Ecto.Migrator.with_repo(repo, &seed_empty_repo/1)
 
         if seeded? do
-          IO.puts("[seed] fresh database — catalog and demo scenario loaded")
+          IO.puts("[seed] fresh database — bootstrap data loaded")
         else
           IO.puts("[seed] database already has accounts — nothing to do")
         end
@@ -99,10 +99,20 @@ defmodule EstoqueOS.Release do
     end
   end
 
+  # The from-zero deployment loads the bootstrap (locations, kits, role
+  # accounts) and nothing more: its stock arrives by import, so the fake demo
+  # scenario would only get in the way. The demo scenario is still available on
+  # first boot behind `SEED_DEMO`, for a deployment that wants something to look
+  # at without importing anything.
   defp seed_empty_repo(repo) do
     if repo.aggregate(EstoqueOS.Accounts.User, :count) == 0 do
-      EstoqueOS.Seeds.run()
-      EstoqueOS.DemoData.run!()
+      EstoqueOS.Seeds.bootstrap()
+
+      if System.get_env("SEED_DEMO") in ~w(true 1) do
+        EstoqueOS.Seeds.run()
+        EstoqueOS.DemoData.run!()
+      end
+
       true
     else
       false
