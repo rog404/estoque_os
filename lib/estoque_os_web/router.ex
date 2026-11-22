@@ -324,6 +324,12 @@ defmodule EstoqueOSWeb.Router do
     live_session :current_user,
       on_mount: [{EstoqueOSWeb.UserAuth, :mount_current_scope}] do
       live "/users/log-in", UserLive.Login, :new
+
+      # Public on purpose, and only while this is a field test: it reads a box's
+      # whole contents — lot, expiry and the controlled-substance flag — to
+      # anyone with the (guessable) code. The plan is to move it inside the
+      # authenticated routes; until then the exposure is a known, accepted call.
+      live "/caixa", BoxLive.Lookup, :index
     end
 
     post "/users/log-in", UserSessionController, :create
