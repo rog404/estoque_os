@@ -292,6 +292,33 @@ defmodule EstoqueOS.InvoicesTest do
                Invoices.post_invoice(posted, %{location_id: warehouse.id, user_id: actor_id()})
     end
 
+    # Two tabs, or a double submit racing the button's disable: both read the
+    # invoice as "parsed" before either commits. The in-database status guard,
+    # not the read, is what keeps the stock from doubling.
+    test "two simultaneous posts book the stock once", %{invoice: invoice, warehouse: warehouse} do
+      results =
+        1..2
+        |> Enum.map(fn _ ->
+          Task.async(fn ->
+            Invoices.post_invoice(Invoices.get_invoice!(invoice.id), %{
+              location_id: warehouse.id,
+              user_id: actor_id()
+            })
+          end)
+        end)
+        |> Task.await_many()
+
+      assert Enum.count(results, &match?({:ok, _}, &1)) == 1
+      assert Enum.count(results, &match?({:error, :already_posted}, &1)) == 1
+
+      eletrodo = item(Invoices.get_invoice!(invoice.id), 1)
+
+      assert Decimal.equal?(
+               Inventory.balance(product_id: eletrodo.product_id),
+               Decimal.new(300)
+             )
+    end
+
     test "refuses to post while a line is unresolved", %{warehouse: warehouse} do
       invoice = import!(@medsul)
 
@@ -302,7 +329,46 @@ defmodule EstoqueOS.InvoicesTest do
     end
   end
 
+  describe "unit_cost/2" do
+    test "a zero commercial value is a donation: nil, never zero" do
+      assert Invoices.unit_cost(Decimal.new("0.00"), Decimal.new(1)) == nil
+    end
+
+    test "a zero factor cannot divide" do
+      assert Invoices.unit_cost(Decimal.new("10"), Decimal.new(0)) == nil
+    end
+
+    test "divides the pack value by the confirmed factor" do
+      assert Decimal.equal?(
+               Invoices.unit_cost(Decimal.new("13.475"), Decimal.new(50)),
+               Decimal.new("0.2695")
+             )
+    end
+  end
+
   describe "suspicious_items/1" do
+    test "a free bonus line is never suspicious and never divides by zero" do
+      warehouse = location_fixture(%{kind: "warehouse"})
+      product = product_fixture(%{name: "Avental descartável"})
+      lot = lot_fixture(%{product_id: product.id})
+
+      {:ok, _} =
+        Inventory.post_transaction(%{
+          type: "purchase_in",
+          user_id: actor_id(),
+          entries: [
+            %{
+              lot_id: lot.id,
+              location_id: warehouse.id,
+              quantity: Decimal.new(10),
+              unit_cost: Decimal.new("2.50")
+            }
+          ]
+        })
+
+      assert Catalog.check_unit_cost(product.id, Decimal.new("0.00")) == :ok
+    end
+
     test "catches the classic total-versus-unit swap" do
       warehouse = location_fixture(%{kind: "warehouse"})
       product = product_fixture(%{name: "Eletrodo ECG adulto"})
