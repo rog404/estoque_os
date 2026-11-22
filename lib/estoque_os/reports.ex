@@ -339,22 +339,28 @@ defmodule EstoqueOS.Reports do
   The spreadsheet states what is physically there; we post the *difference*
   against the ledger as a single `inventory_import` transaction. Nothing is
   ever written as a balance, so the count remains auditable line by line.
-
   Validation is all-or-nothing: a spreadsheet with a typo posts nothing and
   reports every bad line, because a half-applied count is worse than no count.
+
+  With `create_missing: true` (the initial migration), a product, location or
+  box the row names and the catalog does not have yet is created instead of
+  refused, and a row that names only a box — no product, no quantity — registers
+  that box with nothing inside it. This is how a warehouse that predates the
+  system loads what it already holds. Without the flag (the recurring count), an
+  unknown product is still a typo to catch, not a product to invent.
   """
   def import_stock(binary, opts \\ []) do
     with {:ok, rows} <- StockWorkbook.import_rows(binary),
-         {:ok, resolved} <- resolve_rows(rows) do
+         {:ok, resolved} <- resolve_rows(rows, opts) do
       post_counted_rows(resolved, opts)
     end
   end
 
-  defp resolve_rows(rows) do
+  defp resolve_rows(rows, opts) do
     {resolved, errors} =
       rows
       |> Enum.reject(&blank_row?/1)
-      |> Enum.map(&resolve_row/1)
+      |> Enum.map(&resolve_row(&1, opts))
       |> Enum.split_with(&match?({:ok, _row}, &1))
 
     if errors == [] do
@@ -364,20 +370,36 @@ defmodule EstoqueOS.Reports do
     end
   end
 
+  defp create_missing?(opts), do: Keyword.get(opts, :create_missing, false)
+
   defp blank_row?(row) do
     is_nil(row.product) and is_nil(row.quantity) and is_nil(row.location)
   end
 
-  defp resolve_row(row) do
-    with {:ok, product} <- fetch_product(row),
-         {:ok, location} <- fetch_location(row),
-         {:ok, quantity} <- fetch_quantity(row),
+  # A row that names a box but no product is a box to register, empty — the
+  # concept boxes and baskets a count lists so they exist in the system even
+  # before anybody writes down what is inside them.
+  defp resolve_row(%{product: nil, box: box} = row, opts) when not is_nil(box) do
+    if create_missing?(opts) do
+      with {:ok, location} <- fetch_location(row, opts),
+           {:ok, box} <- fetch_box(row, location) do
+        {:ok, Map.merge(row, %{location: location, box: box, quantity: nil})}
+      end
+    else
+      error(row, gettext("the product name is missing"))
+    end
+  end
+
+  defp resolve_row(row, opts) do
+    with {:ok, product} <- fetch_product(row, opts),
+         {:ok, location} <- fetch_location(row, opts),
+         {:ok, quantity} <- fetch_quantity(row, opts),
          {:ok, box} <- fetch_box(row, location) do
       {:ok, Map.merge(row, %{product: product, location: location, box: box, quantity: quantity})}
     end
   end
 
-  defp fetch_product(row) do
+  defp fetch_product(row, opts) do
     cond do
       is_nil(row.product) ->
         error(row, gettext("the product name is missing"))
@@ -385,12 +407,34 @@ defmodule EstoqueOS.Reports do
       product = get_by_name(Product, row.product) ->
         {:ok, product}
 
+      create_missing?(opts) ->
+        create_missing_product(row)
+
       true ->
         error(row, gettext("product \"%{name}\" is not in the catalog", name: row.product))
     end
   end
 
-  defp fetch_location(row) do
+  # Names are stored upper-cased so the same item typed in two cases is one
+  # product, not two. The segment is the surgical stock this import carries; a
+  # marketing item is reclassified by hand afterwards.
+  defp create_missing_product(row) do
+    case %Product{}
+         |> Product.changeset(%{
+           name: String.upcase(row.product),
+           stock_unit: "UN",
+           segment: "medical"
+         })
+         |> Repo.insert() do
+      {:ok, product} ->
+        {:ok, product}
+
+      {:error, _changeset} ->
+        error(row, gettext("product \"%{name}\" could not be created", name: row.product))
+    end
+  end
+
+  defp fetch_location(row, opts) do
     cond do
       is_nil(row.location) ->
         error(row, gettext("the location is missing"))
@@ -398,13 +442,31 @@ defmodule EstoqueOS.Reports do
       location = get_by_name(Location, row.location) ->
         {:ok, location}
 
+      create_missing?(opts) ->
+        create_missing_location(row)
+
       true ->
         error(row, gettext("location \"%{name}\" does not exist", name: row.location))
     end
   end
 
-  defp fetch_quantity(row) do
+  # A count comes from a mission, so an unknown place is created as a mission
+  # site. A warehouse is renamed by hand if that is what it turns out to be.
+  defp create_missing_location(row) do
+    case %Location{}
+         |> Location.changeset(%{name: row.location, kind: "mission_site"})
+         |> Repo.insert() do
+      {:ok, location} ->
+        {:ok, location}
+
+      {:error, _changeset} ->
+        error(row, gettext("location \"%{name}\" could not be created", name: row.location))
+    end
+  end
+
+  defp fetch_quantity(row, opts) do
     cond do
+      is_nil(row.quantity) and create_missing?(opts) -> {:ok, nil}
       is_nil(row.quantity) -> error(row, gettext("the quantity is missing"))
       Decimal.negative?(row.quantity) -> error(row, gettext("the quantity is negative"))
       true -> {:ok, row.quantity}
@@ -451,26 +513,56 @@ defmodule EstoqueOS.Reports do
       |> Enum.map(&count_entry/1)
       |> Enum.reject(&is_nil/1)
 
-    if entries == [] do
-      {:ok, %{transaction: nil, counted: length(rows), adjusted: 0}}
-    else
-      case Inventory.post_transaction(%{
-             type: "inventory_import",
-             user_id: opts[:user_id],
-             notes: opts[:notes] || gettext("Stock imported from a spreadsheet"),
-             entries: entries
-           }) do
-        {:ok, transaction} ->
-          {:ok, %{transaction: transaction, counted: length(rows), adjusted: length(entries)}}
+    result =
+      if entries == [] do
+        {:ok, %{transaction: nil, counted: length(rows), adjusted: 0}}
+      else
+        case Inventory.post_transaction(%{
+               type: "inventory_import",
+               user_id: opts[:user_id],
+               notes: opts[:notes] || gettext("Stock imported from a spreadsheet"),
+               entries: entries
+             }) do
+          {:ok, transaction} ->
+            {:ok, %{transaction: transaction, counted: length(rows), adjusted: length(entries)}}
 
-        {:error, reason} ->
-          {:error, reason}
+          {:error, reason} ->
+            {:error, reason}
+        end
       end
+
+    with {:ok, summary} <- result do
+      {:ok, Map.put(summary, :boxes_verified, maybe_verify_boxes(rows, opts))}
+    end
+  end
+
+  # The migration count is a conference: every box it names was physically
+  # looked into on the count date, so its balance is verified rather than
+  # presumed. The recurring count leaves that to the box-count screen.
+  defp maybe_verify_boxes(rows, opts) do
+    if create_missing?(opts) do
+      ids =
+        rows |> Enum.map(& &1.box) |> Enum.reject(&is_nil/1) |> Enum.map(& &1.id) |> Enum.uniq()
+
+      now = DateTime.utc_now(:second)
+
+      {count, _} =
+        Box
+        |> where([b], b.id in ^ids)
+        |> Repo.update_all(set: [last_verified_at: now, updated_at: now])
+
+      count
+    else
+      0
     end
   end
 
   # The spreadsheet says what is there; the ledger says what we thought was
-  # there. Only the difference is posted.
+  # there. Only the difference is posted. A box-only row (no product, no
+  # quantity) has already registered its box and posts nothing.
+  defp count_entry(%{product: nil}), do: nil
+  defp count_entry(%{quantity: nil}), do: nil
+
   defp count_entry(row) do
     lot = ensure_lot(row)
 
