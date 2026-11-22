@@ -64,6 +64,43 @@ defmodule EstoqueOS.Reports.StockWorkbook do
     end
   end
 
+  @doc """
+  A blank example sheet for someone to download and fill in: the canonical
+  columns with a few example rows that show the conventions — a dated lot, the
+  `MIGRACAO` placeholder for a lot nobody read, and a box-only line that just
+  registers an empty box.
+  """
+  def template do
+    rows = [
+      %{
+        product: "GAZE ESTÉRIL 7,5CM",
+        lot_number: "L2291",
+        expires_on: ~D[2027-09-30],
+        box: "CX01",
+        location: "Missão Porto Velho - RO",
+        quantity: Decimal.new(40)
+      },
+      %{
+        product: "AVENTAL CIRÚRGICO EG",
+        lot_number: "MIGRACAO",
+        expires_on: nil,
+        box: "CX01",
+        location: "Missão Porto Velho - RO",
+        quantity: Decimal.new(20)
+      },
+      %{
+        product: nil,
+        lot_number: nil,
+        expires_on: nil,
+        box: "OR84",
+        location: "Missão Porto Velho - RO",
+        quantity: nil
+      }
+    ]
+
+    to_xlsx(rows, money: false)
+  end
+
   defp columns_for(opts) do
     if Keyword.get(opts, :money, true) do
       @columns

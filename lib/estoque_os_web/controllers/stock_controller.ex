@@ -47,6 +47,23 @@ defmodule EstoqueOSWeb.StockController do
     end
   end
 
+  @doc "Hands down a blank example spreadsheet to fill in and import."
+  def template(conn, _params) do
+    case EstoqueOS.Reports.StockWorkbook.template() do
+      {:ok, binary} ->
+        conn
+        |> put_resp_content_type(
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+        |> send_download({:binary, binary}, filename: "modelo-estoque.xlsx")
+
+      {:error, _reason} ->
+        conn
+        |> put_flash(:error, gettext("The template could not be generated."))
+        |> redirect(to: ~p"/stock")
+    end
+  end
+
   defp segment_param(value) do
     if value in EstoqueOS.Catalog.Product.segments(), do: value
   end

@@ -53,6 +53,8 @@ defmodule EstoqueOSWeb.StockLive.Spreadsheet do
           <.spreadsheet_actions
             upload={@uploads.sheet}
             export_path={~p"/stock/export.xlsx"}
+            template_path={~p"/stock/template.xlsx"}
+            initial_import={true}
             id="spreadsheet-import-form"
           />
         </div>
@@ -66,11 +68,15 @@ defmodule EstoqueOSWeb.StockLive.Spreadsheet do
   @impl true
   def handle_event("validate", _params, socket), do: {:noreply, socket}
 
-  def handle_event("import", _params, socket) do
+  def handle_event("import", params, socket) do
     user_id = socket.assigns.current_scope.user.id
+    create_missing = params["create_missing"] == "true"
 
     case consume_uploaded_entries(socket, :sheet, fn %{path: path}, _entry ->
-           {:ok, path |> File.read!() |> Reports.import_stock(user_id: user_id)}
+           {:ok,
+            path
+            |> File.read!()
+            |> Reports.import_stock(user_id: user_id, create_missing: create_missing)}
          end) do
       [{:ok, result}] ->
         {:noreply, socket |> assign(:import_result, result) |> assign(:import_errors, [])}

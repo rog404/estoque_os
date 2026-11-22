@@ -709,6 +709,11 @@ defmodule EstoqueOSWeb.CoreComponents do
   attr :upload, :any, required: true, doc: "the `@uploads.<name>` struct of the calling view"
   attr :export_path, :string, required: true
   attr :id, :string, default: "import-form"
+  attr :template_path, :string, default: nil, doc: "a blank example sheet to download"
+
+  attr :initial_import, :boolean,
+    default: false,
+    doc: "offer the initial-migration option, which creates items the catalog does not have yet"
 
   def spreadsheet_actions(assigns) do
     ~H"""
@@ -717,8 +722,19 @@ defmodule EstoqueOSWeb.CoreComponents do
       {gettext("Export stock")}
     </a>
 
+    <a :if={@template_path} href={@template_path} class="btn btn-ghost btn-block btn-sm">
+      <.icon name="hero-document-arrow-down" class="size-4" />
+      {gettext("Download example spreadsheet")}
+    </a>
+
     <form id={@id} phx-submit="import" phx-change="validate" class="space-y-2">
       <.live_file_input upload={@upload} class="file-input file-input-bordered w-full" />
+
+      <label :if={@initial_import} class="flex items-center gap-2 text-sm">
+        <input type="checkbox" name="create_missing" value="true" class="checkbox checkbox-sm" />
+        {gettext("Initial import: create products, places and boxes that do not exist yet")}
+      </label>
+
       <.button class="btn-block" phx-disable-with={gettext("Reading the spreadsheet...")}>
         <.icon name="hero-arrow-up-tray" class="size-5" />
         {gettext("Import count")}

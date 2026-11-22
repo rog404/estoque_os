@@ -176,6 +176,7 @@ defmodule EstoqueOSWeb.Router do
     # the certificate declares a value and is refused outright.
     pipe_through [:require_password_not_pending]
     get "/stock/export.xlsx", StockController, :export
+    get "/stock/template.xlsx", StockController, :template
   end
 
   scope "/", EstoqueOSWeb do
