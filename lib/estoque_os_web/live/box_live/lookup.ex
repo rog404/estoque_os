@@ -1,18 +1,8 @@
 defmodule EstoqueOSWeb.BoxLive.Lookup do
   @moduledoc """
-  What is in a box, for whoever is holding it.
-
-  Public on purpose, and for now a field test: the person with a box in their
-  hands at a mission site is not always somebody with an account, and the label
-  on the box is all they have. Reading is all this screen does — every write
-  still lives behind a login. It shows the whole content, controlled-substance
-  flag included, to anyone with the code; that exposure is a known, accepted
-  call while this is a test, and the screen is slated to move inside the
-  authenticated routes later.
-
-  The camera reads a QR label when the browser can (`BarcodeDetector`, which a
-  phone's Chrome has); typing the code is the path that always works, so the
-  scan button degrades into a hint instead of a wall.
+  Read-only lookup of a box's contents: scan the label's QR code or type the
+  code. The camera path needs `BarcodeDetector` (a phone's Chrome has it); typing
+  always works, so the scan button degrades into a hint when it is missing.
   """
 
   use EstoqueOSWeb, :live_view

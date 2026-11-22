@@ -444,6 +444,12 @@ defmodule EstoqueOSWeb.Layouts do
             roles: ~w(admin manager logistics auditor marketing)
           },
           %{
+            label: gettext("Look up a box"),
+            path: ~p"/boxes/lookup",
+            icon: "hero-magnifying-glass",
+            roles: ~w(admin manager logistics auditor marketing)
+          },
+          %{
             label: gettext("Locations"),
             path: ~p"/locations",
             icon: "hero-map-pin",

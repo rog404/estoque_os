@@ -5,7 +5,9 @@ defmodule EstoqueOS.SeedsBootstrapTest do
   what a fresh test deployment loads on first boot.
   """
 
-  use EstoqueOS.DataCase, async: true
+  # Not async: the bootstrap inserts the shared locations, kits and accounts, so
+  # running it beside other seeding tests can deadlock on their unique indexes.
+  use EstoqueOS.DataCase, async: false
 
   alias EstoqueOS.{Accounts, Kits, Seeds}
 

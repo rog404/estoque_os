@@ -268,6 +268,8 @@ defmodule EstoqueOSWeb.Router do
         {EstoqueOSWeb.UserAuth, :require_password_not_pending}
       ] do
       live "/boxes", BoxLive.Index, :index
+      # Before `/boxes/:id`, or "lookup" is captured as an :id.
+      live "/boxes/lookup", BoxLive.Lookup, :index
       live "/boxes/:id", BoxLive.Show, :show
       live "/locations", LocationLive.Index, :index
       live "/kits", KitLive.Index, :index
@@ -324,12 +326,6 @@ defmodule EstoqueOSWeb.Router do
     live_session :current_user,
       on_mount: [{EstoqueOSWeb.UserAuth, :mount_current_scope}] do
       live "/users/log-in", UserLive.Login, :new
-
-      # Public on purpose, and only while this is a field test: it reads a box's
-      # whole contents — lot, expiry and the controlled-substance flag — to
-      # anyone with the (guessable) code. The plan is to move it inside the
-      # authenticated routes; until then the exposure is a known, accepted call.
-      live "/caixa", BoxLive.Lookup, :index
     end
 
     post "/users/log-in", UserSessionController, :create
