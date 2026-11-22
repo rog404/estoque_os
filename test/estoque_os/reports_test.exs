@@ -168,6 +168,25 @@ defmodule EstoqueOS.ReportsTest do
       assert row.box == "RP04"
     end
 
+    # A box the ledger has somewhere else cannot take entries here: the same
+    # stock would count twice, by the box's location there and by the imported
+    # entries here.
+    test "a box that sits at another location is a line error, not a double count", %{
+      lot: lot,
+      warehouse: warehouse
+    } do
+      receive_stock(lot, warehouse, 300, unit_cost: "0.2695")
+      annex = location_fixture(%{name: "Anexo SP", kind: "warehouse"})
+      box_fixture(%{code: "JP04", location_id: warehouse.id})
+
+      assert {:error, [error]} =
+               Reports.import_stock(import_box_elsewhere_sheet(), user_id: actor_id())
+
+      # The message says where the box actually is.
+      assert error.message =~ "Estoque Principal"
+      assert Decimal.equal?(Inventory.balance(location_id: annex.id), Decimal.new(0))
+    end
+
     test "nothing is posted when any line is wrong", %{lot: lot, warehouse: warehouse} do
       receive_stock(lot, warehouse, 300, unit_cost: "0.2695")
 
@@ -218,6 +237,18 @@ defmodule EstoqueOS.ReportsTest do
   end
 
   # Builds a spreadsheet shaped like the one we export.
+  defp import_box_elsewhere_sheet do
+    counted_sheet([
+      %{
+        product: "Eletrodo ECG adulto",
+        lot: "114391U02",
+        quantity: 10,
+        box: "JP04",
+        location: "Anexo SP"
+      }
+    ])
+  end
+
   defp counted_sheet(rows) do
     header = ["Produto", "Grupo", "Lote", "Validade", "Caixa", "Local", "Quantidade"]
 

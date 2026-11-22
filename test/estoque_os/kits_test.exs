@@ -21,8 +21,11 @@ defmodule EstoqueOS.KitsTest do
         ]
       })
 
-    gown_lot = lot_fixture(%{product_id: gown.id, expires_on: ~D[2028-01-31]})
-    pen_lot = lot_fixture(%{product_id: pen.id, expires_on: ~D[2028-01-31]})
+    # Relative, not fixed: a fixed "future" date silently expires one day, and
+    # assembly then refuses the component in a test about something else.
+    far_expiry = Date.add(Date.utc_today(), 400)
+    gown_lot = lot_fixture(%{product_id: gown.id, expires_on: far_expiry})
+    pen_lot = lot_fixture(%{product_id: pen.id, expires_on: far_expiry})
 
     stock_in(gown_lot, warehouse, 40)
     stock_in(pen_lot, warehouse, 6)
@@ -179,7 +182,8 @@ defmodule EstoqueOS.KitsTest do
       warehouse: warehouse,
       gown: gown
     } do
-      sooner = lot_fixture(%{product_id: gown.id, expires_on: ~D[2026-09-30]})
+      sooner_expiry = Date.add(Date.utc_today(), 30)
+      sooner = lot_fixture(%{product_id: gown.id, expires_on: sooner_expiry})
       stock_in(sooner, warehouse, 40)
 
       box = box_fixture(%{code: "KTK1", location_id: warehouse.id})
@@ -192,7 +196,7 @@ defmodule EstoqueOS.KitsTest do
                  destination: "pacu"
                })
 
-      assert lot.expires_on == ~D[2026-09-30]
+      assert lot.expires_on == sooner_expiry
     end
 
     test "records which component lots built the new kit lot", %{

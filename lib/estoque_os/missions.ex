@@ -50,19 +50,33 @@ defmodule EstoqueOS.Missions do
   whenever they get to a computer. Attributing goods by comparing those dates to
   the clock would file them under nobody on exactly the days that are hardest.
 
-  So the answer comes from the place: the most recent trip to have started there.
-  Missions at one place cannot overlap — the database refuses it — so the latest
-  is also the open one whenever there is an open one. `nil` for a warehouse,
-  which hosts no trips.
+  So the answer comes from the place: the most recent trip to have *started*
+  there. Started, not registered — the next trip gets created well in advance,
+  and a mission that only exists on paper must not collect the late returns and
+  write-offs of the one that actually happened. A trip that has not started yet
+  is the answer only when no trip ever has: goods can be staged at a site before
+  the very first mission, and they belong to it. Missions at one place cannot
+  overlap — the database refuses it — so the latest started is also the open one
+  whenever there is an open one. `nil` for a warehouse, which hosts no trips.
   """
   def for_location(nil), do: nil
 
   def for_location(location_id) do
-    Mission
-    |> where([m], m.location_id == ^location_id)
-    |> order_by([m], desc: m.starts_on, desc: m.id)
-    |> limit(1)
-    |> Repo.one()
+    today = Date.utc_today()
+
+    started =
+      Mission
+      |> where([m], m.location_id == ^location_id and m.starts_on <= ^today)
+      |> order_by([m], desc: m.starts_on, desc: m.id)
+      |> limit(1)
+      |> Repo.one()
+
+    started ||
+      Mission
+      |> where([m], m.location_id == ^location_id)
+      |> order_by([m], asc: m.starts_on, asc: m.id)
+      |> limit(1)
+      |> Repo.one()
   end
 
   @doc """

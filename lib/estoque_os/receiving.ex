@@ -420,29 +420,33 @@ defmodule EstoqueOS.Receiving do
 
   # Put away first, then correct: the correction has to land where the goods
   # actually are, or a recount would fix the wrong position.
+  #
+  # Both passes reconcile per *lot*, never per line. Suppliers do split one
+  # item across two invoice lines (same product, same lot), and two lines
+  # reconciling independently each see the whole ledger balance — the boxing
+  # would move it twice and each correction would subtract the other line's
+  # goods from its own count.
   defp boxing_entries(lines, receipt) do
     lines
-    |> Enum.filter(& &1.box_id)
-    |> Enum.flat_map(fn line ->
-      unboxed = unboxed_quantity(line, receipt)
-
-      if Decimal.compare(unboxed, 0) == :gt do
+    |> lot_groups()
+    |> Enum.flat_map(fn group ->
+      group
+      |> boxing_moves(receipt)
+      |> Enum.flat_map(fn {box_id, moved} ->
         [
           %{
-            lot_id: lot_id(line),
+            lot_id: group.lot_id,
             location_id: receipt.location_id,
-            quantity: Decimal.negate(unboxed)
+            quantity: Decimal.negate(moved)
           },
           %{
-            lot_id: lot_id(line),
+            lot_id: group.lot_id,
             location_id: receipt.location_id,
-            box_id: line.box_id,
-            quantity: unboxed
+            box_id: box_id,
+            quantity: moved
           }
         ]
-      else
-        []
-      end
+      end)
     end)
   end
 
@@ -453,16 +457,39 @@ defmodule EstoqueOS.Receiving do
   # `expected_quantity` — that is what the divergence report tells the supplier.
   defp correction_entries(lines, receipt) do
     lines
-    |> Enum.map(fn line ->
-      difference = Decimal.sub(line.counted_quantity, current_quantity(line, receipt))
+    |> lot_groups()
+    |> Enum.flat_map(&lot_corrections(&1, receipt))
+  end
+
+  defp lot_corrections(group, receipt) do
+    moves = group |> boxing_moves(receipt) |> Map.new()
+    moved_total = moves |> Map.values() |> Enum.reduce(Decimal.new(0), &Decimal.add/2)
+    loose_after = Decimal.sub(unboxed_quantity(group.lot_id, receipt), moved_total)
+
+    group.counted_by_box
+    |> Enum.sort()
+    |> Enum.map(fn {box_id, counted} ->
+      current =
+        case box_id do
+          nil ->
+            loose_after
+
+          box_id ->
+            Decimal.add(
+              boxed_quantity(group.lot_id, box_id, receipt),
+              Map.get(moves, box_id, Decimal.new(0))
+            )
+        end
+
+      difference = Decimal.sub(counted, current)
 
       if Decimal.equal?(difference, 0) do
         nil
       else
         %{
-          lot_id: lot_id(line),
+          lot_id: group.lot_id,
           location_id: receipt.location_id,
-          box_id: line.box_id,
+          box_id: box_id,
           quantity: difference
         }
       end
@@ -470,24 +497,77 @@ defmodule EstoqueOS.Receiving do
     |> Enum.reject(&is_nil/1)
   end
 
-  # Everything the ledger holds for this lot at this location, in the box the
-  # line names plus whatever is still waiting to be put away.
-  defp current_quantity(line, receipt) do
-    Decimal.add(unboxed_quantity(line, receipt), boxed_quantity(line, receipt))
+  # One reconciliation unit: a lot, with the counted quantities summed per box
+  # (the nil box is what the lines say stays loose). Sorted so entries land in
+  # a stable order.
+  defp lot_groups(lines) do
+    lines
+    |> Enum.group_by(&lot_id/1)
+    |> Enum.sort()
+    |> Enum.map(fn {lot_id, lot_lines} ->
+      %{
+        lot_id: lot_id,
+        counted_by_box:
+          lot_lines
+          |> Enum.group_by(& &1.box_id, & &1.counted_quantity)
+          |> Map.new(fn {box_id, counts} -> {box_id, Enum.reduce(counts, &Decimal.add/2)} end)
+      }
+    end)
   end
 
-  defp unboxed_quantity(line, receipt) do
-    Inventory.balance(lot_id: lot_id(line), location_id: receipt.location_id, box_id: nil)
+  # How much of the loose balance goes into which box. What the lines counted
+  # loose stays loose; the rest is put away — each box's shortfall first, any
+  # remainder into the last box, so nothing an operator says they boxed is left
+  # on the floor of the ledger.
+  defp boxing_moves(group, receipt) do
+    boxes = group.counted_by_box |> Map.delete(nil) |> Map.keys() |> Enum.sort()
+
+    if boxes == [] do
+      []
+    else
+      counted_loose = Map.get(group.counted_by_box, nil, Decimal.new(0))
+
+      to_box =
+        Decimal.max(
+          Decimal.sub(unboxed_quantity(group.lot_id, receipt), counted_loose),
+          Decimal.new(0)
+        )
+
+      {moves, remainder} =
+        Enum.map_reduce(boxes, to_box, fn box_id, remaining ->
+          shortfall =
+            Decimal.max(
+              Decimal.sub(
+                Map.fetch!(group.counted_by_box, box_id),
+                boxed_quantity(group.lot_id, box_id, receipt)
+              ),
+              Decimal.new(0)
+            )
+
+          take = Decimal.min(remaining, shortfall)
+          {{box_id, take}, Decimal.sub(remaining, take)}
+        end)
+
+      moves
+      |> add_remainder_to_last(remainder)
+      |> Enum.reject(fn {_box_id, moved} -> Decimal.compare(moved, 0) != :gt end)
+    end
   end
 
-  defp boxed_quantity(%{box_id: nil}, _receipt), do: Decimal.new(0)
+  defp add_remainder_to_last(moves, remainder) do
+    if Decimal.compare(remainder, 0) == :gt do
+      List.update_at(moves, -1, fn {box_id, moved} -> {box_id, Decimal.add(moved, remainder)} end)
+    else
+      moves
+    end
+  end
 
-  defp boxed_quantity(line, receipt) do
-    Inventory.balance(
-      lot_id: lot_id(line),
-      location_id: receipt.location_id,
-      box_id: line.box_id
-    )
+  defp unboxed_quantity(lot_id, receipt) do
+    Inventory.balance(lot_id: lot_id, location_id: receipt.location_id, box_id: nil)
+  end
+
+  defp boxed_quantity(lot_id, box_id, receipt) do
+    Inventory.balance(lot_id: lot_id, location_id: receipt.location_id, box_id: box_id)
   end
 
   defp lot_id(line) do

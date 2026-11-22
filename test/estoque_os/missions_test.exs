@@ -75,6 +75,43 @@ defmodule EstoqueOS.MissionsTest do
       refute Missions.for_location(warehouse.id)
     end
 
+    test "a trip registered in advance does not take the current one's movements", %{
+      site: site,
+      mission: mission
+    } do
+      {:ok, _next} =
+        Missions.create_mission(%{
+          name: "Tefé 2026/2",
+          location_id: site.id,
+          starts_on: Date.add(Date.utc_today(), 40),
+          ends_on: Date.add(Date.utc_today(), 47)
+        })
+
+      assert Missions.for_location(site.id).id == mission.id
+    end
+
+    test "before the very first trip, goods staged at the site belong to the nearest one" do
+      site = location_fixture(%{name: "Missão Coari", kind: "mission_site"})
+
+      {:ok, upcoming} =
+        Missions.create_mission(%{
+          name: "Coari 2027/1",
+          location_id: site.id,
+          starts_on: Date.add(Date.utc_today(), 30),
+          ends_on: Date.add(Date.utc_today(), 37)
+        })
+
+      {:ok, _later} =
+        Missions.create_mission(%{
+          name: "Coari 2027/2",
+          location_id: site.id,
+          starts_on: Date.add(Date.utc_today(), 90),
+          ends_on: Date.add(Date.utc_today(), 97)
+        })
+
+      assert Missions.for_location(site.id).id == upcoming.id
+    end
+
     test "dates do not gate it", %{site: site, mission: mission} do
       # A load-out gets prepared before the team flies, and a box comes home a
       # week after it was due. Both must land on this mission.

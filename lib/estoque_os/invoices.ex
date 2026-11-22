@@ -123,12 +123,20 @@ defmodule EstoqueOS.Invoices do
   come in it. Public so a screen can preview it as the factor is typed,
   without a second copy of the division that decides what a mission's goods
   actually cost.
+
+  A zero commercial value — the supplier's bonus line — is a donation in ledger
+  terms: the cost is nil, never zero, which is the project-wide rule for goods
+  that cost nothing.
   """
   def unit_cost(_value, nil), do: nil
   def unit_cost(nil, _factor), do: nil
 
   def unit_cost(value, factor) do
-    if Decimal.equal?(factor, 0), do: nil, else: Decimal.div(value, factor)
+    if Decimal.equal?(factor, 0) or Decimal.equal?(value, 0) do
+      nil
+    else
+      Decimal.div(value, factor)
+    end
   end
 
   @doc """
@@ -377,7 +385,21 @@ defmodule EstoqueOS.Invoices do
   end
 
   defp do_post(invoice, location_id, opts) do
+    now = DateTime.utc_now(:second)
+
+    # The status check in `post_invoice/2` reads outside this transaction, so
+    # two concurrent posts can both pass it. The conditional update is the real
+    # gate: the second post blocks on the row lock, re-evaluates the `where`
+    # against the winner's commit, updates nothing and rolls everything back.
     Multi.new()
+    |> Multi.update_all(
+      :mark_posted,
+      from(i in Invoice, where: i.id == ^invoice.id and i.status != "posted"),
+      set: [status: "posted", posted_at: now, updated_at: now]
+    )
+    |> Multi.run(:posted_once, fn _repo, %{mark_posted: {updated, _}} ->
+      if updated == 1, do: {:ok, :posted}, else: {:error, :already_posted}
+    end)
     |> Multi.run(:lots, fn _repo, _changes -> ensure_lots(invoice) end)
     |> Multi.run(:transaction, fn _repo, %{lots: lots} ->
       Inventory.post_transaction(%{
@@ -389,13 +411,10 @@ defmodule EstoqueOS.Invoices do
         entries: Enum.map(invoice.items, &entry_attrs(&1, lots, location_id, opts))
       })
     end)
-    |> Multi.update(:invoice, fn _changes ->
-      Invoice.changeset(invoice, %{status: "posted", posted_at: DateTime.utc_now(:second)})
-    end)
     |> Repo.transaction()
     |> case do
-      {:ok, %{invoice: invoice, transaction: transaction}} ->
-        {:ok, %{invoice: load_invoice(invoice), transaction: transaction}}
+      {:ok, %{transaction: transaction}} ->
+        {:ok, %{invoice: load_invoice(Repo.get!(Invoice, invoice.id)), transaction: transaction}}
 
       {:error, _step, reason, _changes} ->
         {:error, reason}

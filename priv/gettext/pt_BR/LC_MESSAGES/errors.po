@@ -110,3 +110,22 @@ msgstr "não foi alterado"
 
 msgid "must have the @ sign and no spaces"
 msgstr "precisa ter o sinal @ e nenhum espaço"
+
+## Custom changeset messages defined in context and schema modules
+msgid "must not be zero"
+msgstr "não pode ser zero"
+
+msgid "overlaps another mission at this place"
+msgstr "conflita com outra missão neste local"
+
+msgid "cannot be before the start"
+msgstr "não pode ser anterior ao início"
+
+msgid "must be on or after the manufacturing date"
+msgstr "deve ser igual ou posterior à data de fabricação"
+
+msgid "cannot be before the load left"
+msgstr "não pode ser anterior à saída da carga"
+
+msgid "must name a catalog product"
+msgstr "precisa de um produto do catálogo"

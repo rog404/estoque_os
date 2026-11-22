@@ -348,7 +348,7 @@ msgstr ""
 msgid "Expiry date"
 msgstr ""
 
-#: lib/estoque_os_web/live/invoice_live/import.ex:240
+#: lib/estoque_os_web/live/invoice_live/import.ex:243
 #, elixir-autogen, elixir-format
 msgid "File is too large."
 msgstr ""
@@ -409,6 +409,7 @@ msgstr ""
 #: lib/estoque_os_web/live/box_live/count.ex:155
 #: lib/estoque_os_web/live/box_live/count.ex:190
 #: lib/estoque_os_web/live/box_live/count.ex:244
+#: lib/estoque_os_web/live/box_live/lookup.ex:211
 #: lib/estoque_os_web/live/box_live/show.ex:103
 #: lib/estoque_os_web/live/box_live/show.ex:185
 #: lib/estoque_os_web/live/entry_live/new.ex:428
@@ -436,12 +437,12 @@ msgstr ""
 msgid "Number"
 msgstr ""
 
-#: lib/estoque_os_web/live/invoice_live/import.ex:242
+#: lib/estoque_os_web/live/invoice_live/import.ex:245
 #, elixir-autogen, elixir-format
 msgid "One invoice at a time, please."
 msgstr ""
 
-#: lib/estoque_os_web/live/invoice_live/import.ex:241
+#: lib/estoque_os_web/live/invoice_live/import.ex:244
 #, elixir-autogen, elixir-format
 msgid "Only XML files are accepted."
 msgstr ""
@@ -478,6 +479,7 @@ msgstr ""
 #: lib/estoque_os_web/live/box_live/count.ex:152
 #: lib/estoque_os_web/live/box_live/count.ex:189
 #: lib/estoque_os_web/live/box_live/count.ex:243
+#: lib/estoque_os_web/live/box_live/lookup.ex:207
 #: lib/estoque_os_web/live/box_live/show.ex:102
 #: lib/estoque_os_web/live/box_live/show.ex:181
 #: lib/estoque_os_web/live/entry_live/new.ex:139
@@ -545,7 +547,7 @@ msgstr ""
 msgid "The XML is malformed and could not be read."
 msgstr ""
 
-#: lib/estoque_os_web/live/invoice_live/import.ex:221
+#: lib/estoque_os_web/live/invoice_live/import.ex:224
 #, elixir-autogen, elixir-format
 msgid "The invoice could not be imported."
 msgstr ""
@@ -555,7 +557,7 @@ msgstr ""
 msgid "The invoice could not be posted."
 msgstr ""
 
-#: lib/estoque_os_web/live/invoice_live/import.ex:243
+#: lib/estoque_os_web/live/invoice_live/import.ex:246
 #, elixir-autogen, elixir-format
 msgid "This file could not be uploaded."
 msgstr ""
@@ -648,6 +650,7 @@ msgstr ""
 
 #: lib/estoque_os_web/live/audit_report_live/index.ex:204
 #: lib/estoque_os_web/live/box_live/count.ex:125
+#: lib/estoque_os_web/live/box_live/lookup.ex:212
 #: lib/estoque_os_web/live/box_live/show.ex:104
 #: lib/estoque_os_web/live/box_live/show.ex:186
 #: lib/estoque_os_web/live/entry_live/new.ex:443
@@ -685,6 +688,7 @@ msgid "Pick a spreadsheet first."
 msgstr ""
 
 #: lib/estoque_os_web/live/audit_report_live/index.ex:207
+#: lib/estoque_os_web/live/box_live/lookup.ex:213
 #: lib/estoque_os_web/live/box_live/show.ex:105
 #: lib/estoque_os_web/live/entry_live/new.ex:409
 #: lib/estoque_os_web/live/invoice_live/show.ex:223
@@ -721,7 +725,7 @@ msgstr ""
 msgid "Stock"
 msgstr ""
 
-#: lib/estoque_os/reports.ex:445
+#: lib/estoque_os/reports.ex:460
 #, elixir-autogen, elixir-format
 msgid "Stock imported from a spreadsheet"
 msgstr ""
@@ -802,6 +806,7 @@ msgstr ""
 #: lib/estoque_os_web/live/box_live/count.ex:156
 #: lib/estoque_os_web/live/box_live/count.ex:191
 #: lib/estoque_os_web/live/box_live/count.ex:245
+#: lib/estoque_os_web/live/box_live/lookup.ex:211
 #: lib/estoque_os_web/live/box_live/show.ex:103
 #: lib/estoque_os_web/live/box_live/show.ex:185
 #: lib/estoque_os_web/live/home_live/index.ex:284
@@ -973,6 +978,7 @@ msgid "active products"
 msgstr ""
 
 #: lib/estoque_os_web/live/box_live/count.ex:269
+#: lib/estoque_os_web/live/box_live/lookup.ex:99
 #: lib/estoque_os_web/live/box_live/show.ex:264
 #: lib/estoque_os_web/live/home_live/index.ex:645
 #, elixir-autogen, elixir-format
@@ -1000,6 +1006,7 @@ msgstr ""
 #: lib/estoque_os/auditing.ex:145
 #: lib/estoque_os_web/live/box_live/count.ex:266
 #: lib/estoque_os_web/live/box_live/index.ex:254
+#: lib/estoque_os_web/live/box_live/lookup.ex:96
 #: lib/estoque_os_web/live/box_live/show.ex:261
 #: lib/estoque_os_web/live/home_live/index.ex:642
 #, elixir-autogen, elixir-format
@@ -1201,6 +1208,7 @@ msgid "product not resolved"
 msgstr ""
 
 #: lib/estoque_os_web/live/box_live/count.ex:92
+#: lib/estoque_os_web/live/box_live/lookup.ex:194
 #: lib/estoque_os_web/live/box_live/show.ex:18
 #: lib/estoque_os_web/live/box_live/show.ex:45
 #, elixir-autogen, elixir-format
@@ -1219,6 +1227,7 @@ msgid "Box %{code} moved to %{location}."
 msgstr ""
 
 #: lib/estoque_os_web/live/box_live/index.ex:109
+#: lib/estoque_os_web/live/box_live/lookup.ex:124
 #, elixir-autogen, elixir-format
 msgid "Box code"
 msgstr ""
@@ -1352,6 +1361,7 @@ msgstr ""
 msgid "The box is already there."
 msgstr ""
 
+#: lib/estoque_os_web/live/box_live/lookup.ex:202
 #: lib/estoque_os_web/live/box_live/show.ex:97
 #, elixir-autogen, elixir-format
 msgid "This box is empty."
@@ -1563,7 +1573,7 @@ msgstr ""
 msgid "%{possible} kit(s) possible here"
 msgstr ""
 
-#: lib/estoque_os/kits.ex:425
+#: lib/estoque_os/kits.ex:436
 #, elixir-autogen, elixir-format
 msgid "Assembly of %{quantity}x %{kit}"
 msgstr ""
@@ -2010,6 +2020,7 @@ msgstr ""
 
 #: lib/estoque_os_web/components/ui.ex:607
 #: lib/estoque_os_web/live/box_live/index.ex:125
+#: lib/estoque_os_web/live/box_live/lookup.ex:127
 #: lib/estoque_os_web/live/location_live/index.ex:132
 #: lib/estoque_os_web/live/stock_live/index.ex:185
 #, elixir-autogen, elixir-format
@@ -2223,7 +2234,7 @@ msgstr ""
 msgid "Take the stock out to a sheet, or bring a physical count back in."
 msgstr ""
 
-#: lib/estoque_os_web/live/invoice_live/import.ex:237
+#: lib/estoque_os_web/live/invoice_live/import.ex:240
 #, elixir-autogen, elixir-format
 msgid "%{count} MB"
 msgstr ""
@@ -3110,6 +3121,7 @@ msgstr ""
 msgid "Nothing has been received yet. Import an invoice, or record what arrived without one."
 msgstr ""
 
+#: lib/estoque_os_web/live/box_live/lookup.ex:203
 #: lib/estoque_os_web/live/box_live/show.ex:98
 #, elixir-autogen, elixir-format
 msgid "Nothing is recorded inside it right now."
@@ -3610,7 +3622,7 @@ msgstr ""
 msgid "Box %{box}"
 msgstr ""
 
-#: lib/estoque_os/inventory/locations.ex:448
+#: lib/estoque_os/inventory/locations.ex:457
 #, elixir-autogen, elixir-format
 msgid "%{from} → %{to}"
 msgstr ""
@@ -4624,7 +4636,7 @@ msgstr ""
 msgid "There is only %{available} loose here."
 msgstr ""
 
-#: lib/estoque_os/inventory/locations.ex:386
+#: lib/estoque_os/inventory/locations.ex:395
 #, elixir-autogen, elixir-format
 msgid "loose → %{box}"
 msgstr ""
@@ -5458,4 +5470,65 @@ msgstr ""
 #: lib/estoque_os_web/live/mission_live/show.ex:326
 #, elixir-autogen, elixir-format
 msgid "in %{days} day(s)"
+msgstr ""
+
+#: lib/estoque_os_web/live/box_live/lookup.ex:119
+#, elixir-autogen, elixir-format
+msgid "Box code, like CX01"
+msgstr ""
+
+#: lib/estoque_os_web/live/box_live/lookup.ex:222
+#, elixir-autogen, elixir-format
+msgid "Check the label — codes look like CX01."
+msgstr ""
+
+#: lib/estoque_os_web/live/box_live/lookup.ex:221
+#, elixir-autogen, elixir-format
+msgid "No box answers to \"%{code}\"."
+msgstr ""
+
+#: lib/estoque_os_web/live/box_live/lookup.ex:143
+#, elixir-autogen, elixir-format
+msgid "Point the camera at the label's QR code."
+msgstr ""
+
+#: lib/estoque_os_web/live/box_live/lookup.ex:133
+#, elixir-autogen, elixir-format
+msgid "Scan the QR code"
+msgstr ""
+
+#: lib/estoque_os_web/live/box_live/lookup.ex:110
+#, elixir-autogen, elixir-format
+msgid "Scan the label's QR code or type the box code."
+msgstr ""
+
+#: lib/estoque_os_web/live/box_live/lookup.ex:136
+#, elixir-autogen, elixir-format
+msgid "Stop the camera"
+msgstr ""
+
+#: lib/estoque_os_web/live/box_live/lookup.ex:94
+#, elixir-autogen, elixir-format
+msgid "The camera was refused — type the code instead."
+msgstr ""
+
+#: lib/estoque_os_web/live/invoice_live/import.ex:222
+#, elixir-autogen, elixir-format
+msgid "The issuer has no CNPJ — an NF-e issued under a CPF cannot be imported yet."
+msgstr ""
+
+#: lib/estoque_os_web/live/box_live/lookup.ex:91
+#, elixir-autogen, elixir-format
+msgid "This browser cannot read QR codes here — type the code instead."
+msgstr ""
+
+#: lib/estoque_os_web/live/box_live/lookup.ex:26
+#: lib/estoque_os_web/live/box_live/lookup.ex:108
+#, elixir-autogen, elixir-format
+msgid "What is in this box"
+msgstr ""
+
+#: lib/estoque_os/reports.ex:434
+#, elixir-autogen, elixir-format
+msgid "box \"%{code}\" is at %{location} — move it before counting it here"
 msgstr ""
