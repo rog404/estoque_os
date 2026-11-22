@@ -41,11 +41,21 @@ defmodule EstoqueOS.Catalog do
 
   @doc """
   Finds a supplier by CNPJ or creates it from the invoice data.
+
+  An NF-e issued under a CPF (the nota avulsa a person issues for a donation)
+  carries no CNPJ at all. That is an answer the import screen can phrase, not
+  a crash inside the import.
   """
   def upsert_supplier(attrs) do
-    case get_supplier_by_cnpj(field(attrs, :cnpj)) do
-      nil -> %Supplier{} |> Supplier.changeset(attrs) |> Repo.insert()
-      supplier -> {:ok, supplier}
+    case field(attrs, :cnpj) do
+      cnpj when is_binary(cnpj) and cnpj != "" ->
+        case get_supplier_by_cnpj(cnpj) do
+          nil -> %Supplier{} |> Supplier.changeset(attrs) |> Repo.insert()
+          supplier -> {:ok, supplier}
+        end
+
+      _missing ->
+        {:error, :supplier_missing_cnpj}
     end
   end
 
@@ -726,6 +736,9 @@ defmodule EstoqueOS.Catalog do
     text
     |> String.downcase()
     |> :unicode.characters_to_nfd_binary()
+    # Combining marks vanish, they do not split: replacing them with a space
+    # tore "estéril" into "este" and "ril", which never matched "esteril".
+    |> String.replace(~r/[\x{0300}-\x{036f}]/u, "")
     |> String.replace(~r/[^a-z0-9\s]/u, " ")
     |> String.split(~r/\s+/, trim: true)
     |> Enum.reject(&(String.length(&1) < 3 or &1 in ~w(com para sem est ger gen)))
@@ -787,6 +800,11 @@ defmodule EstoqueOS.Catalog do
 
       previous ->
         cond do
+          # A zero cost is a bonus line, not a price to compare — and the
+          # divergence ratio would divide by it.
+          Decimal.equal?(unit_cost, 0) ->
+            :ok
+
           Decimal.equal?(previous, 0) ->
             :no_history
 

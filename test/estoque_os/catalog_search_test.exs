@@ -68,4 +68,13 @@ defmodule EstoqueOS.CatalogSearchTest do
     assert Catalog.search_products("") == []
     assert Catalog.search_products("   ") == []
   end
+
+  # The catalog writes "estéril", the invoice shouts "ESTERIL": one word, two
+  # spellings, and the accented one must not fall apart into two tokens.
+  test "an accented catalog name matches its unaccented invoice description" do
+    product = product_fixture(%{name: "Gaze Estéril 7,5cm"})
+
+    assert [%{product: found} | _] = Catalog.suggest_products("GAZE ESTERIL 7,5CM C/500")
+    assert found.id == product.id
+  end
 end

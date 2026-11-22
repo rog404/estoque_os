@@ -218,6 +218,9 @@ defmodule EstoqueOSWeb.InvoiceLive.Import do
   defp error_message(:missing_access_key),
     do: gettext("The XML has no access key — is it really an NF-e?")
 
+  defp error_message(:supplier_missing_cnpj),
+    do: gettext("The issuer has no CNPJ — an NF-e issued under a CPF cannot be imported yet.")
+
   defp error_message(_other), do: gettext("The invoice could not be imported.")
 
   # Nothing to send until a file is attached and the browser is happy with it.
