@@ -128,7 +128,7 @@ defmodule EstoqueOS.Kits do
         {:error,
          %KitItem{}
          |> KitItem.changeset(attrs)
-         |> Ecto.Changeset.add_error(:product_id, "precisa de um produto do catálogo")}
+         |> Ecto.Changeset.add_error(:product_id, "must name a catalog product")}
 
       # Now that a component *is* a product, the same product twice is two lines
       # claiming to be the same thing — and `availability/2` would count the
@@ -368,8 +368,19 @@ defmodule EstoqueOS.Kits do
   defp bottleneck_item(_availability), do: nil
 
   defp convert(kit, build, quantity, location_id, box_id, opts, bottleneck) do
-    {:ok, picks} = gather_picks(kit, build, location_id)
+    # The shelf can change between `availability/2` and this pick: a concurrent
+    # write-off makes gather_picks come up short, and that is the same
+    # insufficient-stock answer the screen already renders, not a crash.
+    case gather_picks(kit, build, location_id) do
+      {:ok, picks} ->
+        post_assembly(kit, picks, build, quantity, location_id, box_id, opts, bottleneck)
 
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  defp post_assembly(kit, picks, build, quantity, location_id, box_id, opts, bottleneck) do
     Multi.new()
     |> Multi.insert(:lot, fn _changes ->
       Lot.changeset(%Lot{}, %{product_id: kit.product.id, expires_on: earliest_expiry(picks)})
