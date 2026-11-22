@@ -450,6 +450,107 @@ defmodule EstoqueOS.ReceivingTest do
     end
   end
 
+  # Suppliers do split one product and lot across two invoice lines. The close
+  # must reconcile them as one physical thing: two lines each reconciling
+  # against the whole ledger balance would box the goods twice and subtract
+  # each other's quantities as phantom corrections.
+  describe "complete_receipt/2 when one lot is split across invoice lines" do
+    setup %{invoice: invoice, warehouse: warehouse} do
+      [first, second | _] = Enum.sort_by(invoice.items, & &1.item_number)
+
+      {:ok, second} =
+        second
+        |> Ecto.Changeset.change(product_id: first.product_id, lot_number: first.lot_number)
+        |> Repo.update()
+
+      posted = post!(Invoices.get_invoice!(invoice.id), warehouse)
+      {:ok, receipt} = Receiving.start_receipt(posted, %{location_id: warehouse.id})
+      box = box_fixture(%{code: "DP01", location_id: warehouse.id})
+
+      booked_first = Decimal.mult(first.commercial_quantity, first.conversion_factor)
+      booked_second = Decimal.mult(second.commercial_quantity, second.conversion_factor)
+
+      %{
+        receipt: receipt,
+        box: box,
+        first: first,
+        second: second,
+        booked_first: booked_first,
+        booked_second: booked_second,
+        total: Decimal.add(booked_first, booked_second)
+      }
+    end
+
+    test "counting each line as booked leaves the ledger exactly right", %{
+      receipt: receipt,
+      box: box,
+      first: first,
+      second: second,
+      booked_first: booked_first,
+      booked_second: booked_second,
+      total: total,
+      warehouse: warehouse
+    } do
+      {:ok, _} =
+        Receiving.update_line(line_for(receipt, first.item_number), %{
+          counted_quantity: Decimal.to_string(booked_first),
+          box_id: box.id
+        })
+
+      {:ok, _} =
+        Receiving.update_line(line_for(receipt, second.item_number), %{
+          counted_quantity: Decimal.to_string(booked_second),
+          box_id: box.id
+        })
+
+      assert {:ok, result} =
+               Receiving.complete_receipt(Receiving.get_receipt!(receipt.id), user_id: actor_id())
+
+      # Exact agreement: everything in the box, nothing to correct.
+      assert result.corrections == nil
+      assert Decimal.equal?(Inventory.balance(box_id: box.id), total)
+
+      assert Decimal.equal?(
+               Inventory.balance(product_id: first.product_id, location_id: warehouse.id),
+               total
+             )
+    end
+
+    test "a shortage on the shared lot is corrected once, not once per line", %{
+      receipt: receipt,
+      box: box,
+      first: first,
+      second: second,
+      booked_first: booked_first,
+      booked_second: booked_second,
+      total: total,
+      warehouse: warehouse
+    } do
+      {:ok, _} =
+        Receiving.update_line(line_for(receipt, first.item_number), %{
+          counted_quantity: Decimal.to_string(Decimal.sub(booked_first, 5)),
+          box_id: box.id
+        })
+
+      {:ok, _} =
+        Receiving.update_line(line_for(receipt, second.item_number), %{
+          counted_quantity: Decimal.to_string(booked_second),
+          box_id: box.id
+        })
+
+      assert {:ok, %{corrections: correction}} =
+               Receiving.complete_receipt(Receiving.get_receipt!(receipt.id), user_id: actor_id())
+
+      assert [entry] = correction.entries
+      assert Decimal.equal?(entry.quantity, Decimal.new(-5))
+
+      assert Decimal.equal?(
+               Inventory.balance(product_id: first.product_id, location_id: warehouse.id),
+               Decimal.sub(total, 5)
+             )
+    end
+  end
+
   describe "divergences/1" do
     setup %{invoice: invoice, warehouse: warehouse} do
       posted = post!(invoice, warehouse)
