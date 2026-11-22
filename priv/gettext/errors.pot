@@ -117,3 +117,22 @@ msgstr ""
 
 msgid "must have the @ sign and no spaces"
 msgstr ""
+
+## Custom changeset messages defined in context and schema modules
+msgid "must not be zero"
+msgstr ""
+
+msgid "overlaps another mission at this place"
+msgstr ""
+
+msgid "cannot be before the start"
+msgstr ""
+
+msgid "must be on or after the manufacturing date"
+msgstr ""
+
+msgid "cannot be before the load left"
+msgstr ""
+
+msgid "must name a catalog product"
+msgstr ""
