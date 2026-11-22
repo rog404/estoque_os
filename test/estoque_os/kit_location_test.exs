@@ -1,12 +1,8 @@
 defmodule EstoqueOS.KitLocationTest do
   @moduledoc """
-  "Which box is that kit in" is answered the same way it is for any product
-  now: a lot, in a box, at a location. What used to require a dedicated
-  `KitAssembly` row is now `Inventory.position_balances/2` on the kit's own
-  product.
-
-  A recalled component lot is still findable — that is what
-  `EstoqueOS.Kits.KitLotProvenance` is for, not the box's own contents.
+  "Which box is that kit in" is `Inventory.position_balances/2` on the kit's own
+  product, like any product. A recalled component lot is traced through
+  `EstoqueOS.Kits.KitLotProvenance`, not the box's contents.
   """
 
   use EstoqueOS.DataCase, async: true
@@ -137,8 +133,6 @@ defmodule EstoqueOS.KitLocationTest do
     assert provenance
     assert Decimal.equal?(provenance.quantity, Decimal.new(2))
 
-    # From the recalled lot, the kit lot; from the kit lot, where it is now —
-    # the same query any other product's recall already uses.
     assert [%{box_id: found_box_id}] =
              Inventory.position_balances(kit.product.id, location_id: warehouse.id)
 

@@ -1,14 +1,9 @@
 defmodule EstoqueOSWeb.AlertsTest do
   @moduledoc """
-  What is open, and closing the two things that can be closed.
-
-  A count that disagreed twice and a lot that arrived with no number are both
-  correct to raise and both sometimes simply the answer. Without a way to accept
-  one, the list only grows — and a list that only grows stops being read, which
-  costs exactly the alarms that mattered.
-
-  Accepting is not erasing: `review_reason` and `needs_review` stay true, and
-  the acknowledgement is recorded beside them with a name and a date.
+  What is open, and closing the two things that can be closed: a count that
+  disagreed twice and a lot with no number. Accepting is not erasing:
+  `review_reason` and `needs_review` stay true, with the acknowledgement
+  recorded beside them with a name and a date.
   """
 
   use EstoqueOSWeb.ConnCase, async: true
@@ -94,9 +89,6 @@ defmodule EstoqueOSWeb.AlertsTest do
 
       reloaded = Repo.get!(Transaction, transaction.id)
 
-      # The alert is closed. What raised it is not erased — an auditor asking
-      # what happened here still finds the divergence, and now also finds who
-      # accepted it.
       assert reloaded.review_reason == "count_diverged_twice"
       assert reloaded.review_acknowledged_at
       assert reloaded.review_acknowledged_by_id
@@ -138,7 +130,7 @@ defmodule EstoqueOSWeb.AlertsTest do
       {:ok, _view, html} = live(conn, ~p"/")
       refute html =~ "acknowledge_count"
 
-      # And the refusal is in the context, not in the absent button.
+      # The refusal is in the context, not just the absent button.
       assert {:error, :not_allowed} = Alerts.acknowledge_count(transaction.id, scope)
     end
 
@@ -148,8 +140,7 @@ defmodule EstoqueOSWeb.AlertsTest do
 
       {:ok, _view, html} = live(conn, ~p"/")
 
-      # An acknowledgement carries a name, and it has to be the name of whoever
-      # actually looked.
+      # An acknowledgement carries a name, which must be of whoever actually looked.
       refute html =~ "acknowledge_lot"
     end
   end
@@ -187,8 +178,6 @@ defmodule EstoqueOSWeb.AlertsTest do
 
       {:ok, _view, html} = live(conn, ~p"/")
 
-      # Which is the point of standing in the role: what that person sees, and
-      # the auditor does not see this.
       refute html =~ ~s(aria-label="O que precisa de atenção")
     end
   end

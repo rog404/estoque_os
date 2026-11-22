@@ -40,13 +40,10 @@ defmodule EstoqueOSWeb.StockLiveTest do
     assert html =~ "300"
   end
 
-  # "Eu gostei de ter uma parte com várias badges nos itens do estoque." The
-  # risk in that is a row wearing five and saying nothing, so they are ranked
-  # and capped.
+  # A row wearing five badges says nothing, so they are ranked and capped.
   describe "flags" do
     defp flags_cell(html, product) do
-      # The whole row, tags stripped: asserting a badge is *absent* against raw
-      # markup is how "vencido" gets satisfied by a class name.
+      # Tags stripped: "vencido" can be satisfied by a class name.
       [row] = Regex.run(~r{<tr[^>]*>(?:(?!</tr>).)*#{product}.*?</tr>}s, html)
       String.replace(row, ~r{<[^>]*>}s, " ")
     end
@@ -87,9 +84,8 @@ defmodule EstoqueOSWeb.StockLiveTest do
 
       cell = flags_cell(html, "Gaze vencida")
 
-      # Expired, below minimum, controlled and donation are all true of this
-      # row. Two of them, the worst two — and "controlled" is now one of them,
-      # because this column is the only place the row says so at all.
+      # Expired, below minimum, controlled and donation are all true; "controlled"
+      # must be among the two shown, as this column is the only place that says so.
       assert cell =~ "vencido"
       assert cell =~ "controlado"
       refute cell =~ "abaixo do mínimo"
@@ -103,8 +99,7 @@ defmodule EstoqueOSWeb.StockLiveTest do
       product = product_fixture(%{name: "Seringa farta", min_stock_override: Decimal.new(10)})
       box = box_fixture(%{code: "SF01", location_id: warehouse.id})
 
-      # Four in this box, a hundred in the location. The position is small; the
-      # product is not short.
+      # The position is small but the product is not short.
       for {quantity, box_id} <- [{4, box.id}, {100, nil}] do
         {:ok, _} =
           Inventory.post_transaction(%{

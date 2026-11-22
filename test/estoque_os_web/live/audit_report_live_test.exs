@@ -70,7 +70,7 @@ defmodule EstoqueOSWeb.AuditReportLiveTest do
 
     assert html =~ "Controlados em estoque"
     assert html =~ "Fentanila 50mcg"
-    # The ordinary product is not in the controlled block.
+
     controlled_block =
       html
       |> String.split("Controlados em estoque")
@@ -117,7 +117,6 @@ defmodule EstoqueOSWeb.AuditReportLiveTest do
         "type" => "adjustment"
       })
 
-    # The log now shows only the adjustment, but the summary still covers all.
     assert html =~ "Caixa molhada no transporte"
     assert html =~ "Movimentações por tipo"
   end

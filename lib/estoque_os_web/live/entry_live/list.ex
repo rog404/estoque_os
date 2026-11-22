@@ -1,26 +1,13 @@
 defmodule EstoqueOSWeb.EntryLive.List do
   @moduledoc """
-  Everything that came in by hand, newest first.
-
-  The mirror of the write-off list, and it exists for the same reason: goods
-  taken in at the door are filed under the same ledger types as an invoice —
-  `purchase_in` for something bought without a nota, `donation_in` for something
-  given — so they were showing up in the log wearing the invoice's name, and
-  whoever went looking for a manual entry ended up in the invoice list with
-  nothing to find.
-
-  What separates the two is the document, and an entry made at the door has
-  none. That is the filter, and it is a fact on the record rather than a second
-  transaction type invented for the screen.
+  Everything that came in by hand, newest first: the mirror of the write-off
+  list. Manual entries share ledger types with invoices (`purchase_in`,
+  `donation_in`); what separates them is having no invoice, which is the filter.
   """
 
   use EstoqueOSWeb, :live_view
 
-  @doc """
-  Events a viewer may send. Everything else on this screen is refused.
-
-  Reporting only.
-  """
+  # Events a viewer may send; everything else is refused. Reporting only.
   def viewer_events, do: ~w(filter)
 
   import EstoqueOS.Coercion, only: [parse_date: 2]
@@ -66,8 +53,6 @@ defmodule EstoqueOSWeb.EntryLive.List do
     )
   end
 
-  # Bought or given: the two ways goods arrive without a nota, and the one
-  # question somebody filters this list by.
   defp types_for("purchase"), do: ["purchase_in"]
   defp types_for("donation"), do: ["donation_in"]
   defp types_for(_all), do: ["purchase_in", "donation_in"]
@@ -150,7 +135,6 @@ defmodule EstoqueOSWeb.EntryLive.List do
     """
   end
 
-  # The products are the point of the row; the lots are not, at this altitude.
   defp items_label(transaction) do
     names =
       transaction.entries
@@ -169,8 +153,6 @@ defmodule EstoqueOSWeb.EntryLive.List do
     end
   end
 
-  # Which shelf it landed on, which is the question somebody reading this list
-  # is usually about to walk over and check.
   defp where_label(transaction) do
     case transaction.entries do
       [] -> "—"

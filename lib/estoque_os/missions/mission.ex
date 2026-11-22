@@ -2,15 +2,12 @@ defmodule EstoqueOS.Missions.Mission do
   @moduledoc """
   One surgical trip: where it went, when, and how big it was.
 
-  A mission is not the same thing as the location it happens at. The ONG returns
-  to the same cities, so "Tefé" answers where and nothing else; "Tefé 2026/1"
-  answers which trip, which is the unit the coordinator is accountable for.
+  Not the same as its location: the ONG returns to the same cities, so "Tefé"
+  is where and "Tefé 2026/1" is which trip.
 
-  `ends_on` is required. The flight home is booked before the team leaves, so the
-  date is known when the trip is created — it is simply subject to change, which
-  is what editing is for. Leaving it blank also made a mission's range unbounded
-  above, and since trips at one place may not overlap, one open mission blocked
-  its site for good.
+  `ends_on` is required: the flight home is booked beforehand, and a blank
+  would leave the range unbounded, blocking the site (trips there may not
+  overlap) forever.
   """
 
   use Ecto.Schema
@@ -50,9 +47,8 @@ defmodule EstoqueOS.Missions.Mission do
     )
   end
 
-  # The database is what actually guarantees this — two people creating trips at
-  # the same instant is a race no query can see. This is here so the ordinary
-  # case gets a sentence rather than a constraint violation.
+  # The exclusion constraint is the real guarantee (concurrent creates race);
+  # this gives the ordinary case a readable error.
   defp validate_no_overlap(changeset) do
     location_id = get_field(changeset, :location_id)
     starts_on = get_field(changeset, :starts_on)

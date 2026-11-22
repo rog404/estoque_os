@@ -1,21 +1,10 @@
 defmodule EstoqueOS.Coercion do
   @moduledoc """
-  Turning what a form sends into what the domain expects.
-
-  These two functions were copy-pasted into seven modules and drifted: one copy
-  did not handle the empty string a "no box" select sends, which crashed a
-  LiveView in production shape; another swallowed a bad quantity into `0`,
-  which reads as "nothing to pick" instead of as an error. One behavior now.
+  Turning what a form sends into what the domain expects, in one place.
   """
 
   @doc """
-  A value from attrs that may have arrived keyed by atom or by string.
-
-  A context is called from two directions: a LiveView hands it a form's string
-  keys, and code hands it atoms. Asking twice at every call site — reaching for
-  the atom key and falling back to the string one — answered the same question
-  inline thirty-six times, and every fallback was one more branch for a reader
-  to check.
+  A value from attrs that may be keyed by atom (code) or by string (LiveView form).
 
       iex> field(%{user_id: 7}, :user_id)
       7
@@ -26,9 +15,7 @@ defmodule EstoqueOS.Coercion do
       iex> field(%{}, :user_id)
       nil
 
-  An atom key that is present wins even when its value is falsy, which the `||`
-  form got wrong: a checkbox that came back `false` means false, not "look for a
-  string key and then give up".
+  An atom key that is present wins even when falsy (a `false` checkbox is false).
 
       iex> field(%{"consume_missing" => true, consume_missing: false}, :consume_missing)
       false
@@ -46,15 +33,8 @@ defmodule EstoqueOS.Coercion do
   @doc """
   Nothing typed, as `nil` — including a field holding only spaces.
 
-  This existed as a private copy in eight modules, in three different
-  behaviours: one did not handle `nil`, one did not trim, one trimmed. So `" "`
-  was a blank on five screens and a value on a sixth, which is not a decision
-  anybody made — it is what happens when the same four lines get rewritten
-  eight times.
-
-  A form always sends every field it renders, so `""` is what an untouched
-  input looks like and `" "` is what a nervous thumb looks like. Both are
-  nothing.
+  A form sends every field it renders, so `""` is an untouched input and `" "`
+  a stray keystroke; both are nothing.
   """
   def blank_to_nil(nil), do: nil
 
@@ -71,10 +51,8 @@ defmodule EstoqueOS.Coercion do
   A date from a form value, keeping what was already there when the field is
   blank or malformed.
 
-  Three report screens each had their own copy: a date input posts "" while
-  somebody is retyping it, and a period that collapsed to nil mid-keystroke
-  emptied the report under them. The fallback is what makes the field usable, so
-  it is part of the function rather than something each caller remembers.
+  A date input posts "" while being retyped; the fallback keeps the report from
+  emptying mid-keystroke.
 
       iex> parse_date("2026-08-21", ~D[2026-01-01])
       ~D[2026-08-21]
@@ -107,8 +85,7 @@ defmodule EstoqueOS.Coercion do
       iex> to_id(42)
       42
 
-  A "no box" select posts an empty string, and the answer to that is "no box",
-  never box zero.
+  A "no box" select posts an empty string: that is "no box", never box zero.
 
       iex> to_id("")
       nil
@@ -136,13 +113,12 @@ defmodule EstoqueOS.Coercion do
   @doc """
   A decimal from a typed value, accepting the comma a Brazilian keyboard types.
 
-  Returns nil on junk — never zero. A quantity nobody could parse is unknown,
-  and treating it as zero is how a count silently empties a position.
+  Returns nil on junk, never zero: parsing junk as zero silently empties a
+  position in a count.
 
       iex> to_decimal("12")
       Decimal.new("12")
 
-  A Brazilian keyboard types a comma, and the warehouse types what it types:
 
       iex> to_decimal("1,5")
       Decimal.new("1.5")

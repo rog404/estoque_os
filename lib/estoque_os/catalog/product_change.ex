@@ -2,15 +2,10 @@ defmodule EstoqueOS.Catalog.ProductChange do
   @moduledoc """
   One edit to what the catalog *says* about a product, and who made it.
 
-  Not the ledger. `transactions` records goods moving, and a planning figure
-  posted there would appear in every movement report as an event that never
-  happened. But "who lowered the minimum on the gauze, and when" is exactly the
-  question asked after a mission runs short, so it gets its own small log —
-  append-only, for the same reason the ledger is.
+  Not the ledger: a planning figure there would show as a movement that never
+  happened. Its own append-only log answers "who lowered the minimum, and when".
 
-  Values are stored as strings on purpose: this table will outlive the types of
-  the columns it describes, and what it needs to answer is "it went from 60 to
-  20", not arithmetic.
+  Values are strings on purpose: the table outlives the column types it describes.
   """
 
   use Ecto.Schema

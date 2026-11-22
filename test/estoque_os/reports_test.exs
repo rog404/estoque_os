@@ -55,7 +55,6 @@ defmodule EstoqueOS.ReportsTest do
       receive_stock(lot, warehouse, 300, unit_cost: "2.00")
 
       assert [row] = Reports.stock_rows()
-      # (100 * 1 + 300 * 2) / 400
       assert Decimal.equal?(row.unit_cost, Decimal.new("1.750000"))
     end
 
@@ -118,9 +117,8 @@ defmodule EstoqueOS.ReportsTest do
       assert {:ok, binary} = StockWorkbook.to_xlsx([row])
       assert {:ok, [imported]} = StockWorkbook.import_rows(binary)
 
-      # Elixlsx already writes it as a literal string cell, never a formula —
-      # the leading apostrophe is belt-and-suspenders for when the file is
-      # reopened in Excel, which would otherwise run it as one.
+      # Elixlsx writes a literal string cell; the apostrophe guards against Excel
+      # running it as a formula on reopen.
       assert String.starts_with?(imported.product, "'")
       assert imported.product == "'" <> row.product
     end
@@ -140,7 +138,6 @@ defmodule EstoqueOS.ReportsTest do
     test "a count that disagrees posts only the difference", %{lot: lot, warehouse: warehouse} do
       receive_stock(lot, warehouse, 300, unit_cost: "0.2695")
 
-      # The warehouse counted 287 of the 300 the ledger believed in.
       counted =
         counted_sheet([%{product: "Eletrodo ECG adulto", lot: "114391U02", quantity: 287}])
 
@@ -164,13 +161,10 @@ defmodule EstoqueOS.ReportsTest do
 
       assert [row] = Reports.stock_rows() |> Enum.filter(&(&1.product == "Gaze estéril"))
       assert Decimal.equal?(row.quantity, Decimal.new(40))
-      # The box existed in the warehouse but not in our database until now.
       assert row.box == "RP04"
     end
 
-    # A box the ledger has somewhere else cannot take entries here: the same
-    # stock would count twice, by the box's location there and by the imported
-    # entries here.
+    # Otherwise the same stock counts twice: by the box's location and the imported entries.
     test "a box that sits at another location is a line error, not a double count", %{
       lot: lot,
       warehouse: warehouse
@@ -182,7 +176,6 @@ defmodule EstoqueOS.ReportsTest do
       assert {:error, [error]} =
                Reports.import_stock(import_box_elsewhere_sheet(), user_id: actor_id())
 
-      # The message says where the box actually is.
       assert error.message =~ "Estoque Principal"
       assert Decimal.equal?(Inventory.balance(location_id: annex.id), Decimal.new(0))
     end
@@ -204,7 +197,6 @@ defmodule EstoqueOS.ReportsTest do
       assert second.line == 4
       assert second.message =~ "negativa"
 
-      # The good line was not applied either.
       assert Decimal.equal?(Inventory.balance(lot_id: lot.id), Decimal.new(300))
     end
 
@@ -236,7 +228,6 @@ defmodule EstoqueOS.ReportsTest do
     end
   end
 
-  # Builds a spreadsheet shaped like the one we export.
   defp import_box_elsewhere_sheet do
     counted_sheet([
       %{

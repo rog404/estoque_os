@@ -1,26 +1,16 @@
 defmodule EstoqueOSWeb.StockLive.Spreadsheet do
   @moduledoc """
-  The spreadsheet round trip, on a page of its own under Relatórios.
-
-  It used to be here *and* in a dropdown on the stock screen, which put
-  "importar dados" — an act that writes counts for the whole warehouse — one
-  click away from a list anybody may read. One home, and it is a reporting one:
-  this is done sitting down, with no box in anyone's hands.
-
-  What comes back in is a *count*: the sheet
-  states what is physically on the shelf, and only the difference is posted,
-  as an adjustment. It never adds stock the way an invoice does.
+  The spreadsheet round trip, on a page of its own under Reports. What comes
+  back in is a *count*: the sheet states what is physically on the shelf and
+  only the difference is posted, as an adjustment. It never adds stock the way
+  an invoice does.
   """
 
   use EstoqueOSWeb, :live_view
 
   alias EstoqueOS.Reports
 
-  @doc """
-  Events a viewer may send. Everything else on this screen is refused.
-
-  Validating an upload reads the file; `import` posts the count.
-  """
+  # Events a viewer may send; everything else is refused. `import` posts the count.
   def viewer_events, do: ~w(validate)
 
   @impl true

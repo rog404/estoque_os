@@ -58,8 +58,7 @@ defmodule EstoqueOSWeb.BoxLive.Lookup do
         socket |> assign(:box, nil) |> assign(:contents, [])
 
       box ->
-        # By id again: the lookup by code does not carry the location the
-        # header prints.
+        # By id again: the lookup by code does not load the header's location.
         box = Locations.get_box!(box.id)
         socket |> assign(:box, box) |> assign(:contents, Locations.box_contents(box))
     end

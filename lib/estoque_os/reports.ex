@@ -19,9 +19,8 @@ defmodule EstoqueOS.Reports do
   @doc """
   Current stock, one row per product + lot + box + location.
 
-  Empty positions are left out: they are ledger history, not stock. The unit
-  cost is the average of what we actually paid for that lot; it stays nil for
-  donations, where no value was ever informed.
+  Empty positions are left out (ledger history, not stock). The unit cost is
+  the average actually paid for the lot, nil for donations.
   """
   def stock_rows(opts \\ []) do
     costs = Inventory.average_unit_costs()
@@ -80,32 +79,25 @@ defmodule EstoqueOS.Reports do
       |> Map.put(:unit_cost, unit_cost)
       |> Map.put(:total, unit_cost && Decimal.mult(unit_cost, row.quantity))
       |> Map.put(:packagings, Map.get(packagings, row.product_id, []))
-      # Always booleans: a lot with no expiry is not "maybe expiring", and a nil
-      # here reaches the template as `nil and ...`, which raises.
+      # Always booleans: a nil reaches the template as `nil and ...`, which raises.
       |> Map.put(:expired, !is_nil(row.expires_on) and Date.before?(row.expires_on, today))
       |> Map.put(
         :expiring,
         !is_nil(row.expires_on) and Date.compare(row.expires_on, horizon) != :gt
       )
-      # "Running low" is a fact about the *product*, not about this position: a
-      # lot of four in one box is not low if there are two hundred in the next
-      # one. The total is the whole warehouse, taken in one query, so a filtered
-      # or paginated view cannot make a product look short by hiding the rest of
-      # it.
+      # "Running low" is about the *product* across the whole warehouse, not this
+      # position, so a filtered or paged view cannot make it look short.
       |> Map.put(:below_minimum, below_minimum?(row, totals))
     end)
     |> sort_rows(opts[:sort])
   end
 
   @doc """
-  One page of stock, with the totals the screen needs to be honest about what
-  it is not showing.
+  One page of stock, with totals so the screen is honest about what it hides.
 
-  The rows are assembled in Elixir — average cost and packaging are not columns
-  — so the page is cut after assembly. That bounds what a LiveView diff has to
-  carry, which was the failure that mattered: every lot × box × location in one
-  render. It does not bound the query itself, so `max_rows` caps that too and
-  the screen says when the cap was hit rather than quietly showing a slice.
+  Rows are assembled in Elixir (average cost and packaging are not columns), so
+  the page is cut afterwards, bounding the LiveView diff. `max_rows` caps the
+  query itself, and the screen says when the cap was hit.
   """
   def stock_page(opts \\ []) do
     page = max(opts[:page] || 1, 1)
@@ -130,9 +122,8 @@ defmodule EstoqueOS.Reports do
     }
   end
 
-  # Sorting happens after the rows are assembled because unit cost and total
-  # are computed in Elixir, not in the query — sorting by value in SQL would
-  # have to duplicate the costing rule.
+  # Sorted after assembly: cost and total are computed in Elixir, and SQL would
+  # duplicate the costing rule.
   defp sort_rows(rows, nil), do: rows
 
   defp sort_rows(rows, %{key: key, dir: dir}) do
@@ -149,8 +140,7 @@ defmodule EstoqueOS.Reports do
   defp sort_key(row, "total"), do: row.total
   defp sort_key(_row, _key), do: nil
 
-  # nil sorts last in both directions: a lot with no expiry is not "the oldest",
-  # and a donation with no value is not "the cheapest".
+  # nil sorts last both ways: no expiry is not "oldest", no value is not "cheapest".
   defp sorter(dir) do
     fn
       nil, nil -> true
@@ -170,8 +160,7 @@ defmodule EstoqueOS.Reports do
   defp maybe_search(query, ""), do: query
 
   defp maybe_search(query, search) do
-    # One box searches everything a person would type: the product, the lot on
-    # the label, or the box code painted on the side.
+    # One box searches product, lot label, box code, scanned code and NF number.
     trimmed = String.trim(search)
     term = "%#{trimmed}%"
 
@@ -188,13 +177,9 @@ defmodule EstoqueOS.Reports do
     )
   end
 
-  # "Which of this delivery is still here?" — asked with the DANFE in hand, so
-  # the number typed is the one printed on the paper. The invoice is not a
-  # column on a stock position: a lot arrived on a `purchase_in` and that
-  # transaction carries the invoice, so the search reaches it through the
-  # ledger. Exact rather than partial, because an NF number is a whole number
-  # somebody reads off a document, and `ilike "%7%"` would match half the
-  # warehouse.
+  # "Which of this delivery is still here?": reached through the `purchase_in`
+  # transaction that carries the invoice. Exact, since `ilike "%7%"` on an NF
+  # number would match half the warehouse.
   defp invoiced_lots(number) do
     TransactionEntry
     |> join(:inner, [e], t in Transaction, on: t.id == e.transaction_id)
@@ -203,17 +188,14 @@ defmodule EstoqueOS.Reports do
     |> select([e], e.lot_id)
   end
 
-  # The marketing role's whole view is this line. It arrives from the scope, not
-  # from the page, so a filter nobody rendered a control for still holds: an
-  # event over the socket cannot ask for a segment the role was never given.
+  # Arrives from the scope, not the page, so a socket event cannot ask for
+  # another segment's stock.
   defp maybe_segment(query, nil), do: query
   defp maybe_segment(query, ""), do: query
   defp maybe_segment(query, segment), do: where(query, [_s, _l, p], p.segment == ^segment)
 
-  # One list instead of three flags, and the list is a *union*: asking for
-  # expired and below-minimum together means "show me either", which is how
-  # somebody chasing problems reads it. Three separate `where`s would have meant
-  # "both at once" and answered almost nothing.
+  # The situations are a *union* ("either"), as someone chasing problems reads
+  # them; separate `where`s would mean "both at once".
   defp filter_situations(query, [], _horizon, _today, _totals), do: query
 
   defp filter_situations(query, situations, horizon, today, totals) do
@@ -245,10 +227,8 @@ defmodule EstoqueOS.Reports do
     dynamic([_s, l], l.needs_review and is_nil(l.review_acknowledged_at))
   end
 
-  # "Running low" is a fact about the product across the whole warehouse, not
-  # about this position, so it cannot be a comparison inside the row's own
-  # `where`. The products are worked out first and the filter is a membership
-  # test — the same reasoning `below_minimum?/2` already uses to decide the flag.
+  # Product-wide, so it cannot compare inside the row's `where`: products are
+  # worked out first and the filter is a membership test.
   defp situation_condition("below_minimum", _horizon, _today, low) do
     dynamic([_s, l], l.product_id in ^low)
   end
@@ -266,7 +246,7 @@ defmodule EstoqueOS.Reports do
     |> Enum.map(&elem(&1, 0))
   end
 
-  # The old spelling, for callers that still pass one flag at a time.
+  # The old one-flag-at-a-time spelling.
   defp situations_from_legacy(opts) do
     [
       opts[:only_expiring] && "expiring",
@@ -276,10 +256,6 @@ defmodule EstoqueOS.Reports do
     |> Enum.filter(&is_binary/1)
   end
 
-  # Goods that arrived with no lot number or no expiry — usually a donation, or
-  # an invoice whose `rastro` group the supplier left out. The overview counts
-  # them; this is where the count leads, because a warning that only states a
-  # number leaves the manager to find the rows by hand.
   defp below_minimum?(%{min_stock_override: nil}, _totals), do: false
 
   defp below_minimum?(row, totals) do
@@ -296,8 +272,7 @@ defmodule EstoqueOS.Reports do
     |> Map.new()
   end
 
-  # "1 CX = 50 UN" as the team confirmed it on import; a product may have more
-  # than one supplier packaging.
+  # "1 CX = 50 UN" as confirmed on import; a product may have several packagings.
   defp packagings_by_product do
     UnitConversion
     |> order_by([c], asc: c.from_unit)
@@ -309,9 +284,7 @@ defmodule EstoqueOS.Reports do
   defp maybe_limit(query, nil), do: query
   defp maybe_limit(query, limit), do: limit(query, ^limit)
 
-  # One place or several. "What is in the warehouse *and* in transit" was two
-  # searches and a subtraction done in somebody's head while the goods were on
-  # a truck.
+  # One place or several (e.g. warehouse *and* transit).
   defp maybe_filter_locations(query, nil), do: query
   defp maybe_filter_locations(query, []), do: query
 
@@ -319,9 +292,6 @@ defmodule EstoqueOS.Reports do
     do: where(query, [s], s.location_id in ^ids)
 
   defp maybe_filter_locations(query, id), do: where(query, [s], s.location_id == ^id)
-
-  # Average of the costs stock actually entered at, weighted by quantity.
-  # Entries without a cost (donations) are ignored rather than counted as zero.
 
   @doc """
   Exports the current stock as an XLSX binary.
@@ -336,18 +306,15 @@ defmodule EstoqueOS.Reports do
   @doc """
   Imports a counted stock spreadsheet.
 
-  The spreadsheet states what is physically there; we post the *difference*
-  against the ledger as a single `inventory_import` transaction. Nothing is
-  ever written as a balance, so the count remains auditable line by line.
-  Validation is all-or-nothing: a spreadsheet with a typo posts nothing and
-  reports every bad line, because a half-applied count is worse than no count.
+  The spreadsheet states what is physically there; the *difference* is posted
+  as a single `inventory_import` transaction, never as a balance. Validation is
+  all-or-nothing: a typo posts nothing and reports every bad line, as a
+  half-applied count is worse than none.
 
-  With `create_missing: true` (the initial migration), a product, location or
-  box the row names and the catalog does not have yet is created instead of
-  refused, and a row that names only a box — no product, no quantity — registers
-  that box with nothing inside it. This is how a warehouse that predates the
-  system loads what it already holds. Without the flag (the recurring count), an
-  unknown product is still a typo to catch, not a product to invent.
+  With `create_missing: true` (the initial migration), unknown products,
+  locations and boxes are created instead of refused, and a box-only row
+  registers an empty box. Without it (the recurring count), an unknown product
+  is a typo to catch.
   """
   def import_stock(binary, opts \\ []) do
     with {:ok, rows} <- StockWorkbook.import_rows(binary),
@@ -376,9 +343,7 @@ defmodule EstoqueOS.Reports do
     is_nil(row.product) and is_nil(row.quantity) and is_nil(row.location)
   end
 
-  # A row that names a box but no product is a box to register, empty — the
-  # concept boxes and baskets a count lists so they exist in the system even
-  # before anybody writes down what is inside them.
+  # A box-only row registers an empty box, so it exists before its contents are written down.
   defp resolve_row(%{product: nil, box: box} = row, opts) when not is_nil(box) do
     if create_missing?(opts) do
       with {:ok, location} <- fetch_location(row, opts),
@@ -415,9 +380,8 @@ defmodule EstoqueOS.Reports do
     end
   end
 
-  # Names are stored upper-cased so the same item typed in two cases is one
-  # product, not two. The segment is the surgical stock this import carries; a
-  # marketing item is reclassified by hand afterwards.
+  # Upper-cased so one item in two cases is one product. Always surgical; a
+  # marketing item is reclassified by hand.
   defp create_missing_product(row) do
     case %Product{}
          |> Product.changeset(%{
@@ -450,8 +414,7 @@ defmodule EstoqueOS.Reports do
     end
   end
 
-  # A count comes from a mission, so an unknown place is created as a mission
-  # site. A warehouse is renamed by hand if that is what it turns out to be.
+  # A count comes from a mission, so an unknown place becomes a mission site.
   defp create_missing_location(row) do
     case %Location{}
          |> Location.changeset(%{name: row.location, kind: "mission_site"})
@@ -473,8 +436,8 @@ defmodule EstoqueOS.Reports do
     end
   end
 
-  # Boxes are physical labels that already exist in the warehouse; a count is
-  # exactly when we learn about them, so an unknown code creates the box.
+  # Boxes already exist physically; a count is when we learn of them, so an
+  # unknown code creates the box.
   defp fetch_box(%{box: nil}, _location), do: {:ok, nil}
 
   defp fetch_box(row, location) do
@@ -487,9 +450,8 @@ defmodule EstoqueOS.Reports do
       %Box{location_id: location_id} = box when location_id == location.id ->
         {:ok, box}
 
-      # A box the ledger has somewhere else cannot take entries here: the same
-      # stock would then count twice, by box location there and by these
-      # entries here — the state inventory.ex calls unrecoverable by recount.
+      # A box elsewhere cannot take entries here: the stock would count twice
+      # (see `Inventory.enter_manually/1`).
       %Box{} = box ->
         error(
           row,
@@ -536,9 +498,8 @@ defmodule EstoqueOS.Reports do
     end
   end
 
-  # The migration count is a conference: every box it names was physically
-  # looked into on the count date, so its balance is verified rather than
-  # presumed. The recurring count leaves that to the box-count screen.
+  # The migration count is a conference: named boxes were physically opened, so
+  # they are verified. The recurring count leaves that to the box-count screen.
   defp maybe_verify_boxes(rows, opts) do
     if create_missing?(opts) do
       ids =
@@ -557,17 +518,14 @@ defmodule EstoqueOS.Reports do
     end
   end
 
-  # The spreadsheet says what is there; the ledger says what we thought was
-  # there. Only the difference is posted. A box-only row (no product, no
-  # quantity) has already registered its box and posts nothing.
+  # Only the difference is posted; a box-only row posts nothing.
   defp count_entry(%{product: nil}), do: nil
   defp count_entry(%{quantity: nil}), do: nil
 
   defp count_entry(row) do
     lot = ensure_lot(row)
 
-    # With a box, the count is about that box; without one, it is about
-    # everything the location holds of that lot.
+    # With a box, the count is about it; without, about the location's whole lot.
     filters = [lot_id: lot.id, location_id: row.location.id]
     filters = if row.box, do: Keyword.put(filters, :box_id, row.box.id), else: filters
 
@@ -594,9 +552,7 @@ defmodule EstoqueOS.Reports do
           product_id: row.product.id,
           lot_number: row.lot_number,
           expires_on: row.expires_on,
-          # Blank because nobody read the pack, or blank because this product
-          # has no lot to read — `lot_expected` is the difference, and the
-          # review list is only useful while it holds the first kind.
+          # `lot_expected` separates "nobody read the pack" from "no lot to read".
           needs_review: is_nil(row.lot_number) and row.product.lot_expected
         })
         |> Repo.insert!()
@@ -605,8 +561,6 @@ defmodule EstoqueOS.Reports do
         lot
     end
   end
-
-  ## Dashboard
 
   @doc """
   Headline numbers for the dashboard.
@@ -639,10 +593,9 @@ defmodule EstoqueOS.Reports do
     }
   end
 
-  # A note belongs to whichever stock its items land in, and a note can carry
-  # both. Counted through the items so the marketing overview does not raise a
-  # number about a delivery of gauze — an unattended item, still without a
-  # product, has no segment yet and stays in the whole-operation count only.
+  # Counted through the items, so the marketing overview ignores a gauze
+  # delivery; an item with no product has no segment yet and counts only in the
+  # whole-operation figure.
   defp pending_invoices(nil) do
     Repo.aggregate(from(i in Invoice, where: i.status != "posted"), :count)
   end
@@ -666,22 +619,16 @@ defmodule EstoqueOS.Reports do
     )
   end
 
-  # For the queries that reach `products` under another name than the stock
-  # query's `p`. Written as a positional binding rather than a named one
-  # because the callers differ in shape and all of them put the product last.
+  # Positional binding: callers differ in shape but all put the product last.
   defp segment_scope(query, nil), do: query
   defp segment_scope(query, segment), do: where(query, [..., p], p.segment == ^segment)
 
   @doc """
   Stock that expires within the alert window, soonest first.
 
-  A product may override the global window: insulin nobody can replace on a
-  mission deserves more warning than gauze.
-
-  `:location_id` narrows it to one place, which is what the end of a mission
-  asks: of what is still at the site, what will not survive the trip home.
-  `limit: nil` returns every row — the dashboard wants a preview, a mission
-  closing wants the whole list.
+  A product may override the global window (insulin deserves more warning than
+  gauze). `:location_id` narrows to one place, for the end of a mission.
+  `limit: nil` returns every row.
   """
   def expiring_soon(opts \\ []) do
     default_days = opts[:days] || Application.get_env(:estoque_os, :expiry_alert_days, 90)
@@ -714,11 +661,9 @@ defmodule EstoqueOS.Reports do
   Stock on hand whose lot carries no expiry date, for products that should have
   one.
 
-  A NULL `expires_on` is two different facts. On a donated teddy bear it is
-  correct and permanent. On an anesthetic it means nobody read the box — and that
-  is a Portaria 344 item travelling with the rest of the stock. `expiry_expected`
-  is what tells them apart, so this list is short enough to act on instead of
-  being the whole donations shelf.
+  A NULL `expires_on` is correct on a donated toy but means "nobody read the
+  box" on an anesthetic (a Portaria 344 item). `expiry_expected` tells them
+  apart so the list is actionable.
   """
   def missing_expiry(opts \\ []) do
     StockSnapshot
@@ -744,9 +689,8 @@ defmodule EstoqueOS.Reports do
   @doc """
   Products sitting at or below the minimum a mission is expected to carry.
 
-  Only products that have moved at least once are considered. The seeded
-  catalog gives every one of its 322 lines a minimum, so listing the untouched
-  ones would bury the handful that actually ran low under a full catalog dump.
+  Only products that have moved are considered: the seeded catalog gives every
+  line a minimum, which would bury the ones that actually ran low.
   """
   def below_minimum(opts \\ []) do
     balances =
@@ -787,8 +731,7 @@ defmodule EstoqueOS.Reports do
   @doc """
   Boxes holding stock that nobody has counted for a while.
 
-  These are the balances the system *presumes*; the mini-audit flow will start
-  from this list.
+  These are the balances the system *presumes*.
   """
   def stale_boxes(opts \\ []) do
     days = opts[:days] || 30
@@ -814,19 +757,16 @@ defmodule EstoqueOS.Reports do
   @doc """
   Counts somebody needs to look at.
 
-  A count that was repeated and still disagreed is not a correction anyone
-  should file quietly: either goods are leaving without a record, or the count
-  cannot be trusted, and both are the manager's problem rather than the
-  counter's. The screen that took the count flags the adjustment; this is where
-  the flag surfaces.
+  A repeated count that still disagrees means goods leaving unrecorded or an
+  untrustworthy count: the manager's problem, not the counter's. The screen
+  that took the count flags the adjustment; this is where it surfaces.
 
   Two screens flag: the box count (`count_diverged_twice`) and the receiving
-  conference (`count_diverged_after_recounts`). One list, because the question a
-  manager is answering is the same either way — somebody counted this more than
-  once and we still do not agree with our own records.
+  conference (`count_diverged_after_recounts`); one list, as the manager's
+  question is the same.
 
-  Ordered newest first and deliberately unfiltered by date — an unexplained
-  divergence does not become acceptable by ageing.
+  Newest first, unfiltered by date: an unexplained divergence does not become
+  acceptable by ageing.
   """
   def counts_needing_review(opts \\ []) do
     entries = from(e in TransactionEntry, order_by: [asc: e.id], preload: [:box, lot: :product])
@@ -835,9 +775,7 @@ defmodule EstoqueOS.Reports do
     |> where([t], not is_nil(t.review_reason) and is_nil(t.review_acknowledged_at))
     |> order_by([t], desc: t.occurred_at, desc: t.id)
     |> limit(^(opts[:limit] || 5))
-    # The invoice comes along because half of these are now receiving
-    # conferences rather than box counts, and for those the row the manager
-    # wants to open is the delivery, not the box.
+    # The invoice: for receiving conferences the manager opens the delivery, not a box.
     |> preload([:user, [invoice: :supplier], entries: ^entries])
     |> Repo.all()
     |> Enum.map(fn transaction ->
@@ -846,9 +784,7 @@ defmodule EstoqueOS.Reports do
         reason: transaction.review_reason,
         invoice: transaction.invoice,
         box: transaction.entries |> Enum.find_value(&(&1.box && &1.box.code)),
-        # The id as well as the code: the overview names the box that disagreed
-        # and has to be able to lead there. A code alone leaves the manager
-        # searching the box list for the row they were just told about.
+        # The id too, so the overview can link to the box.
         box_id: transaction.entries |> Enum.find_value(&(&1.box && &1.box.id)),
         products:
           transaction.entries
@@ -868,8 +804,7 @@ defmodule EstoqueOS.Reports do
     |> maybe_touching_segment(opts[:segment])
     |> order_by([t], desc: t.occurred_at, desc: t.id)
     |> limit(^(opts[:limit] || 8))
-    # Locations and supplier come along because the overview says what happened,
-    # not just that something did: a load-out is worth "from where to where".
+    # Locations and supplier, so a load-out reads "from where to where".
     |> preload([
       :user,
       :source_location,
@@ -890,18 +825,13 @@ defmodule EstoqueOS.Reports do
     end)
   end
 
-  ## Sales
-
   @doc """
-  What was sold in a period: how much left, what it brought in, what it had
-  cost.
+  What was sold in a period: how much left, what it brought in, what it cost.
 
-  A sale is a `manual_out` to the `sale` destination, so this reads the same
-  ledger as everything else — there is no second book. Revenue comes from the
-  price on the entry, which is what the buyer paid; cost comes from the average
-  the lot entered at, which is what the ONG paid. Margin is the subtraction, and
-  it is only as honest as the second number: a line drawn from a donated lot has
-  no cost at all, so `unpriced` counts those rather than calling them free.
+  A sale is a `manual_out` to the `sale` destination: no second book. Revenue is
+  the entry's price (what the buyer paid), cost the lot's average entry cost
+  (what the ONG paid). A donated lot has no cost, so `unpriced` counts those
+  lines rather than calling them free.
   """
   def sales(from, to, opts \\ []) do
     {from, to} = period(from, to)
@@ -920,8 +850,7 @@ defmodule EstoqueOS.Reports do
       product: p.name,
       unit: p.stock_unit,
       lot_id: l.id,
-      # Signed in the ledger, and a sale is negative. Flipped once, here, so
-      # every reader below counts upwards.
+      # A sale is negative in the ledger; flipped once here.
       quantity: fragment("-(?)", e.quantity),
       sale_unit_price: e.sale_unit_price
     })
@@ -942,14 +871,11 @@ defmodule EstoqueOS.Reports do
   @doc """
   What was sold, grouped by where it went out from.
 
-  A sale leaves from a place, and for the marketing stock the place is the
-  event: a mission site, a fair, the office counter. "Quanto vendemos em
-  Manacapuru" was a question the ledger could answer and no screen asked — the
-  sales report totalled the period and stopped there.
+  For marketing stock the place is the event (a mission site, a fair, the
+  office counter).
 
-  The place is read from the entry rather than from the transaction: a movement
-  has a source location only when it travelled, and a sale does not travel. The
-  goods left the shelf they were standing on, and that shelf is the answer.
+  The place is read from the entry, not the transaction: a transaction has a
+  source location only when it travelled, and a sale does not.
   """
   def sales_by_place(from, to, opts \\ []) do
     {from, to} = period(from, to)
@@ -959,8 +885,7 @@ defmodule EstoqueOS.Reports do
     |> join(:inner, [e], t in Transaction, on: t.id == e.transaction_id)
     |> join(:inner, [e], l in Lot, on: l.id == e.lot_id)
     |> join(:inner, [e, t, l], p in Product, on: p.id == l.product_id)
-    # Narrowed before the location joins in: `segment_scope/2` reads the last
-    # binding, and after the join that is the place rather than the product.
+    # Before the location join: `segment_scope/2` reads the last binding.
     |> segment_scope(opts[:segment])
     |> join(:inner, [e, t, l, p], loc in Location, on: loc.id == e.location_id)
     |> where([e, t], t.type == "manual_out" and t.destination == "sale")
@@ -1004,8 +929,7 @@ defmodule EstoqueOS.Reports do
   end
 
   @doc """
-  The three numbers a sales report is read for, plus the one that says how much
-  to trust the third.
+  Revenue, cost and margin, plus `unpriced`, which says how far to trust the margin.
   """
   def sales_totals(rows) do
     revenue = sum(rows, & &1.revenue)
@@ -1024,23 +948,15 @@ defmodule EstoqueOS.Reports do
   How the sold stock is moving: what leaves most, what runs out first, and what
   is not leaving at all.
 
-  Written for whoever looks after the marketing material, whose question is not
-  "will the mission be short" but "what do I have made next". Three answers out
-  of one pass over the same sales rows, because they are three readings of the
-  same fact:
+  For whoever looks after marketing material ("what do I have made next"),
+  three readings of one pass over the sales rows:
 
-    * `best_sellers` — what left most, counted in units rather than in money.
-      Each shirt size is its own product, so this list is also the answer to
-      which size sells.
-    * `cover` — how many days the shelf lasts at the pace of the period. The
-      number that says when to order, rather than after it is already zero.
-    * `idle` — what is on the shelf and did not sell one unit. What not to have
-      printed again.
+    * `best_sellers` — what left most, in units (each shirt size is its own
+      product, so this also says which size sells)
+    * `cover` — days the shelf lasts at the period's pace, to say when to order
+    * `idle` — on the shelf and not sold once; what not to print again
 
-  Products that never moved at all are not idle stock: something bought and
-  never sold once is a different conversation from something that stopped
-  selling, and the shelf is what this report is about — so `idle` only counts
-  what is actually there.
+  `idle` only counts what is actually on the shelf.
   """
   def sales_pace(from, to, opts \\ []) do
     rows = sales(from, to, opts)
@@ -1071,8 +987,7 @@ defmodule EstoqueOS.Reports do
     }
   end
 
-  # Rounded down, because a shelf that lasts eleven and a half days lasts
-  # eleven: the half day is the one somebody would have counted on.
+  # Rounded down: eleven and a half days of shelf is eleven.
   defp days_of_cover(row, sale, days) do
     per_day = Decimal.div(sale.quantity, days)
 
@@ -1083,9 +998,6 @@ defmodule EstoqueOS.Reports do
     })
   end
 
-  # What is on the shelf right now, per product, for one stock. The snapshot
-  # table is the maintained cache of the ledger, which is what every other
-  # balance on the dashboard reads too.
   defp product_balances(segment) do
     StockSnapshot
     |> join(:inner, [s], l in Lot, on: l.id == s.lot_id)
@@ -1112,9 +1024,7 @@ defmodule EstoqueOS.Reports do
       quantity: sum(rows, & &1.quantity),
       revenue: sum(rows, & &1.revenue),
       cost: sum(rows, & &1.cost),
-      # Lines whose lot never carried a cost — a donation, usually. Counted
-      # rather than treated as zero, which would report the whole sale as
-      # margin.
+      # No cost (usually a donation): counted, not zero, which would make the whole sale margin.
       unpriced: Enum.count(rows, &is_nil(&1.unit_cost))
     }
   end
@@ -1126,14 +1036,9 @@ defmodule EstoqueOS.Reports do
     rows |> Enum.map(fun) |> Enum.reduce(Decimal.new(0), &Decimal.add/2)
   end
 
-  ## Audit trail
-
   @doc """
-  Movements in a period, grouped by type.
-
-  The first thing an auditor asks is "what happened here", and the honest
-  answer is a count of every kind of event, including the ones nobody likes to
-  show: adjustments.
+  Movements in a period, grouped by type, adjustments included: an auditor's
+  first question is "what happened here".
   """
   def movement_summary(from, to) do
     {from, to} = period(from, to)
@@ -1189,10 +1094,8 @@ defmodule EstoqueOS.Reports do
     end)
   end
 
-  # A movement has no segment of its own — its *entries* do, through the lot's
-  # product. A transaction counts as marketing when it moved any marketing
-  # goods, which is the only reading that keeps a mixed movement visible to the
-  # person it concerns.
+  # A movement has no segment; its *entries* do. It counts for a segment when it
+  # moved any of its goods, so a mixed movement stays visible to both.
   defp maybe_touching_segment(query, nil), do: query
   defp maybe_touching_segment(query, ""), do: query
 
@@ -1212,17 +1115,11 @@ defmodule EstoqueOS.Reports do
   defp maybe_of_type(query, types) when is_list(types), do: where(query, [t], t.type in ^types)
   defp maybe_of_type(query, type), do: where(query, [t], t.type == ^type)
 
-  # Goods taken in by hand, which the ledger files under the same types as an
-  # invoice: `purchase_in` for something bought without a nota, `donation_in`
-  # for something given. What separates them is the document — an entry made at
-  # the door has none — and asking for that is the whole reason this option
-  # exists.
+  # Manual entries share `purchase_in`/`donation_in` with invoices; what
+  # separates them is the missing document.
   defp maybe_paperless(query, true), do: where(query, [t], is_nil(t.invoice_id))
   defp maybe_paperless(query, _), do: query
 
-  # This is the filter the operation asked for by another name: "we need to know
-  # which items were donated". Answering it was impossible while the destination
-  # lived in free-text notes.
   defp maybe_to_destination(query, nil), do: query
   defp maybe_to_destination(query, ""), do: query
 
@@ -1241,8 +1138,8 @@ defmodule EstoqueOS.Reports do
   @doc """
   Adjustments in a period, grouped by reason.
 
-  This is the number an auditor reads first: stock that changed without goods
-  moving, and the reason a human gave for it.
+  What an auditor reads first: stock that changed without goods moving, and the
+  reason a human gave.
   """
   def adjustment_summary(from, to) do
     {from, to} = period(from, to)
@@ -1264,8 +1161,7 @@ defmodule EstoqueOS.Reports do
   @doc """
   Controlled substances currently in stock, per lot and position.
 
-  Portaria 344 items ride in this stock, and an auditor will want them listed
-  separately rather than buried in a 300-line inventory.
+  Portaria 344 items ride in this stock; an auditor wants them listed apart.
   """
   def controlled_stock(opts \\ []) do
     opts |> Keyword.take([:segment]) |> stock_rows() |> Enum.filter(& &1.controlled)

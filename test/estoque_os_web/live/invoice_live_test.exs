@@ -64,7 +64,6 @@ defmodule EstoqueOSWeb.InvoiceLiveTest do
       assert html =~ "ELETRODO ECG ADULTO PT/50 POLYMED"
       assert html =~ "114391U02"
       assert html =~ "CIRURGICA ATLANTICA"
-      # Four lines still waiting for a product.
       assert html =~ "4 item(ns) pendente(s)"
     end
 
@@ -90,7 +89,6 @@ defmodule EstoqueOSWeb.InvoiceLiveTest do
         |> render_submit(%{"product_id" => product.id, "conversion_factor" => "50"})
 
       assert html =~ "Item confirmado"
-      # 13,475 / 50 = 0,2695 per electrode.
       assert html =~ "0,2695"
       assert html =~ "3 item(ns) pendente(s)"
     end
@@ -140,13 +138,11 @@ defmodule EstoqueOSWeb.InvoiceLiveTest do
         |> element("form[phx-submit=post]")
         |> render_submit(%{"location_id" => warehouse.id})
 
-      # The end of the flow states what entered stock, instead of a corner toast.
       assert html =~ "está no estoque"
       assert html =~ "4 item(ns)"
       assert html =~ "550 unidade(s)"
       assert html =~ "Estoque Principal"
 
-      # 6 packs of 50 electrodes + 50 plates + 100 + 100 nebulizers.
       assert Decimal.equal?(
                Inventory.balance(location_id: warehouse.id),
                Decimal.new(550)
@@ -154,9 +150,7 @@ defmodule EstoqueOSWeb.InvoiceLiveTest do
 
       assert Invoices.get_invoice!(invoice.id).status == "posted"
 
-      # And the screen stops being a stack of cards. There are no decisions left
-      # on a posted invoice, so a card per line is a page you scroll to read
-      # four columns; what it is now is a record, read across.
+      # A posted invoice has no decisions left, so it renders as a record, not cards.
       assert html =~ "O que foi lançado"
       refute html =~ ~s(name="conversion_factor")
       refute html =~ "Buscar no catálogo"

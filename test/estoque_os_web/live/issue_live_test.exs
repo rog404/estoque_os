@@ -24,8 +24,7 @@ defmodule EstoqueOSWeb.IssueLiveTest do
     %{warehouse: warehouse, product: product, lone: lone}
   end
 
-  # The quantity input on its own. Asserting against the whole page would let
-  # the search field's value satisfy the assertion.
+  # The whole page would let the search field's value satisfy the assertion.
   defp quantity_field(html) do
     case Regex.run(~r{<input[^>]*name="quantity"[^>]*>}, html) do
       [field] -> field
@@ -88,7 +87,6 @@ defmodule EstoqueOSWeb.IssueLiveTest do
       assert html =~ "Tirar de"
       assert html =~ near.code
       assert html =~ far.code
-      # The recommendation names the box expiring soonest.
       assert html =~ "recomendado: #{near.code}"
     end
 
@@ -107,7 +105,6 @@ defmodule EstoqueOSWeb.IssueLiveTest do
       view |> form("#destination-form", %{"destination" => "pacu"}) |> render_change()
       view |> element("#basket-form") |> render_submit(%{})
 
-      # 5 came from the box expiring soonest, the other box untouched.
       assert Decimal.equal?(Inventory.balance(lot_id: near_lot.id), Decimal.new(5))
       assert Decimal.equal?(Inventory.balance(lot_id: far_lot.id), Decimal.new(10))
     end
@@ -157,8 +154,6 @@ defmodule EstoqueOSWeb.IssueLiveTest do
       assert html =~ near.code
     end
 
-    # Reported as a bug, and it read as one: the operator typed the quantity,
-    # the FEFO preview appeared, and the field they were typing into went blank.
     # `phx-change` repaints this form on every keystroke, and an input rendered
     # without a value is repainted empty.
     test "the quantity typed survives the repaint the preview causes", %{
@@ -178,9 +173,7 @@ defmodule EstoqueOSWeb.IssueLiveTest do
       assert quantity_field(html) =~ ~s(value="3")
     end
 
-    # The other half of the same report. What appears on its own does not get to
-    # move what the thumb is already aimed at, so the preview is rendered after
-    # the field and its buttons, never above them.
+    # What appears on its own must not move what the thumb is aimed at.
     test "the preview is drawn below the quantity, not above it", %{
       conn: conn,
       product: product
@@ -201,8 +194,6 @@ defmodule EstoqueOSWeb.IssueLiveTest do
       assert field < preview
     end
 
-    # Empty again once the line is in the basket, so the next product does not
-    # arrive holding the last one's number.
     test "the quantity is cleared after the line is added", %{conn: conn, product: product} do
       {:ok, view, _html} = live(conn, ~p"/issue")
 
@@ -257,8 +248,6 @@ defmodule EstoqueOSWeb.IssueLiveTest do
 
       view |> element("#basket-form") |> render_submit(%{})
 
-      # The whole point of a closed list: "how much did we throw away" is a
-      # query, not somebody reading notes.
       assert [transaction] = Repo.all(from(t in Transaction, where: t.type == "manual_out"))
       assert transaction.destination == "disposal"
 
@@ -277,8 +266,7 @@ defmodule EstoqueOSWeb.IssueLiveTest do
 
       [transaction] = Repo.all(from(t in Transaction, where: t.type == "manual_out"))
 
-      # A termo de doação declares a value to a hospital. Nothing was given to
-      # anybody here.
+      # A termo de doação declares a value to a hospital; nothing was given.
       assert conn |> get(~p"/issues/#{transaction.id}/termo/doacao") |> redirected_to() ==
                ~p"/issues"
     end

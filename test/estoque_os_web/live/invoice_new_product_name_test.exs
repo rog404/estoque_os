@@ -1,9 +1,8 @@
 defmodule EstoqueOSWeb.InvoiceNewProductNameTest do
   @moduledoc """
-  A catalog name outlives the invoice that introduced it. The screen used to
-  create the product straight from the supplier's description, which arrives
-  with the shipment's lot, quantity and dates glued on and often truncated
-  mid-word — so the catalog inherited that text permanently.
+  A catalog name outlives the invoice that introduced it, so a new product must
+  not inherit the supplier's description, which has the shipment's lot, quantity
+  and dates glued on and is often truncated mid-word.
   """
 
   use EstoqueOSWeb.ConnCase, async: true
@@ -28,13 +27,9 @@ defmodule EstoqueOSWeb.InvoiceNewProductNameTest do
     Enum.find(invoice.items, &is_nil(&1.product_id))
   end
 
-  # The name field is no longer rendered on every unresolved line — it belongs
-  # to a line that is actually about to become a new product, and appears when
-  # the operator says so. Every test here is about that field, so every one of
-  # them has to say it first.
+  # The name field only renders once the operator chooses to create a product,
+  # and the matches list must be opened (focus) before it can be clicked.
   defp choose_to_create(view, item) do
-    # And the list it is offered in belongs to the search field, so it has to be
-    # opened before anything in it can be clicked.
     view |> element("#search-#{item.id} input[name=query]") |> render_focus()
 
     view
@@ -53,9 +48,7 @@ defmodule EstoqueOSWeb.InvoiceNewProductNameTest do
       {:ok, view, html} = live(conn, ~p"/invoices/#{invoice.id}")
       choose_to_create(view, item)
 
-      # The supplier's raw wording stays visible — it is what the invoice says,
-      # and the operator compares against it. What must not carry the shipment
-      # tail is the name being proposed for the catalog.
+      # The raw wording stays visible; only the proposed name must lose the tail.
       assert html =~ "Fornecedor: 4219"
 
       value =
@@ -107,7 +100,6 @@ defmodule EstoqueOSWeb.InvoiceNewProductNameTest do
       })
       |> render_submit()
 
-      # Something sane was created, and it is not the raw description.
       refute Repo.exists?(from p in Product, where: like(p.name, "%Fornecedor:%"))
       assert Repo.exists?(from p in Product, where: like(p.name, "%HYPOFARMA%"))
     end

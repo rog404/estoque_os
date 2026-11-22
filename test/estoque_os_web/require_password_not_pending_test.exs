@@ -1,10 +1,9 @@
 defmodule EstoqueOSWeb.RequirePasswordNotPendingTest do
   @moduledoc """
-  The concrete risk named in the plan: if `:require_password_not_pending`
-  ever ends up on the on_mount list of `UserLive.ResetPassword, :required`
-  itself (a copy-paste from another live_session), a flagged user gets
-  redirected to the very page meant to clear the flag, forever. This
-  asserts the required page renders instead of redirecting.
+  If `:require_password_not_pending` ever lands on the on_mount list of
+  `UserLive.ResetPassword, :required` itself (a copy-paste from another
+  live_session), a flagged user is redirected forever to the page meant to clear
+  the flag. This asserts that page renders instead.
   """
 
   use EstoqueOSWeb.ConnCase, async: true

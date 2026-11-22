@@ -1,14 +1,8 @@
 defmodule EstoqueOSWeb.ConferenceLive.Index do
   @moduledoc """
-  What is waiting to be checked.
-
-  The screen the operator starts their day from. Until it existed, the only door
-  into a conference was the invoice screen — and an invoice is a document of
-  prices, so it sits behind the money gate that the logistics role is on the
-  wrong side of. The person whose entire job this is could not find the work.
-
-  Nothing here carries an amount. That is not decoration: it is what lets this
-  screen live in Operação at all.
+  What is waiting to be checked: the operator's starting screen. Nothing here
+  carries an amount, which is what lets it live in Operação, outside the money
+  gate the logistics role cannot pass.
   """
 
   use EstoqueOSWeb, :live_view
@@ -85,9 +79,7 @@ defmodule EstoqueOSWeb.ConferenceLive.Index do
               >
                 {gettext("Continue counting")}
               </.button>
-              <!-- No `@writable?` guard: this route already requires an
-                   operator, so the question is settled before the page
-                   renders. -->
+              <%!-- No `@writable?` guard: the route already requires an operator. --%>
               <.button
                 :if={is_nil(row.receipt)}
                 phx-click="start"

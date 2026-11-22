@@ -1,21 +1,5 @@
 import Config
 
-# config/runtime.exs is executed for all environments, including
-# during releases. It is executed after compilation and before the
-# system starts, so it is typically used to load production configuration
-# and secrets from environment variables or elsewhere. Do not define
-# any compile-time configuration in here, as it won't be applied.
-# The block below contains prod specific runtime configuration.
-
-# ## Using releases
-#
-# If you use `mix release`, you need to explicitly enable the server
-# by passing the PHX_SERVER=true when you start it:
-#
-#     PHX_SERVER=true bin/estoque_os start
-#
-# Alternatively, you can use `mix phx.gen.release` to generate a `bin/server`
-# script that automatically sets the env var above.
 if System.get_env("PHX_SERVER") do
   config :estoque_os, EstoqueOSWeb.Endpoint, server: true
 end
@@ -52,44 +36,12 @@ if config_env() == :prod do
 
   database_host = database_url |> URI.parse() |> Map.fetch!(:host)
 
-  # Encrypted always. The question is what the certificate on the other end has
-  # to prove, and there are three honest answers — named after libpq's own, so
-  # the words mean to a DBA what they mean here:
-  #
-  #   * **verify-full** (the default): the chain is real *and* the certificate
-  #     covers the host we dialled. The only version of TLS that fully means
-  #     something.
-  #   * **verify-ca** (`DATABASE_SSL_VERIFY=ca`): the chain is real, the name is
-  #     not checked. For managed Postgres reached over a provider's private
-  #     network, where the internal hostname is not one the certificate carries
-  #     — see below.
-  #   * **none** (`DATABASE_SSL_VERIFY=none`): encrypted conversation with
-  #     whoever answered. Logged loudly, every boot.
-  #
-  # `ca` is for a provider that answers on a private hostname with a certificate
-  # a real authority signed: the chain proves who it is, and the name cannot be
-  # checked because the certificate never claimed that name.
-  #
-  # It is deliberately *not* what Render needs, and assuming otherwise cost two
-  # deploys on 2026-08-20:
-  #
-  #     Postgrex.Protocol failed to connect: ssl connect: TLS client:
-  #     ... CLIENT ALERT: Fatal - Bad Certificate — selfsigned_peer
-  #
-  # Render's *external* endpoint is fronted by a proxy holding a genuine Let's
-  # Encrypt certificate, and verify-full passes against it:
-  #
-  #     openssl s_client -starttls postgres -connect \
-  #       dpg-…-a.virginia-postgres.render.com:5432 -verify_hostname …
-  #     → issuer Let's Encrypt YR2, SAN *.virginia-postgres.render.com,
-  #       Verify return code: 0 (ok)
-  #
-  # But `fromDatabase: property: connectionString` hands the app the *internal*
-  # URL, and the database itself answers that one with a self-signed
-  # certificate. Nothing public signed it, so `verify_peer` fails however far
-  # the hostname check is relaxed — over the private network `ca` is not a
-  # softer `full`, it is equally impossible. Hence `none` in `render.yaml`,
-  # where the trade-off is written out.
+  # Always encrypted; DATABASE_SSL_VERIFY chooses what the server's certificate
+  # must prove: verify-full (default: real chain and matching host), "ca" (real
+  # chain, host not checked — a private endpoint whose cert omits the internal
+  # name), or "none" (encrypted, cert unchecked). Render's internal Postgres
+  # answers with a self-signed cert, so only "none" connects there — see
+  # render.yaml.
   trust_store = fn
     nil -> [verify: :verify_peer, cacerts: :public_key.cacerts_get()]
     path -> [verify: :verify_peer, cacertfile: path]
@@ -105,10 +57,7 @@ if config_env() == :prod do
   ssl_opts =
     case {System.get_env("DATABASE_SSL_VERIFY"), System.get_env("DATABASE_CA_CERT_FILE")} do
       {"none", _} ->
-        # Loud, on stderr, and *not* through `IO.warn`. `IO.warn` prints a
-        # stacktrace under the message, and this is now the standing setting on
-        # Render rather than a temporary lapse: something that looks like an
-        # exception on every boot is how a real crash goes unnoticed.
+        # Not IO.warn: its stacktrace would read as a crash on every boot.
         IO.puts(
           :stderr,
           "DATABASE_SSL_VERIFY=none: the database connection is encrypted but " <>
@@ -119,9 +68,6 @@ if config_env() == :prod do
         [verify: :verify_none]
 
       {"ca", cert_file} ->
-        # Stated plainly and *not* through `IO.warn`, which prints a stacktrace
-        # under the message: in the deploy log that reads as an exception during
-        # boot, and a downgrade nobody chose looks the same as a crash.
         IO.puts(
           "DATABASE_SSL_VERIFY=ca: the certificate chain is verified; " <>
             "the hostname is not (private network endpoint)."
@@ -130,10 +76,7 @@ if config_env() == :prod do
         trust_store.(cert_file) ++
           [
             server_name_indication: to_charlist(database_host),
-            # verify-ca and not verify-full: the chain has already been
-            # required to be real, and this accepts whatever name the
-            # certificate carries. Returning `true` rather than `:default` is
-            # the whole difference between the two levels.
+            # Accept any hostname; the chain was already required to be real.
             customize_hostname_check: [match_fun: fn _reference, _presented -> true end]
           ]
 
@@ -150,24 +93,14 @@ if config_env() == :prod do
   end
 
   config :estoque_os, EstoqueOS.Repo,
-    # The options go *in* `:ssl`. `ssl: true` alongside a separate `:ssl_opts`
-    # is the older spelling, and Postgrex deprecated it — it logged
-    # ":ssl_opts is deprecated, pass opts to :ssl instead" twice on every boot,
-    # which is two lines of noise in the log a real error has to be found in.
+    # Options go in `:ssl` (Postgrex deprecated the separate `:ssl_opts`).
     ssl: database_ssl? && ssl_opts,
     url: database_url,
-    # Two, because the free-tier database allows two connections in total and
-    # the deploy needs one of them for the migration. Raise it with the plan,
-    # not before: a pool larger than the database permits fails as a timeout
-    # under load, which reads like a slow query rather than a misconfiguration.
+    # Two: the free-tier database allows two connections, one of which the
+    # deploy's migration needs. Raise it with the plan.
     pool_size: String.to_integer(System.get_env("POOL_SIZE") || "2"),
     socket_options: maybe_ipv6
 
-  # The secret key base is used to sign/encrypt cookies and other secrets.
-  # A default value is used in config/dev.exs and config/test.exs but you
-  # want to use a different value for prod and you most likely don't want
-  # to check this value into version control, so we use an environment
-  # variable instead.
   secret_key_base =
     System.get_env("SECRET_KEY_BASE") ||
       raise """
@@ -175,12 +108,8 @@ if config_env() == :prod do
       You can generate one by calling: mix phx.gen.secret
       """
 
-  # RENDER_EXTERNAL_HOSTNAME is set by Render to this service's own hostname.
-  # Reading it means one fewer thing to configure by hand, and it removes the
-  # classic misconfiguration: a wrong host makes `check_origin` refuse the
-  # LiveView socket, so every page renders once and then never updates —
-  # which looks like a broken app rather than a wrong variable. PHX_HOST still
-  # wins when set, for a custom domain or another platform.
+  # Default to Render's own hostname: a wrong host makes check_origin refuse the
+  # LiveView socket, so pages render once and never update. PHX_HOST overrides.
   host =
     System.get_env("PHX_HOST") || System.get_env("RENDER_EXTERNAL_HOSTNAME") ||
       "example.com"
@@ -189,66 +118,12 @@ if config_env() == :prod do
 
   config :estoque_os, EstoqueOSWeb.Endpoint,
     url: [host: host, port: 443, scheme: "https"],
-    http: [
-      # Enable IPv6 and bind on all interfaces.
-      # Set it to  {0, 0, 0, 0, 0, 0, 0, 1} for local network only access.
-      # See the documentation on https://bandit.hexdocs.pm/Bandit.html#t:options/0
-      # for details about using IPv6 vs IPv4 and loopback vs public addresses.
-      ip: {0, 0, 0, 0, 0, 0, 0, 0}
-    ],
+    http: [ip: {0, 0, 0, 0, 0, 0, 0, 0}],
     secret_key_base: secret_key_base
 
-  # ## SSL Support
-  #
-  # To get SSL working, you will need to add the `https` key
-  # to your endpoint configuration:
-  #
-  #     config :estoque_os, EstoqueOSWeb.Endpoint,
-  #       https: [
-  #         ...,
-  #         port: 443,
-  #         cipher_suite: :strong,
-  #         keyfile: System.get_env("SOME_APP_SSL_KEY_PATH"),
-  #         certfile: System.get_env("SOME_APP_SSL_CERT_PATH")
-  #       ]
-  #
-  # The `cipher_suite` is set to `:strong` to support only the
-  # latest and more secure SSL ciphers. This means old browsers
-  # and clients may not be supported. You can set it to
-  # `:compatible` for wider support.
-  #
-  # `:keyfile` and `:certfile` expect an absolute path to the key
-  # and cert in disk or a relative path inside priv, for example
-  # "priv/ssl/server.key". For all supported SSL configuration
-  # options, see https://plug.hexdocs.pm/Plug.SSL.html#configure/1
-  #
-  # We also recommend setting `force_ssl` in your config/prod.exs,
-  # ensuring no data is ever sent via http, always redirecting to https:
-  #
-  #     config :estoque_os, EstoqueOSWeb.Endpoint,
-  #       force_ssl: [hsts: true]
-  #
-  # Check `Plug.SSL` for all available options in `force_ssl`.
-
-  # ## The mailer
-  #
-  # Deliberately not configured, and `:email_enabled` stays false here (see
-  # `EstoqueOS.Accounts.email_enabled?/0`). Accounts are handed out by an
-  # administrator with a temporary password, so nothing about getting in
-  # depends on a message arriving, and the deployment needs no sending domain
-  # and no outbound provider.
-  #
-  # To turn it on: set `EMAIL_ENABLED=true` alongside an adapter, e.g.
-  #
-  #     config :estoque_os, :email_enabled, true
-  #
-  #     config :estoque_os, EstoqueOS.Mailer,
-  #       adapter: Swoosh.Adapters.Mailgun,
-  #       api_key: System.get_env("MAILGUN_API_KEY"),
-  #       domain: System.get_env("MAILGUN_DOMAIN")
-  #
-  # `config/prod.exs` already sets `Swoosh.ApiClient.Req`, which every non-SMTP
-  # adapter needs.
+  # Mailer off by default (see EstoqueOS.Accounts.email_enabled?/0): accounts are
+  # handed out with a temporary password, so login needs no mail. To enable, set
+  # EMAIL_ENABLED=true and configure an adapter on EstoqueOS.Mailer.
   if System.get_env("EMAIL_ENABLED") in ~w(true 1) do
     config :estoque_os, :email_enabled, true
   end

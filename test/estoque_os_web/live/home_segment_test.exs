@@ -1,11 +1,7 @@
 defmodule EstoqueOSWeb.HomeSegmentTest do
   @moduledoc """
-  The overview, once for each stock.
-
-  Surgical supplies and marketing material share a warehouse and almost nothing
-  else: a shirt about to expire is not a mission problem, and a coordinator
-  reading one number for both was reading neither. Whoever holds both stocks
-  gets tabs; whoever holds one gets their own overview and no choice at all.
+  The overview, once for each stock. Whoever holds both stocks gets tabs;
+  whoever holds one gets their own overview and no choice.
   """
 
   use EstoqueOSWeb.ConnCase, async: true
@@ -29,9 +25,7 @@ defmodule EstoqueOSWeb.HomeSegmentTest do
     %{warehouse: warehouse, gauze: gauze, shirt: shirt}
   end
 
-  # Both land in the "expiring soon" panel, which is the one panel that names a
-  # product on this screen — so it is the one that can say which stock is being
-  # looked at.
+  # The "expiring soon" panel is the one that names a product, so it shows which stock is shown.
   defp expiring(product, location) do
     lot =
       lot_fixture(%{product_id: product.id, expires_on: Date.add(Date.utc_today(), 10)})
@@ -46,15 +40,12 @@ defmodule EstoqueOSWeb.HomeSegmentTest do
       })
   end
 
-  # `refute html =~ "..."` matches markup as happily as text, so anything
-  # asserting a product is *absent* strips the tags first.
+  # `refute html =~ ...` matches markup too, so absence checks strip the tags first.
   defp text(html), do: String.replace(html, ~r{<[^>]*>}s, " ")
 
   describe "a role that holds both stocks" do
     setup %{conn: conn}, do: register_and_log_in_operator(%{conn: conn})
 
-    # The screen opens on the stock this role works in — surgical, for the
-    # supplies coordinator — and the whole operation is the first tab.
     test "opens on its own stock and is offered both plus everything", %{conn: conn} do
       {:ok, _view, html} = live(conn, ~p"/")
 
@@ -86,8 +77,7 @@ defmodule EstoqueOSWeb.HomeSegmentTest do
       refute text(html) =~ "Compressa de gaze"
     end
 
-    # The tab is a patch, so the panels have to answer the new address without
-    # a full mount: a tab that only worked on reload is the same bug as no tab.
+    # The tab is a patch: panels must answer the new address without a full mount.
     test "switching tab reloads the panels in place", %{conn: conn} do
       {:ok, view, _html} = live(conn, ~p"/")
 
@@ -97,9 +87,6 @@ defmodule EstoqueOSWeb.HomeSegmentTest do
       refute text(switched) =~ "Compressa de gaze"
     end
 
-    # The pace panels belong to the stock that is sold. On the surgical
-    # overview they would be three more things to scroll past on a screen meant
-    # to be read standing up, answering a question nobody plans a mission by.
     test "only the marketing tab reads a selling pace", %{conn: conn} do
       {:ok, _view, medical} = live(conn, ~p"/?segment=medical")
       {:ok, _view, marketing} = live(conn, ~p"/?segment=marketing")
@@ -110,9 +97,7 @@ defmodule EstoqueOSWeb.HomeSegmentTest do
       assert text(medical) =~ "Abaixo do mínimo da missão"
     end
 
-    # Boxes and disputed counts belong to no segment, so the marketing tab
-    # hides those panels rather than showing them empty — the same rule the
-    # marketing role has always had.
+    # Boxes and disputed counts belong to no segment, so marketing hides them.
     test "the marketing tab drops the panels that are about boxes", %{conn: conn} do
       {:ok, _view, medical} = live(conn, ~p"/?segment=medical")
       {:ok, _view, marketing} = live(conn, ~p"/?segment=marketing")
@@ -166,9 +151,7 @@ defmodule EstoqueOSWeb.HomeSegmentTest do
       refute page =~ "Catálogo"
     end
 
-    # A shirt has no expiry date, so "nada vencendo" is not news on this tab —
-    # it is an empty panel sitting above the two panels this person opens the
-    # page for. A printed item that does carry a date still shows up.
+    # A shirt has no expiry date, so an empty expiry panel would only be noise here.
     test "the expiry panel only shows up when something is expiring", %{
       conn: conn,
       shirt: shirt
@@ -209,9 +192,6 @@ defmodule EstoqueOSWeb.HomeSegmentTest do
       refute text(html) =~ "Compressa de gaze"
     end
 
-    # The stock is a filter now, and the address is one way to change it: the
-    # marketing coordinator may look at the surgical shelf, they just do not
-    # land on it.
     test "can ask for the other one in the address", %{conn: conn} do
       {:ok, _view, html} = live(conn, ~p"/?segment=medical")
 

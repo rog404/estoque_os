@@ -3,26 +3,14 @@ defmodule EstoqueOSWeb.ReceiptLive.Show do
   The receiving conference: count each line against the invoice and say which
   box it went into.
 
-  Counting is deliberately unblocked — you can finish a round having counted
-  three of ten lines. What was not counted is reported as not counted, never
-  as zero.
+  Counting is unblocked (a round may finish with lines uncounted; uncounted is
+  never zero), but a count that disagrees with the invoice is not booked on the
+  first pass: the line empties and is counted again, up to
+  `Receiving.counts_required/0` times. The screen stays blind: it names which
+  line to recount, never by how much.
 
-  What is *not* unblocked is the number itself. A count that disagrees with the
-  invoice is not booked on the first pass: the field empties and the line asks
-  to be counted again, up to `Receiving.counts_required/0` times, and only then
-  is the number believed. Until this existed the operator could type any
-  quantity at all against an invoice that said something else, which is the
-  same hole `BoxLive.Count` was built to close for box counts.
-
-  The screen stays blind throughout. It says *which* line to count again and
-  never by how much it was off — told the target, a person counting a hundred
-  gauzes finds ninety-eight and writes a hundred.
-
-  A line that disagreed every time it was counted is recorded as counted and
-  flagged: the adjustment posted at the close carries a `review_reason`, and it
-  surfaces on the manager's overview. Somebody counted the same goods three
-  times and we still do not agree with the invoice — that is a conversation
-  with the supplier, not a number for the operator to settle alone.
+  A line that disagrees every time is recorded and flagged: the close posts an
+  adjustment with a `review_reason` for the manager's overview.
   """
 
   use EstoqueOSWeb, :live_view
@@ -47,15 +35,9 @@ defmodule EstoqueOSWeb.ReceiptLive.Show do
      |> assign_receipt(receipt)}
   end
 
-  # What has been typed into a line but not yet recorded.
-  #
-  # Every line is its own form and every field is rendered from the server, so
-  # recording one line repaints all of them — and for a line the database has
-  # never heard of, the server's answer is blank. An operator counting six boxes
-  # onto one screen recorded the first and lost the five they had already typed.
-  #
-  # So the typing is kept here, and the draft outranks the database until the
-  # line is saved, at which point it is dropped and the saved number takes over.
+  # Typed but not yet recorded. Every field renders from the server, so recording
+  # one line repaints all of them and blanks the others; the draft outranks the
+  # database until the line is saved.
   defp draft(assigns, line, field) do
     assigns.drafts |> Map.get(line.id, %{}) |> Map.get(field)
   end
@@ -76,18 +58,14 @@ defmodule EstoqueOSWeb.ReceiptLive.Show do
     |> assign(:suggestions, suggestions_for(receipt))
   end
 
-  # The three ways a line can be outstanding, all derived from the same list so
-  # they can never disagree about a line: never counted, counted and waiting to
-  # be counted again, and counted repeatedly and still short.
+  # Never counted, awaiting recount, and diverged after recounts, all derived
+  # from the same lines so they cannot disagree.
   defp assign_counts(socket, receipt) do
     socket
     |> assign(:divergences, Receiving.divergences(receipt))
     |> assign(:uncounted, Receiving.uncounted_lines(receipt))
     |> assign(:recounting, Receiving.awaiting_recount_lines(receipt))
-    # Everything still owed before this conference is finished, of either kind.
-    # The close gate asks this rather than either list on its own: a line
-    # waiting for its second count is work left, exactly like one nobody
-    # opened.
+    # The close gate asks for both kinds: a line awaiting recount is work left too.
     |> assign(
       :outstanding,
       Receiving.uncounted_lines(receipt) ++ Receiving.awaiting_recount_lines(receipt)
@@ -95,11 +73,8 @@ defmodule EstoqueOSWeb.ReceiptLive.Show do
     |> assign(:disputed, Receiving.diverged_after_recounts(receipt))
   end
 
-  # Recording one line used to refetch the whole conference, which re-rendered
-  # forty rows and re-ran the box suggestions for all of them. Only what the
-  # save actually changed is swapped in: the invoice line and the box list are
-  # facts about the delivery and the warehouse, not about this count, and they
-  # have no business moving while somebody is typing into them.
+  # Swaps in only what the save changed, not a whole-conference refetch: the
+  # invoice line and box list must not move while somebody is typing.
   defp replace_line(socket, %ReceiptLine{} = updated) do
     lines =
       Enum.map(socket.assigns.receipt.lines, fn
@@ -127,9 +102,7 @@ defmodule EstoqueOSWeb.ReceiptLive.Show do
   defp box_for(_socket, nil), do: nil
   defp box_for(socket, box_id), do: Enum.find(socket.assigns.boxes, &(&1.id == box_id))
 
-  # Computed once for the whole conference rather than per line as it renders: a
-  # delivery is dozens of lines and the warehouse's contents do not change
-  # between two of them.
+  # Computed once for the whole conference, not per line as it renders.
   defp suggestions_for(receipt) do
     receipt.lines
     |> Enum.map(& &1.invoice_item.product_id)
@@ -181,9 +154,6 @@ defmodule EstoqueOSWeb.ReceiptLive.Show do
             kind={:pending}
             detail={gettext("%{count} line(s) not counted", count: length(@uncounted))}
           />
-          <!-- Separate from "not counted", because it is a different job: those
-               lines have not been visited, these have been visited and are
-               waiting for the operator to go back to the shelf. -->
           <.status
             :if={@receipt.status == "draft" and @recounting != []}
             kind={:recount}
@@ -214,13 +184,7 @@ defmodule EstoqueOSWeb.ReceiptLive.Show do
       <div class="mt-4">
         <.panel id="receipt-lines" title={gettext("Lines to conference")} flush>
           <.data_table rows={@receipt.lines} row_id={&"line-#{&1.id}"}>
-            <!-- The widest column on the screen, and it was one of the
-                 narrowest: an NF-e line description is the longest string in
-                 this whole system — "COMPRESSA GAZE 7,5X7,5CM 13F 9 FIOS PCT
-                 C/10 UNID" — and it was capped at `max-w-md` while a quantity
-                 field beside it had the same room. Capping it made every line
-                 four rows tall, which is what the person reading the DANFE
-                 beside the screen has to scan. -->
+            <%!-- Widest column: an NF-e description is the longest string here, and capping it makes every line four rows tall. --%>
             <:col
               :let={line}
               label={gettext("Invoice line")}
@@ -238,12 +202,7 @@ defmodule EstoqueOSWeb.ReceiptLive.Show do
               </div>
             </:col>
 
-            <!-- Not shown to the person doing the counting. This is the same
-                 rule `BoxLive.Count` was built on, and the conference used to
-                 contradict it: told what to find, an operator counting a hundred
-                 gauzes finds ninety-eight and writes a hundred. The number is
-                 there for whoever closes the conference and reads what it
-                 found. -->
+            <%!-- Not shown to the person counting (blind count, as in `BoxLive.Count`); only to whoever closes the conference. --%>
             <:col
               :let={line}
               :if={@sees_money?}
@@ -267,9 +226,7 @@ defmodule EstoqueOSWeb.ReceiptLive.Show do
                 phx-value-line={line.id}
                 class="flex flex-wrap items-center gap-2 justify-end"
               >
-                <!-- Empty, not an em dash. `quantity(nil)` renders "—", so an
-                     uncounted line arrived with a character the operator had to
-                     clear before typing the number they were holding. -->
+                <%!-- Empty, not an em dash: `quantity(nil)` renders "—", which the operator would have to clear. --%>
                 <.count_field
                   name="counted_quantity"
                   value={draft(assigns, line, "counted_quantity") || counted_value(line)}
@@ -281,11 +238,7 @@ defmodule EstoqueOSWeb.ReceiptLive.Show do
                   disabled={recorded?(line)}
                   phx-debounce="400"
                 />
-                <!-- Required. Goods recorded with no box are loose at the
-                     location, and loose stock cannot travel: the next person
-                     to load a mission finds a quantity and nothing to carry it
-                     in. The conference is the moment the box is known, because
-                     the operator is holding it. -->
+                <%!-- Required: loose stock cannot travel, and the conference is when the box is known. --%>
                 <.box_picker
                   name="box_code"
                   boxes={@boxes}
@@ -296,9 +249,7 @@ defmodule EstoqueOSWeb.ReceiptLive.Show do
                   disabled={recorded?(line)}
                   required
                 />
-                <!-- Locked once counted: a recorded line reopens on purpose,
-                     through "Count again", never by nudging a field that looks
-                     editable because it still is one. -->
+                <%!-- Locked once counted: a recorded line reopens only through "Count again". --%>
                 <.button
                   variant="primary"
                   class="btn-sm"
@@ -308,39 +259,8 @@ defmodule EstoqueOSWeb.ReceiptLive.Show do
                   {gettext("Record")}
                 </.button>
 
-                <!-- Always rendered, so the row is the height it will be before
-                     anything is counted. A tick that appears on save pushes the
-                     row below it down, and the row below it is where the thumb
-                     already is.
-
-                     It belongs to the line, not to the last save: it used to be
-                     `line.id == @saved_line_id`, so counting the second line
-                     took the confirmation off the first, and an operator working
-                     down a delivery could never see how far they had got. -->
-                <!-- Both always rendered, and in one slot of a fixed width, so
-                     the row is already the height and width it will be before
-                     anything is counted. Anything that appears on save pushes
-                     the row below it down, and the row below it is where the
-                     thumb already is. The first attempt put the tick and the
-                     button side by side in the wrapping row: the button wrapped
-                     to a second line on the counted row only, which is the same
-                     bug wearing a hat. -->
+                <%!-- Tick and undo are always rendered, `invisible` until recorded, in one fixed-width slot: anything that appears on save moves the row under the thumb. The tick follows the line's own state, not the last save. --%>
                 <div class="flex w-16 shrink-0 items-center justify-end gap-1">
-                  <!-- Both marks are icons now. The words took a column of
-                       width from the numbers on a screen read one-handed, and
-                       what they say is said better by a tick and an arrow going
-                       back. Named for the screen reader and on hover, which is
-                       the only thing that makes an icon-only control allowed.
-
-                       Both are always rendered and only made invisible: the
-                       first version wrapped onto a second line on the counted
-                       row alone, which is the row-resize bug wearing a hat.
-
-                       The tick belongs to the line, not to the last save — it
-                       used to be `line.id == @saved_line_id`, so counting the
-                       second line took the confirmation off the first, and an
-                       operator working down a delivery could never see how far
-                       they had got. -->
                   <span
                     class={["text-success", not recorded?(line) && "invisible"]}
                     role="status"
@@ -351,15 +271,7 @@ defmodule EstoqueOSWeb.ReceiptLive.Show do
                     <.icon name="hero-check-circle" class="size-5" />
                   </span>
 
-                  <!-- The way back from a number typed wrong. Nothing has
-                       reached the ledger yet — a conference writes at the
-                       close — so this costs an edit, not an adjustment.
-
-                       It empties the field rather than leaving the first count
-                       in it. A second count that starts from the first one is
-                       not a second count: the eye stops when it reaches the
-                       number it was shown, which is the whole reason this
-                       screen is blind. -->
+                  <%!-- Costs an edit, not an adjustment: a conference writes at the close. Empties the field, since a recount that starts from the first number is not a recount. --%>
                   <button
                     type="button"
                     phx-click="count_again"
@@ -374,11 +286,7 @@ defmodule EstoqueOSWeb.ReceiptLive.Show do
                   </button>
                 </div>
 
-                <!-- A warehouse organised by whoever was holding the scanner is a
-                     warehouse where finding anything means opening everything.
-                     The reason is on the line rather than in a `title`: this is
-                     read on a phone, where nothing is hovered, and a bare box
-                     code is a suggestion nobody trusts enough to follow. -->
+                <%!-- The reason is on the line, not a `title`: phones have no hover. --%>
                 <p
                   :for={hint <- suggested(assigns, line)}
                   class="basis-full text-xs opacity-70 text-right"
@@ -389,47 +297,14 @@ defmodule EstoqueOSWeb.ReceiptLive.Show do
                   )}
                 </p>
 
-                <!-- Asked before anything is written, and it names the code out
-                     loud: the whole failure this prevents is a code that looks
-                     right at a glance.
-
-                     Under the field it is about, not at the top of the page. It
-                     was a banner above forty rows, which asked about a box the
-                     operator had typed somewhere off screen and made them find
-                     the line again to fix it. Here it needs no "For: ..." line
-                     to say which line it means — it is standing on it. -->
-                <!-- Grows the row it's in, unlike the tick/undo pair above — a
-                     deliberate exception to "always render, never :if". Those
-                     are passive confirmations glanced at while the thumb is
-                     already moving to the next line, so a shift there lands the
-                     next tap on the wrong one. This banner is a decision the
-                     operator must answer before doing anything else; it appears
-                     exactly where they are already looking and holds their next
-                     tap inside itself, not on the line below. Reserving its
-                     height in every line instead was tried and rejected: this
-                     screen runs to "forty rows" (see the comment above), and
-                     that is a conference sheet mostly made of blank space for a
-                     banner that a correct box code never shows. -->
+                <%!-- Deliberate exception to "always render, never :if": a decision to answer before anything else, standing under its own field, holding the next tap inside itself. Reserving its height in every row would leave a sheet of blank space. --%>
                 <.new_box_confirm
                   :if={@new_box && @new_box.line_id == line.id}
                   code={@new_box.code}
                   class="basis-full text-left"
                 />
 
-                <!-- The line asking to be counted again. Same deliberate
-                     exception as the box banner above: it grows the row, and it
-                     is allowed to, because it is a decision the operator has to
-                     answer before moving on rather than a confirmation glanced
-                     at while the thumb is already on the next line. Reserving
-                     its height in all forty rows would be a conference sheet
-                     made mostly of blank space for something a count that
-                     agrees never shows.
-
-                     It never says by how much. Which line, and which attempt —
-                     told the target, the eye stops when it reaches it. -->
-                <!-- Not `flex-wrap`, and not `justify-end` like the row it sits
-                     in: at phone width the icon was pushed onto a line of its
-                     own, right-aligned, above the sentence it belongs to. -->
+                <%!-- Same deliberate exception as the box banner. Never says by how much it was off. Not `flex-wrap` or `justify-end`: at phone width the icon would land on its own line. --%>
                 <div
                   :if={recount?(line)}
                   class="basis-full flex items-start gap-2 rounded-box bg-warning/15 px-2 py-1.5 text-left"
@@ -454,10 +329,6 @@ defmodule EstoqueOSWeb.ReceiptLive.Show do
               align={:right}
             >
               {quantity(line.counted_quantity) |> blank_as_dash()}
-              <!-- Counted three times and never agreed. Worth saying on the
-                   closed sheet: read a month later, a line that is simply short
-                   and a line somebody counted three times are the same number,
-                   and only one of them is evidence. -->
               <.status
                 :if={ReceiptLine.diverged_after_recounts?(line)}
                 kind={:needs_review}
@@ -469,8 +340,7 @@ defmodule EstoqueOSWeb.ReceiptLive.Show do
               <.box_code code={line.box && line.box.code} />
             </:col>
 
-            <!-- A difference is the expected number said backwards: told a line
-                 is 13 short, the operator knows what the invoice claimed. -->
+            <%!-- A difference is the expected number said backwards, so it is hidden with it. --%>
             <:col
               :let={line}
               :if={@sees_money?}
@@ -480,7 +350,6 @@ defmodule EstoqueOSWeb.ReceiptLive.Show do
               <span class={difference_class(line)}>{difference_label(line)}</span>
             </:col>
 
-            <!-- What the operator gets instead: whether this line is done. -->
             <:col :let={line} :if={not @sees_money?} label={gettext("Status")} align={:right}>
               <.status
                 :if={is_nil(line.counted_quantity) and not recount?(line)}
@@ -508,9 +377,7 @@ defmodule EstoqueOSWeb.ReceiptLive.Show do
           {gettext("Close conference")}
         </.button>
 
-        <!-- Same button, one step further away, when there is something to say
-             first. Not disabled: closing with lines uncounted is allowed and
-             sometimes right — the delivery is short and everyone knows it. -->
+        <%!-- Not disabled: closing with lines uncounted is allowed (a short delivery everyone knows about). --%>
         <.button
           :if={@outstanding != []}
           variant="primary"
@@ -525,14 +392,7 @@ defmodule EstoqueOSWeb.ReceiptLive.Show do
         </p>
       </form>
 
-      <!-- The products, not the number. "4 lines were not counted" is not
-           something anyone can act on; the operator has to know *which*, because
-           the answer is usually "the box is still in the van".
-
-           The weighting is deliberate and is the opposite of how these dialogs
-           are usually built: going back is the primary button, because it is
-           what the operator almost always wants once they read the list.
-           Continuing is offered plainly, in a ghost, and is never blocked. -->
+      <%!-- Names the products, not a count. Going back is the primary button, the reverse of the usual dialog; continuing is never blocked. --%>
       <dialog :if={@outstanding != []} id="uncounted-warning" class="modal">
         <div class="modal-box">
           <h2 class="text-lg font-semibold">
@@ -552,13 +412,7 @@ defmodule EstoqueOSWeb.ReceiptLive.Show do
             {gettext("Closing now books these exactly as the invoice said, uncounted.")}
           </p>
 
-          <!-- Named apart, because these are not lines nobody looked at: they
-               were counted, the number did not match the invoice, and the
-               recount they are waiting for is the whole point of asking twice.
-               Closing over them books the invoice's number and leaves the
-               operator's first count as a note nobody reads. Still allowed —
-               the van left, the delivery is short and everyone knows it — but
-               it should not be allowed quietly. -->
+          <%!-- Named apart: these were counted and did not match. Closing over them books the invoice's number; allowed, but not quietly. --%>
           <div :if={@recounting != []} class="mt-3 rounded-box bg-warning/15 p-3">
             <p class="text-sm font-semibold">
               {gettext("%{count} were counted and did not match:", count: length(@recounting))}
@@ -612,14 +466,10 @@ defmodule EstoqueOSWeb.ReceiptLive.Show do
   defp recorded?(%{counted_quantity: nil}), do: false
   defp recorded?(_line), do: true
 
-  # Counted once and not believed. A different row from one nobody has touched,
-  # and it has to look different: both have an empty field, and only one of them
-  # is asking the operator to go back to the shelf.
+  # Must look different from an untouched line: both have an empty field.
   defp recount?(line), do: ReceiptLine.awaiting_recount?(line)
 
-  # Which count this is, said out loud. "2 de 3" tells the operator this will
-  # end, which is what stops the screen feeling like it is refusing their work
-  # — and it says nothing about the number they are being measured against.
+  # "2 of 3" tells the operator it will end, without revealing the target.
   defp attempt_label(line) do
     gettext("count %{n} of %{total}",
       n: ReceiptLine.attempts(line) + 1,
@@ -643,8 +493,7 @@ defmodule EstoqueOSWeb.ReceiptLive.Show do
   end
 
   @impl true
-  # Typing, not saving. Nothing reaches the database here; this only remembers
-  # the line well enough to survive the next repaint.
+  # Typing, not saving: only remembers the line to survive the next repaint.
   def handle_event("draft", %{"line" => line_id} = params, socket) do
     {:noreply, put_draft(socket, String.to_integer(line_id), params)}
   end
@@ -653,8 +502,7 @@ defmodule EstoqueOSWeb.ReceiptLive.Show do
     resolve_and_count(socket, line_id, params, create: false)
   end
 
-  # The yes. The code and the count that was riding on it were held rather than
-  # written, so this replays the same submission with permission to create.
+  # Replays the held count with permission to create the box.
   def handle_event("confirm_new_box", _params, socket) do
     %{line_id: line_id, params: params} = socket.assigns.new_box
 
@@ -663,9 +511,7 @@ defmodule EstoqueOSWeb.ReceiptLive.Show do
     |> resolve_and_count(line_id, params, create: true)
   end
 
-  # The no. The count stays on the line as a draft: they mistyped the box, not
-  # the quantity, and making them count the goods again is how a real number
-  # gets replaced with a remembered one.
+  # The count stays as a draft: the box was mistyped, not the quantity.
   def handle_event("cancel_new_box", _params, socket) do
     %{line_id: line_id, params: params} = socket.assigns.new_box
 
@@ -675,9 +521,7 @@ defmodule EstoqueOSWeb.ReceiptLive.Show do
      |> put_draft(line_id, Map.put(params, "box_code", ""))}
   end
 
-  # Back to uncounted, and with an empty field. The line then reads as work still
-  # to do — which it is — so closing the conference warns about it like any other
-  # line nobody counted.
+  # Back to uncounted with an empty field, so closing warns about it like any other.
   def handle_event("count_again", %{"line" => line_id}, socket) do
     line = find_line(socket.assigns.receipt, line_id)
 
@@ -752,16 +596,12 @@ defmodule EstoqueOSWeb.ReceiptLive.Show do
     }
 
     case Receiving.record_count(line, attrs) do
-      # No flash. Forty lines is forty toasts covering the table they are about,
-      # and a banner that appears on every keystroke-and-enter reads as the page
-      # reloading. The row says it itself, where the operator is already looking.
+      # No flash: forty lines would be forty toasts covering the table; the row says it.
       {:recorded, updated} ->
         {:noreply, replace_line(socket, updated)}
 
-      # Counted, and not believed yet. The field goes back to empty rather than
-      # keeping the first number: a second count that starts from the first one
-      # is not a second count — the eye stops when it reaches the number it was
-      # shown, which is the whole reason this screen is blind.
+      # Counted, not believed yet: the field empties, since a recount starting
+      # from the first number is not a recount.
       {:recount, updated} ->
         {:noreply, socket |> replace_line(updated) |> put_draft(updated.id, %{})}
 

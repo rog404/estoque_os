@@ -43,7 +43,6 @@ defmodule EstoqueOS.CatalogSearchTest do
 
     assert found.id == other.id
 
-    # Without the supplier, a bare "91538" is not that supplier's code.
     assert Catalog.search_products("91538") == []
   end
 
@@ -52,8 +51,7 @@ defmodule EstoqueOS.CatalogSearchTest do
     {:ok, _} = Catalog.add_group_synonym(%{product_group_id: group.id, name: "Sterecam"})
     product = product_fixture(%{name: "Agulha 30G", product_group_id: group.id})
 
-    # "Sterecam" is also literally the name of another product here, so both
-    # match — the synonym leads, because a curated alias beats a substring.
+    # "Sterecam" is also another product's name; the synonym leads over a substring.
     assert [%{product: found, matched: :synonym} | rest] = Catalog.search_products("sterecam")
     assert found.id == product.id
     assert Enum.all?(rest, &(&1.matched == :name))
@@ -69,8 +67,7 @@ defmodule EstoqueOS.CatalogSearchTest do
     assert Catalog.search_products("   ") == []
   end
 
-  # The catalog writes "estéril", the invoice shouts "ESTERIL": one word, two
-  # spellings, and the accented one must not fall apart into two tokens.
+  # The accented spelling must not fall apart into two tokens.
   test "an accented catalog name matches its unaccented invoice description" do
     product = product_fixture(%{name: "Gaze Estéril 7,5cm"})
 

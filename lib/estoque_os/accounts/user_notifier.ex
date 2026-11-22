@@ -6,7 +6,6 @@ defmodule EstoqueOS.Accounts.UserNotifier do
   alias EstoqueOS.Accounts.User
   alias EstoqueOS.Mailer
 
-  # Delivers the email using the application mailer.
   defp deliver(recipient, subject, body) do
     email =
       new()

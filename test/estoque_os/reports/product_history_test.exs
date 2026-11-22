@@ -1,8 +1,6 @@
 defmodule EstoqueOS.Reports.ProductHistoryTest do
   @moduledoc """
-  "What happened to this gauze" is the question a recall asks, and it is asked
-  urgently. It used to be answerable only by reading three screens and joining
-  them by eye, none of which was about the product.
+  "What happened to this gauze" is the question a recall asks, urgently.
   """
 
   use EstoqueOS.DataCase, async: true
@@ -79,7 +77,6 @@ defmodule EstoqueOS.Reports.ProductHistoryTest do
           ]
         })
 
-      # An empty lot is history, and history is what the movement list is for.
       assert [%{lot_number: "L2"}] = ProductHistory.positions(gauze.id)
     end
 
@@ -101,7 +98,6 @@ defmodule EstoqueOS.Reports.ProductHistoryTest do
     test "counts more than it shows, and says so", %{gauze: gauze} do
       history = ProductHistory.for_product(gauze.id, limit: 1)
 
-      # Truncating in silence is how a reader concludes there is nothing else.
       assert length(history.movements) == 1
       assert history.movement_count == 2
     end
@@ -141,8 +137,7 @@ defmodule EstoqueOS.Reports.ProductHistoryTest do
           ]
         })
 
-      # A donation was not free — its value was never informed, and zero is a
-      # different claim.
+      # Its value was never informed; zero would be a different claim.
       assert length(ProductHistory.costs(gauze.id)) == 2
     end
   end

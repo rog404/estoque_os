@@ -37,8 +37,7 @@ defmodule EstoqueOSWeb.UserSessionController do
 
     case LoginThrottle.check(keys) do
       {:error, seconds} ->
-        # Answered before the password is even checked, so a guesser learns
-        # nothing from how long the response took.
+        # Answered before the password check, so timing leaks nothing.
         conn
         |> put_flash(:error, wait_message(seconds))
         |> put_flash(:email, String.slice(email, 0, 160))
@@ -59,7 +58,7 @@ defmodule EstoqueOSWeb.UserSessionController do
     else
       LoginThrottle.record_failure(keys)
 
-      # In order to prevent user enumeration attacks, don't disclose whether the email is registered.
+      # Don't disclose whether the email is registered (user enumeration).
       conn
       |> put_flash(:error, gettext("Invalid email or password"))
       |> put_flash(:email, String.slice(email, 0, 160))
@@ -67,8 +66,7 @@ defmodule EstoqueOSWeb.UserSessionController do
     end
   end
 
-  # By email, because that is the account being guessed at. By address, because
-  # otherwise a guesser walks down a list of emails and never trips the first.
+  # By address too, or a guesser walking a list of emails never trips one key.
   defp throttle_keys(conn, email) do
     [{:email, email}, {:address, conn.remote_ip |> :inet.ntoa() |> to_string()}]
   end
@@ -83,16 +81,9 @@ defmodule EstoqueOSWeb.UserSessionController do
     )
   end
 
-  # Sets a password, from either of the two screens that do it: the forced
-  # first-login change, and the settings page.
-  #
-  # Two gates, not one. `must_reset_password` covers the forced change, where
-  # the person is holding a password somebody else chose and sudo mode is beside
-  # the point. Sudo mode covers the ordinary change, and is what stops a
-  # borrowed session from locking its owner out — with no mailer there is no
-  # emailed link to reclaim the account with, so this is the only lock on that
-  # door. A stale or double-submitted form after the flag cleared is refused
-  # with a flash rather than a crash.
+  # Two gates: `must_reset_password` for the forced change (sudo mode is beside
+  # the point there), sudo mode for the ordinary one. Sudo stops a borrowed
+  # session from locking the owner out, and with no mailer there is no recovery.
   def update_password(conn, %{"user" => user_params}) do
     user = conn.assigns.current_scope.user
     forced? = user.must_reset_password
@@ -120,8 +111,6 @@ defmodule EstoqueOSWeb.UserSessionController do
     end
   end
 
-  # Consumes a "esqueci minha senha" token: sets the new password and logs
-  # the user in fresh, same shape as the magic-link path above.
   def create_from_reset_token(conn, %{"token" => token, "user" => user_params}) do
     case Accounts.reset_user_password_by_token(token, user_params) do
       {:ok, {user, expired_tokens}} ->

@@ -2,17 +2,10 @@ defmodule EstoqueOS.Reports.ProductHistory do
   @moduledoc """
   Everything that ever happened to one product.
 
-  The question "what happened to this gauze" could only be answered by reading
-  three screens and joining them by eye: the stock list said how much there is,
-  the invoices said what was bought, the audit report said what moved on a given
-  day. None of them was about the product.
+  Answers "what happened to this gauze": the auditor's question, and a recall's.
+  A ledger readable only by period cannot be interrogated about one item.
 
-  It is also the question an auditor asks. A ledger that can only be read by
-  period is a ledger nobody can interrogate about a specific item — and a recall
-  is exactly that question, asked urgently.
-
-  Its own module rather than more of `Reports`, which is already the largest
-  context in the project and is heading the same way `Inventory` did.
+  Its own module to keep `Reports` from growing further.
   """
 
   import Ecto.Query
@@ -24,9 +17,8 @@ defmodule EstoqueOS.Reports.ProductHistory do
   @doc """
   The product, where its stock is now, and every movement that touched it.
 
-  `movements` is capped: a product bought weekly for five years has thousands of
-  lines and nobody reads past the first page. The cap is stated on screen rather
-  than silently truncating.
+  `movements` is capped (nobody reads past the first page); the screen states
+  the cap rather than truncating silently.
   """
   def for_product(product_id, opts \\ []) do
     product = Repo.get!(Product, product_id)
@@ -45,8 +37,7 @@ defmodule EstoqueOS.Reports.ProductHistory do
   @doc """
   Where this product physically is right now, lot by lot.
 
-  Empty positions are left out: a lot that ran to zero is history, and history is
-  what the movement list is for.
+  Empty positions are left out; history is the movement list's job.
   """
   def positions(product_id) do
     StockSnapshot
@@ -69,8 +60,7 @@ defmodule EstoqueOS.Reports.ProductHistory do
     |> Repo.all()
   end
 
-  # Every entry touching a lot of this product, newest first. Signed, so a reader
-  # can tell an arrival from a departure without decoding the type.
+  # Newest first, signed so arrivals and departures are distinguishable.
   defp movements(product_id, limit) do
     TransactionEntry
     |> join(:inner, [e], t in Transaction, on: t.id == e.transaction_id)
@@ -97,12 +87,8 @@ defmodule EstoqueOS.Reports.ProductHistory do
   @doc """
   What was paid per unit over time, newest first.
 
-  This is the number the whole system exists to produce, so it is worth being
-  able to see it move: a price that doubled between two invoices is a
-  conversation with a supplier, and it is invisible in an average.
-
-  Entries with no cost are left out rather than shown as zero — a donation was
-  not free, its value was never informed.
+  Shows the price moving, which an average hides. Entries with no cost are left
+  out, not zero: a donation's value was never informed.
   """
   def costs(product_id, opts \\ []) do
     TransactionEntry

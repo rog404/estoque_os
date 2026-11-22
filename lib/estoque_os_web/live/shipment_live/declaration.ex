@@ -2,13 +2,9 @@ defmodule EstoqueOSWeb.ShipmentLive.Declaration do
   @moduledoc """
   The declaração de conteúdo for one load, before it is printed.
 
-  What the system knows is filled in — the goods, the date, the reference, where
-  the load is going. What only the person sending it knows is typed: the
-  hospital's registration and address, the carrier's scheduling code, the
-  invoice that covers the goods.
-
-  It is saved rather than thrown away after printing, so the second copy the
-  carrier asks for on Monday is the same paper and not a new act of typing.
+  What the system knows is filled in; what only the sender knows is typed
+  (the hospital's registration, the carrier's scheduling code, the invoice).
+  Saved after printing so a second copy is the same paper.
   """
 
   use EstoqueOSWeb, :live_view
@@ -16,11 +12,7 @@ defmodule EstoqueOSWeb.ShipmentLive.Declaration do
   alias EstoqueOS.Outbound
   alias EstoqueOS.Outbound.TransportDeclaration
 
-  @doc """
-  Events a viewer may send. Everything else on this screen is refused.
-
-  `save` writes the paper.
-  """
+  # Events a viewer may send; none: `save` writes the paper.
   def viewer_events, do: ~w()
 
   @impl true
@@ -154,9 +146,7 @@ defmodule EstoqueOSWeb.ShipmentLive.Declaration do
             {gettext("Save declaration")}
           </.button>
 
-          <!-- Always rendered, disabled until there is something to print: a
-               link that appears after saving would move the button under the
-               thumb of whoever just pressed it. -->
+          <%!-- Always rendered, disabled until saved: a link appearing on save would move the button under the thumb. --%>
           <.link
             navigate={~p"/shipments/#{@shipment.id}/declaracao/imprimir"}
             class={["btn", not @saved? && "btn-disabled pointer-events-none opacity-50"]}

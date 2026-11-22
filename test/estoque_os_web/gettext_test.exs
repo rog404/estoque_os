@@ -1,19 +1,9 @@
 defmodule EstoqueOSWeb.GettextTest do
   @moduledoc """
-  Four screens shipped this project with the wrong words on them.
-
-  The pattern was always the same. A new `gettext(...)` call goes in; the merge
-  matches it against a similar existing string, writes that translation, and
-  marks the entry `fuzzy`. But `fuzzy` is a note to a translator, not a gate —
-  the wrong text renders anyway. "Back to stock" came out as "Voltar para os
-  kits"; "Movements" as "Registro de movimentações". Nothing failed. The only
-  way to notice was to open the page and read it.
-
-  A string that was never extracted at all fails differently and worse: it
-  renders in English to an operator who does not read English.
-
-  These are the gate. `--check-up-to-date` in the `precommit` alias catches the
-  second case, at the only moment anyone can still fix it cheaply.
+  The merge writes a similar existing translation into a new entry and marks it
+  `fuzzy`, but `fuzzy` does not stop it rendering, so the wrong text ships. A
+  string never extracted renders in English; `--check-up-to-date` in the
+  `precommit` alias catches that case.
   """
 
   use ExUnit.Case, async: true
@@ -25,7 +15,6 @@ defmodule EstoqueOSWeb.GettextTest do
   end
 
   test "there are translation files to check at all" do
-    # Guards every other test here from passing by finding nothing.
     assert po_files() != []
   end
 
@@ -71,8 +60,7 @@ defmodule EstoqueOSWeb.GettextTest do
     Regex.run(~r/^msgid (.+)$/m, block, capture: :all_but_first) |> List.first()
   end
 
-  # The header block is `msgid ""` with a populated msgstr spanning lines; real
-  # entries are the ones with a non-empty msgid, filtered out by the caller.
+  # The header block is `msgid ""`; the caller filters it out by msgid.
   defp untranslated?(block) do
     Regex.match?(~r/^msgstr ""\s*$/m, block) and
       not Regex.match?(~r/^msgstr\[\d\]/m, block)

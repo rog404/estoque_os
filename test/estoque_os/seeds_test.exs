@@ -1,21 +1,12 @@
 defmodule EstoqueOS.SeedsTest do
   @moduledoc """
-  Runs the seeds against the real spreadsheets, so the messy rows in them stay
-  covered: 326 catalog lines with four repeated descriptions, forty without an
-  NCM, three whose NCM is not an NCM, and five with no quantity.
+  Runs the seeds against the real spreadsheets, so their messy rows stay covered
+  (repeated descriptions, missing or invalid NCMs, missing quantities).
 
-  Serial, for the same reason `SeedsLocationsTest` is — and this is the half
-  that was missed. Seeding the catalog inserts 322 real product names in one
-  transaction, and `products` carries a unique index on `lower(name)`. Two dozen
-  other suites build fixtures using those same real names, because that is what
-  the warehouse calls things.
-
-  A unique index conflicts between concurrent transactions even under the
-  sandbox, where neither can see the other's rows: the second insert of a name
-  waits on the first transaction, which under the sandbox does not commit until
-  its test ends. One shared name is a stall; two, taken in opposite orders, is a
-  deadlock — and this suite holds 322 of them at once, so it was one half of
-  every deadlock the suite produced.
+  Serial, like `SeedsLocationsTest`: seeding inserts 322 real product names under
+  a unique index on `lower(name)` that other suites' fixtures also use. Unique
+  indexes conflict across concurrent sandbox transactions, so opposite-order
+  inserts deadlock.
   """
 
   use EstoqueOS.DataCase, async: false
@@ -36,15 +27,12 @@ defmodule EstoqueOS.SeedsTest do
     end
 
     test "loads the standard supply table, minus the repeated lines", %{products: products} do
-      # 326 rows, 4 of which repeat a description.
       assert length(products) == 322
       assert Repo.aggregate(Product, :count) == 322
     end
 
     test "un-pastes the spreadsheet range somebody dropped into a description" do
-      # Row 11 of the real file reads "SOLUÇÃ+A1:P376O INJETÁVEL". A product
-      # nobody can spell is a product nobody can search for, and this catalog
-      # exists because searching the last one was impossible.
+      # Row 11 of the real file reads "SOLUÇÃ+A1:P376O INJETÁVEL".
       assert Repo.exists?(
                from p in Product,
                  where: p.name == "AGUA DESTILADA PARA INJEÇÃO - AMPOLA 10ML - SOLUÇÃO INJETÁVEL"
@@ -54,9 +42,8 @@ defmodule EstoqueOS.SeedsTest do
     end
 
     test "leaves a concentration alone, colon and all" do
-      # 1:200,000 is how an anaesthetic with adrenaline is written. The artefact
-      # stripper wants letters on both sides of the colon precisely so this
-      # survives.
+      # The artefact stripper requires letters on both sides of the colon so
+      # "1:200,000" survives.
       assert Repo.exists?(from p in Product, where: like(p.name, "%1:200,000%"))
     end
 
@@ -94,24 +81,22 @@ defmodule EstoqueOS.SeedsTest do
       assert product.ncm == nil
       assert product.notes =~ "NCM na tabela padrão: 20111223001 (inválido)"
 
-      # This one the spreadsheet turned into a date.
+      # The spreadsheet turned this one into a date.
       guedel = Repo.one!(from p in Product, where: p.name == "CANULA DE GUEDEL 90MM NR. 3")
       assert guedel.ncm == nil
       assert guedel.notes =~ "(inválido)"
     end
 
     test "rows without an NCM or a quantity still load" do
-      # No NCM, but a quantity.
       alcool = Repo.one!(from p in Product, where: p.name == "ALCOOL 70%")
       assert alcool.ncm == nil
       assert Decimal.equal?(alcool.min_stock_override, Decimal.new(10))
 
-      # Neither NCM nor quantity.
       canula = Repo.one!(from p in Product, where: p.name == "CÂNULA NASOFARÍNGEA 28FR")
       assert canula.ncm == nil
       assert canula.min_stock_override == nil
 
-      # A quantity of zero is not a minimum stock of zero — it is unknown.
+      # A quantity of zero means unknown, not a minimum of zero.
       swab =
         Repo.one!(
           from p in Product,
@@ -157,8 +142,7 @@ defmodule EstoqueOS.SeedsTest do
       kit = Repo.one!(from k in Kit, where: k.name == "Kit Anestesia")
       items = Repo.all(from i in KitItem, where: i.kit_id == ^kit.id)
 
-      # The kit sheets name things loosely, so most lines stay unresolved and
-      # visible rather than being matched to the wrong product.
+      # Unmatched lines stay visible rather than matching the wrong product.
       assert Enum.any?(items, &is_nil(&1.product_id))
       assert Enum.all?(items, &(&1.description != nil))
     end

@@ -8,11 +8,8 @@ defmodule EstoqueOS.MixProject do
       elixir: "~> 1.17",
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
-      # Consolidation is a release-time optimisation. Leaving it on while
-      # developing means any partial recompile of a schema with `redact: true`
-      # fields — Ecto derives an `Inspect` implementation for those — warns that
-      # the protocol was already consolidated, and `precommit` turns that
-      # warning into a failed build. Prod still gets the fast dispatch.
+      # Prod-only: in dev, recompiling a schema with `redact: true` fields warns
+      # that the Inspect protocol was already consolidated, which fails precommit.
       consolidate_protocols: Mix.env() == :prod,
       aliases: aliases(),
       deps: deps(),
@@ -22,9 +19,6 @@ defmodule EstoqueOS.MixProject do
     ]
   end
 
-  # Configuration for the OTP application.
-  #
-  # Type `mix help compile.app` for more information.
   def application do
     [
       mod: {EstoqueOS.Application, []},
@@ -38,14 +32,8 @@ defmodule EstoqueOS.MixProject do
     ]
   end
 
-  # The release, and the one thing it does that `:assemble` would not: build the
-  # digested assets first.
-  #
-  # Phoenix's own advice is to run `mix assets.deploy` as a separate build step.
-  # Making it a release step instead means `MIX_ENV=prod mix release` produces a
-  # complete, servable release on its own — which is testable on a laptop, and
-  # is what lets the deployment drop the Node buildpack and the npm install
-  # that only existed to invoke a Mix task.
+  # Builds the digested assets as a release step, so `MIX_ENV=prod mix release`
+  # yields a complete servable release with no separate Node build.
   defp releases do
     [
       estoque_os: [
@@ -61,13 +49,9 @@ defmodule EstoqueOS.MixProject do
     release
   end
 
-  # Specifies which paths to compile per environment.
   defp elixirc_paths(:test), do: ["lib", "test/support"]
   defp elixirc_paths(_), do: ["lib"]
 
-  # Specifies your project dependencies.
-  #
-  # Type `mix help deps` for examples and options.
   defp deps do
     [
       {:bcrypt_elixir, "~> 3.0"},
@@ -107,27 +91,16 @@ defmodule EstoqueOS.MixProject do
       {:xlsx_reader, "~> 0.8"},
       {:dns_cluster, "~> 0.3"},
       {:bandit, "~> 1.5"},
-      # The ledger is UTC throughout — the one timezone with no ambiguity to
-      # store. This is what turns it back into a wall clock in São Paulo when
-      # a screen renders it. Bundles its own release, no hackney/HTTP
-      # dependency to clash with — `tzdata` pulled in an `idna` version this
-      # app's other deps had already moved past.
+      # Renders the UTC ledger as São Paulo wall-clock time. `tz` over `tzdata`:
+      # tzdata pulled an `idna` version that clashed with other deps.
       {:tz, "~> 0.28"},
-      # Sobelow reads the router and the LiveViews for the class of mistake that
-      # is invisible in review: a write reachable without the role it needs, a
-      # parameter that reaches a query, a missing CSRF. Credo keeps the style
-      # arguments out of the diff.
+      # Scans for security mistakes invisible in review: a write missing its role
+      # gate, params reaching a query, a missing CSRF.
       {:sobelow, "~> 0.13", only: [:dev, :test], runtime: false},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false}
     ]
   end
 
-  # Aliases are shortcuts or tasks specific to the current project.
-  # For example, to install project dependencies and perform other setup tasks, run:
-  #
-  #     $ mix setup
-  #
-  # See the documentation for `Mix` for more info on aliases.
   defp aliases do
     [
       setup: ["deps.get", "ecto.setup", "assets.setup", "assets.build"],
@@ -144,15 +117,11 @@ defmodule EstoqueOS.MixProject do
         "esbuild estoque_os --minify",
         "phx.digest"
       ],
-      # Extract before the tests rather than checking: `--check-up-to-date` also
-      # fails when `format` merely moves a `gettext(...)` call to a new line, and
-      # a gate that cries wolf gets ignored. Merging instead pulls any new string
-      # into the .po with an empty translation, where gettext_test.exs fails on
-      # it by name — so a string that was never extracted still cannot ship, and
-      # nobody is nagged about line numbers.
+      # Merge (not --check-up-to-date): extraction pulls new strings into the .po
+      # empty, where gettext_test.exs fails on them by name, without nagging over
+      # line moves.
       precommit: [
-        # Advisories published since the lockfile was written. First, because it
-        # is the one failure no amount of local green can tell you about.
+        # Advisories published since the lockfile was written.
         "hex.audit",
         "compile --warnings-as-errors",
         "deps.unlock --unused",

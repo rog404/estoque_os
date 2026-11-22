@@ -40,7 +40,6 @@ defmodule EstoqueOS.ReportsMigrationTest do
 
       box = Repo.get_by!(Box, code: "CX01")
       assert box.location_id == location.id
-      # A migration count is a conference: the box is verified, not presumed.
       assert box.last_verified_at
       assert result.boxes_verified == 1
 

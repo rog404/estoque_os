@@ -1,10 +1,7 @@
 defmodule EstoqueOSWeb.HomeLive.Index do
   @moduledoc """
-  The landing screen: what needs attention today.
-
-  Ordered by what can actually hurt a mission — stock about to expire, items
-  below the quantity a mission is expected to carry, boxes nobody has counted
-  in a while — rather than by what is easiest to render.
+  The landing screen: what needs attention today, ordered by what can hurt a
+  mission (expiring stock, items below the mission minimum, uncounted boxes).
   """
 
   use EstoqueOSWeb, :live_view
@@ -19,14 +16,11 @@ defmodule EstoqueOSWeb.HomeLive.Index do
   alias EstoqueOSWeb.Movement
   alias EstoqueOSWeb.StockLive
 
-  # A dashboard answers "is anything wrong"; the screen it links to answers
-  # "what exactly". Five rows is enough to tell the difference.
+  # Five rows tell "is anything wrong"; the linked screen answers "what exactly".
   @preview 5
   @shortage_limit 12
 
-  # The window the marketing panels read their pace over. Fixed, and not a
-  # control: this screen answers "is anything wrong", and the report behind it
-  # — Sales — is where a period is chosen and argued with.
+  # Fixed, not a control: the Sales report is where a period is chosen.
   @sales_window 90
 
   @impl true
@@ -38,12 +32,8 @@ defmodule EstoqueOSWeb.HomeLive.Index do
      |> assign(:may_acknowledge?, Alerts.may_acknowledge?(socket.assigns.current_scope))}
   end
 
-  # Which stock this overview is about, and the role always wins: `segment/2`
-  # gives a marketing user their own segment whatever the address asks for, and
-  # anyone who holds both stocks gets what they asked for or all of it.
-  #
-  # In the address rather than in an event, so the coordinator can keep the
-  # marketing overview open in a tab and the reload lands on the same page.
+  # The role wins: `Scope.segment/2` gives a marketing user their own segment
+  # whatever the address says. In the address, not an event, so a reload keeps the tab.
   @impl true
   def handle_params(params, _uri, socket) do
     segment = Scope.segment(socket.assigns.current_scope, params["segment"])
@@ -54,18 +44,13 @@ defmodule EstoqueOSWeb.HomeLive.Index do
      |> assign(:summary, Reports.summary(segment: segment))
      |> assign(:expiring, Reports.expiring_soon(limit: @preview, segment: segment))
      |> assign(:activity, Reports.recent_activity(limit: @preview, segment: segment))
-     # No screen goes deeper into shortages, so this one carries its own weight
-     # rather than teasing five rows and stopping.
+     # No screen goes deeper into shortages, so this one lists more rows.
      |> assign(:below_minimum, Reports.below_minimum(limit: @shortage_limit, segment: segment))
      |> assign_surgical_panels(segment)
      |> assign_sales_panels(segment)}
   end
 
-  # Only the stock that is sold has a pace to read. Asking the same question of
-  # the surgical stock would answer it — a mission consumes and the ledger
-  # records it — but "how many days of gauze are left at this rate" is not what
-  # anyone plans a mission by, and the panels would be three more things to
-  # scroll past on the screen that is supposed to be short.
+  # Only the stock that is sold has a pace to read; surgical stock is not planned by it.
   defp assign_sales_panels(socket, "marketing") do
     to = Date.utc_today()
 
@@ -78,11 +63,8 @@ defmodule EstoqueOSWeb.HomeLive.Index do
 
   defp assign_sales_panels(socket, _segment), do: assign(socket, :pace, nil)
 
-  # Boxes, disputed counts and kit readiness are the surgical operation asking
-  # itself questions. A box is shared by both stocks and a count is about a box,
-  # so there is no honest way to narrow them to one segment — and a marketing
-  # user has nothing to do with any of it. Empty rather than filtered, and the
-  # panels do not render at all.
+  # Boxes are shared by both stocks, so these cannot be narrowed to one segment:
+  # empty for marketing, and the panels do not render.
   defp assign_surgical_panels(socket, "marketing") do
     socket
     |> assign(:stale_boxes, [])
@@ -97,14 +79,12 @@ defmodule EstoqueOSWeb.HomeLive.Index do
     |> assign_readiness()
   end
 
-  # Whose problem a disputed count is. Admin and manager: the two roles that
-  # decide what to do about it — chase the supplier, or accept the loss.
+  # A disputed count is for the roles that decide: chase the supplier or accept the loss.
   defp may_review?(socket) do
     Scope.effective_role(socket.assigns.current_scope) in User.roles_that_plan()
   end
 
-  # Read at the warehouse the stock actually leaves from. A kit's coverage at a
-  # mission site is a different question and not this one.
+  # Read at the warehouse the stock leaves from, not at a mission site.
   defp assign_readiness(socket) do
     case Locations.default_location() do
       nil -> assign(socket, :readiness, [])
@@ -121,11 +101,6 @@ defmodule EstoqueOSWeb.HomeLive.Index do
         <:subtitle>{subtitle(@segment)}</:subtitle>
       </.header>
 
-      <!-- The two stocks share a warehouse and almost nothing else: what is
-           expiring in the marketing shelf is not a mission problem, and a
-           coordinator reading one number for both was reading neither. The tabs
-           are the whole answer for a role that holds both stocks; a role that
-           holds one never sees them and lands on their own overview. -->
       <div role="tablist" class="tabs tabs-box w-fit">
         <.link
           :for={{value, label} <- segment_tabs()}
@@ -156,12 +131,7 @@ defmodule EstoqueOSWeb.HomeLive.Index do
           money
           hint={gettext("donations without a value are not counted")}
         />
-        <!-- Amber only while something is actually waiting. Colouring a zero
-             teaches people that the colour means nothing.
-
-             Not shown to a role that cannot open the invoices — a tile whose
-             whole purpose is to be clicked, leading to a page that refuses, is
-             the same dead door as the menu entry that was removed. -->
+        <%!-- Amber only while something is waiting. Hidden from roles that cannot open invoices: a tile leading to a refusal is a dead door. --%>
         <.stat
           :if={Layouts.may_access?(@current_scope, ~p"/invoices")}
           label={gettext("Invoices pending")}
@@ -171,9 +141,6 @@ defmodule EstoqueOSWeb.HomeLive.Index do
           tone={if @summary.invoices_pending > 0, do: :warn, else: :neutral}
         />
 
-        <!-- What the shelf did, not what it holds. Only the stock that is sold
-             has this pair, and it is the pair the person who orders the next
-             print run reads first. -->
         <.stat
           :if={@pace}
           label={gettext("Sold in %{days} days", days: sales_window())}
@@ -191,14 +158,7 @@ defmodule EstoqueOSWeb.HomeLive.Index do
         />
       </div>
 
-      <!-- Above everything else, and only when it is not empty. A count that was
-           repeated and still disagreed is either goods leaving unrecorded or a
-           count nobody can trust, and both are this person's problem.
-
-           Only theirs, too. The operator who counted it three times already
-           knows; telling them again on every visit to the dashboard is noise
-           they cannot act on, and the decision — chase the supplier, or accept
-           the loss — is not theirs to take. -->
+      <%!-- Above everything, only when non-empty, and only for roles that decide (the counter already knows). --%>
       <div
         :if={@may_review? and @to_review != []}
         class="alert alert-warning flex-col items-start gap-2"
@@ -210,13 +170,7 @@ defmodule EstoqueOSWeb.HomeLive.Index do
         </p>
         <ul class="text-sm w-full divide-y divide-warning/20">
           <li :for={row <- @to_review} class="py-1 flex flex-wrap justify-between gap-x-4">
-            <!-- Straight to the thing that disagreed. A warning that states a
-                 fact and stops there leaves the manager to find the row by
-                 hand, which is the same as not being told.
-
-                 Which thing depends on what was counted: a conference is about
-                 a delivery, and the row a manager wants open for one of those
-                 is the invoice, not the box the goods ended up in. -->
+            <%!-- Link to what disagreed: the invoice for a conference, the box otherwise. --%>
             <.link
               :if={row.invoice}
               navigate={~p"/invoices/#{row.invoice.id}"}
@@ -242,12 +196,7 @@ defmodule EstoqueOSWeb.HomeLive.Index do
                 {datetime(row.transaction.occurred_at)}
                 <span :if={row.transaction.user}>· {row.transaction.user.email}</span>
               </span>
-              <!-- "Olhei e está tudo bem." A divergence that is simply the
-                   answer — the box really did have 27 — has to be closable, or
-                   this list only grows and stops being read, which costs the
-                   alarms that mattered. It is not an erasure: the reason stays
-                   on the movement and the acknowledgement is recorded beside it
-                   with a name and a date. -->
+              <%!-- Acknowledging is not an erasure: the reason stays on the movement and the acknowledgement is recorded beside it. --%>
               <button
                 :if={@may_acknowledge?}
                 type="button"
@@ -262,15 +211,8 @@ defmodule EstoqueOSWeb.HomeLive.Index do
         </ul>
       </div>
 
-      <!-- `items-start` so a short panel keeps its own height instead of being
-           stretched to match the tall one beside it, which is where the dead
-           space under these lists came from. -->
       <div class="grid lg:grid-cols-2 gap-6 items-start">
-        <!-- Hidden on the marketing tab while it is empty, and only there: a
-             shirt has no expiry date, so "nada vencendo" is not news — it is an
-             empty panel in the best corner of the screen, above the two panels
-             that person actually opens this page for. A printed item that does
-             carry a date still shows up here the moment it is close. -->
+        <%!-- Hidden on the marketing tab while empty: shirts do not expire, so an empty panel is noise. --%>
         <.panel :if={@segment != "marketing" or @expiring != []} title={gettext("Expiring soon")}>
           <p :if={@expiring == []} class="text-sm opacity-70">
             {gettext("Nothing expiring in the alert window.")}
@@ -300,9 +242,6 @@ defmodule EstoqueOSWeb.HomeLive.Index do
           />
         </.panel>
 
-        <!-- The question before a trip is not "how much gauze is there" but "can
-             we build the kits". A warehouse can look full and still not complete
-             one Kit Paciente because a single cannula ran out. -->
         <.panel :if={@segment != "marketing"} title={gettext("Ready for the next mission")}>
           <p :if={@readiness == []} class="text-sm opacity-70">
             {gettext("No kit registered yet.")}
@@ -335,10 +274,6 @@ defmodule EstoqueOSWeb.HomeLive.Index do
           </ul>
         </.panel>
 
-        <!-- The same list under two names, because it is the same fact read by
-             two people: the coordinator is short for a mission, and marketing
-             has to have more made. "Missão" in the title of a panel about
-             shirts was the word that gave it away. -->
         <.panel title={shortage_title(@segment)}>
           <p :if={@below_minimum == []} class="text-sm opacity-70">
             {gettext("Every product with a defined minimum is covered.")}
@@ -366,9 +301,6 @@ defmodule EstoqueOSWeb.HomeLive.Index do
           </ul>
         </.panel>
 
-        <!-- Which one leaves most, in units rather than in money: each shirt
-             size is its own product, so this list is also the answer to which
-             size to have made more of. -->
         <.panel :if={@pace} title={gettext("Best sellers")}>
           <p :if={@pace.best_sellers == []} class="text-sm opacity-70">
             {gettext("Nothing was sold in the last %{days} days.", days: sales_window())}
@@ -400,9 +332,6 @@ defmodule EstoqueOSWeb.HomeLive.Index do
           />
         </.panel>
 
-        <!-- The number that says *when*, which "abaixo do mínimo" only says
-             after the fact. Days left at the pace of the window, so an order
-             can be placed while there is still something on the shelf. -->
         <.panel :if={@pace} title={gettext("Runs out first")}>
           <p :if={@pace.cover == []} class="text-sm opacity-70">
             {gettext("Nothing on the shelf has sold in the last %{days} days.",
@@ -435,9 +364,6 @@ defmodule EstoqueOSWeb.HomeLive.Index do
           </ul>
         </.panel>
 
-        <!-- What not to have printed again. Only what is actually on the shelf:
-             something that sold out is not sitting still, and listing it here
-             would read as a warning against the thing that works. -->
         <.panel :if={@pace} title={gettext("Not moving")}>
           <p :if={@pace.idle == []} class="text-sm opacity-70">
             {gettext("Everything on the shelf sold at least once.")}
@@ -463,11 +389,7 @@ defmodule EstoqueOSWeb.HomeLive.Index do
           </ul>
         </.panel>
 
-        <!-- Both hidden rather than empty for the marketing role: a box belongs
-             to no segment and a disputed count is about a box, so there is no
-             version of these panels that is *theirs*. Empty, this panel would
-             read as "nothing to recount", which is a different statement and an
-             untrue one. -->
+        <%!-- Hidden, not empty, for marketing: an empty panel would falsely say "nothing to recount". --%>
         <.panel :if={@segment != "marketing"} title={gettext("Boxes to recount")}>
           <p :if={@stale_boxes == []} class="text-sm opacity-70">
             {gettext("No box is waiting on a count.")}
@@ -530,9 +452,6 @@ defmodule EstoqueOSWeb.HomeLive.Index do
             count: @summary.lots_needing_review
           )}
         </span>
-        <!-- The stock list, filtered to exactly those lots. The count was the
-             whole message before, and a number is not something anyone can act
-             on. -->
         <.button navigate={~p"/stock?review=on"} class="btn-sm">
           {gettext("See them")}
         </.button>
@@ -546,9 +465,7 @@ defmodule EstoqueOSWeb.HomeLive.Index do
   attr :label, :string, required: true
   attr :threshold, :integer, default: @preview
 
-  # The way out of a preview, shown only once the list is actually full: with
-  # four rows on screen there is nothing deeper to see, and a link that leads to
-  # the same four teaches the operator to stop trusting it.
+  # Shown only once the list is full: a link to the same four rows loses trust.
   defp more(assigns) do
     ~H"""
     <div :if={length(@rows) >= @threshold} class="flex justify-end mt-3 pt-3 border-t border-base-200">
@@ -561,9 +478,7 @@ defmodule EstoqueOSWeb.HomeLive.Index do
 
   def sales_window, do: @sales_window
 
-  # The words each stock uses for the same tile. "Catálogo" is what the
-  # surgical operation calls its list of supplies; marketing calls the same
-  # thing what it is for, which is being sold.
+  # Each stock's own words for the same tile.
   defp catalog_label("marketing"), do: gettext("Products on sale")
   defp catalog_label(_segment), do: gettext("Catalog")
 
@@ -576,14 +491,12 @@ defmodule EstoqueOSWeb.HomeLive.Index do
   defp subtitle("marketing"), do: gettext("What the marketing stock needs today.")
   defp subtitle(_segment), do: gettext("What needs attention before the next mission.")
 
-  # A week is the point where ordering still works: whatever is made has to be
-  # printed, delivered and put away before the shelf is empty.
+  # A week is where ordering still works: printing, delivery and putaway take time.
   defp cover_class(days) when days <= 7, do: "text-error"
   defp cover_class(days) when days <= 21, do: "text-warning"
   defp cover_class(_days), do: ""
 
-  # Both stocks first, because the operation is one operation and the person
-  # with the tabs is the one who has to see it whole before splitting it.
+  # Both stocks first: whoever holds both sees the whole operation before splitting it.
   defp segment_tabs do
     [
       {nil, gettext("All")}
@@ -591,9 +504,7 @@ defmodule EstoqueOSWeb.HomeLive.Index do
     ]
   end
 
-  # "Tudo" is an answer in the address, not the absence of one: with a default
-  # per role, no `segment=` means "the stock I work in", and the way back to the
-  # whole operation has to be sayable.
+  # "All" must be explicit: with a per-role default, no `segment=` means "my stock".
   defp overview_path(nil), do: ~p"/?segment=all"
   defp overview_path(segment), do: ~p"/?segment=#{segment}"
 
@@ -601,7 +512,6 @@ defmodule EstoqueOSWeb.HomeLive.Index do
     bottlenecks |> Enum.map(& &1.item.description) |> Enum.take(2) |> Enum.join(", ")
   end
 
-  # Zero kits is the whole problem; one is a trip that cannot go wrong anywhere.
   @impl true
   def handle_event("acknowledge_count", %{"id" => id}, socket) do
     case Alerts.acknowledge_count(id, socket.assigns.current_scope) do
@@ -611,9 +521,7 @@ defmodule EstoqueOSWeb.HomeLive.Index do
          |> assign(:to_review, Reports.counts_needing_review(limit: @preview))
          |> put_flash(:info, gettext("Noted. The count stays on record."))}
 
-      # `Alerts` decides, not this screen: the button is only rendered for the
-      # roles that may close one, and a button nobody rendered has never been
-      # what stops anything.
+      # `Alerts` decides, not the screen: hiding the button is not the gate.
       {:error, _reason} ->
         {:noreply, put_flash(socket, :error, gettext("You don't have permission to do that."))}
     end

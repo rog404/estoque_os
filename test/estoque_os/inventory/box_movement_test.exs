@@ -12,7 +12,6 @@ defmodule EstoqueOS.Inventory.BoxMovementTest do
     warehouse = location_fixture(%{name: "Estoque Principal", kind: "warehouse"})
     mission = location_fixture(%{name: "Missão Tefé", kind: "mission_site"})
     transit = location_fixture(%{name: "Trânsito", kind: "transit"})
-    # A second warehouse: the moves a person may still make by hand.
     annex = location_fixture(%{name: "Anexo SP", kind: "warehouse"})
 
     box = box_fixture(%{code: "BM01", location_id: warehouse.id})
@@ -45,7 +44,6 @@ defmodule EstoqueOS.Inventory.BoxMovementTest do
     }
   end
 
-  # Codes are stored upcased; what the operator types on a phone is not.
   describe "box lookup by code" do
     test "resolve_box/3 finds the box whatever the case typed", %{
       warehouse: warehouse,
@@ -81,15 +79,11 @@ defmodule EstoqueOS.Inventory.BoxMovementTest do
 
       {:ok, %{box: moved}} = Locations.move_box(box, annex.id, user_id: actor_id())
 
-      # Moving a box tells us nothing new about what is inside it.
       assert moved.last_verified_at == nil
     end
 
-    # A box arriving at a mission, or entering transit, is the moment the
-    # movement acquires a reason — which trip it belongs to. Only the load-out
-    # asks, so only the load-out may put it there. SPEC §4.3 still holds: the
-    # move is cheap and forces no recount. It just goes through the door that
-    # records the mission.
+    # Only the load-out records which trip a box belongs to, so only it may
+    # send a box to a mission or into transit.
     test "refuses to drop a box at a mission by hand", %{box: box, mission: mission} do
       assert {:error, :load_out_required} =
                Locations.move_box(box, mission.id, user_id: actor_id())
@@ -102,8 +96,6 @@ defmodule EstoqueOS.Inventory.BoxMovementTest do
                Locations.move_box(box, transit.id, user_id: actor_id())
     end
 
-    # SPEC §4.3: mission to mission, no recount along the way. The load-out is
-    # how it happens now, and it attributes the goods to the trip they left for.
     test "goes straight from one mission to the next, through the load-out", %{
       box: box,
       warehouse: warehouse,
@@ -131,7 +123,6 @@ defmodule EstoqueOS.Inventory.BoxMovementTest do
 
       assert box.location_id == next_mission.id
       assert Decimal.equal?(Inventory.balance(location_id: next_mission.id), Decimal.new(300))
-      # No recount was demanded along the way.
       assert box.last_verified_at == nil
     end
 

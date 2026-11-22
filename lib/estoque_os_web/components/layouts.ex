@@ -1,31 +1,15 @@
 defmodule EstoqueOSWeb.Layouts do
   @moduledoc """
-  This module holds layouts and related functionality
-  used by your application.
+  Layouts, the navigation menu and flash group.
   """
   use EstoqueOSWeb, :html
 
   alias EstoqueOS.Accounts.Scope
 
-  # Embed all files in layouts/* within this module.
-  # The default root.html.heex file contains the HTML
-  # skeleton of your application, namely HTML headers
-  # and other static content.
   embed_templates "layouts/*"
 
   @doc """
-  Renders your app layout.
-
-  This function is typically invoked from every template,
-  and it often contains your application menu, sidebar,
-  or similar.
-
-  ## Examples
-
-      <Layouts.app flash={@flash}>
-        <h1>Content</h1>
-      </Layouts.app>
-
+  Renders the app layout.
   """
   attr :flash, :map, required: true, doc: "the map of flash messages"
 
@@ -38,8 +22,6 @@ defmodule EstoqueOSWeb.Layouts do
   slot :inner_block, required: true
 
   def app(assigns) do
-    # Derived from the scope the layout already has, rather than threaded through
-    # twenty-six screens that would each have to remember to pass it.
     assigns =
       assigns
       |> assign(:groups, visible_groups(assigns[:current_scope]))
@@ -51,10 +33,6 @@ defmodule EstoqueOSWeb.Layouts do
     <div data-section={@section}>
       <header class="app-bar navbar gap-2 px-4 sm:px-6 lg:px-8">
         <div class="flex-1 min-w-0">
-          <!-- Same navigate-versus-href question as the menu entries, and this is
-               the link that raised it: it sits on every page, so from any screen
-               outside the `:signed_in` session it was a live navigation that
-               could not be one. -->
           <.link
             navigate={same_live_session?(@current_path, ~p"/") && ~p"/"}
             href={not same_live_session?(@current_path, ~p"/") && ~p"/"}
@@ -63,20 +41,11 @@ defmodule EstoqueOSWeb.Layouts do
             <.mark />
             <span class="min-w-0 leading-none">
               <span class="block text-base font-semibold truncate">{gettext("Estoque")}</span>
-              <!-- Hidden on a phone. At 390px the bar carries the mark, the
-                   organisation, the section, a bell with a count, the money eye,
-                   the menu and the account — and the bell's badge was landing on
-                   top of this line. The app's own name identifies it; the
-                   organisation's is not what you need while holding a box. -->
               <span class="eyebrow hidden sm:block opacity-60 truncate">
                 {gettext("Operação Sorriso")}
               </span>
             </span>
           </.link>
-          <!-- Where you are, for the screen size that has no menu bar to read it
-               off. On a phone the hamburger hides the nav, so without this the
-               section colour would be the only clue and a colour alone is not a
-               name. -->
           <span
             :if={@section && section_label(@current_path, @groups)}
             class="lg:hidden ml-3 hidden sm:inline-flex items-center gap-1.5 text-sm opacity-80 min-w-0"
@@ -100,17 +69,6 @@ defmodule EstoqueOSWeb.Layouts do
         </nav>
 
         <div class="flex-none flex items-center gap-1">
-          <!-- One place for everything that is open, on every screen. The
-               overview still carries the detail; what was missing was a number
-               you can see without being on the overview — and the lot alert in
-               particular sat at the bottom of it, where it was not being read.
-
-               Only for the roles that can do something about it: a count that
-               did not agree is closed by a manager, and a number nobody can
-               close is a number people learn to walk past.
-
-               A `live_component`, so its two actions target itself instead of
-               whichever of the twenty-six screens happens to be underneath. -->
           <.live_component
             :if={@current_scope && EstoqueOS.Alerts.visible_to?(@current_scope)}
             module={EstoqueOSWeb.AlertsBell}
@@ -118,8 +76,6 @@ defmodule EstoqueOSWeb.Layouts do
             current_scope={@current_scope}
           />
 
-          <!-- Only for somebody who is allowed to see the amounts in the first
-               place: offering to hide what was never sent would be theatre. -->
           <button
             :if={@current_scope && @sees_money?}
             type="button"
@@ -150,11 +106,7 @@ defmodule EstoqueOSWeb.Layouts do
             <summary class="btn btn-ghost" aria-label={gettext("Account")}>
               <.icon name="hero-user-circle" class="size-5" />
             </summary>
-            <!-- The theme toggle is a control, not a menu entry, so it sits beside
-               the list rather than inside it: daisyUI restyles every direct child
-               of a menu item as `display: grid`, which silently overrode the
-               toggle's own flex layout and threw its sliding indicator out of
-               line with the buttons. -->
+            <%!-- Theme toggle sits beside the menu list: daisyUI makes a menu item's direct children `display: grid`, breaking its flex layout. --%>
             <div class="dropdown-content z-50 mt-2 w-56 rounded-box bg-base-100 shadow-lg border border-base-300 text-base-content">
               <ul class="menu w-full">
                 <li class="menu-title truncate">{@current_scope.user.email}</li>
@@ -169,10 +121,6 @@ defmodule EstoqueOSWeb.Layouts do
                 <.theme_toggle />
               </div>
 
-              <!-- A menu entry like every other one in this panel, rather than a
-                   cluster of pills wrapping under a paragraph. The banner
-                   explains read-only at the moment it starts mattering, which is
-                   after the click, so it does not need explaining here. -->
               <ul :if={admin?(@current_scope)} class="menu w-full">
                 <li class="menu-title">{gettext("View as")}</li>
                 <li :for={role <- ~w(manager marketing logistics auditor)}>
@@ -196,9 +144,6 @@ defmodule EstoqueOSWeb.Layouts do
         </div>
       </header>
 
-      <!-- Impossible to be in this mode and not know it. A borrowed role changes
-           what the whole app shows, and an admin who forgets they are wearing
-           one will file a bug against a screen that is behaving correctly. -->
       <div
         :if={@current_scope && Scope.viewing_as?(@current_scope)}
         class="bg-warning text-warning-content px-4 sm:px-6 lg:px-8 py-2"
@@ -234,15 +179,8 @@ defmodule EstoqueOSWeb.Layouts do
   end
 
   @doc """
-  The mark — PROVISIONAL, like the palette it sits in.
-
-  Operação Sorriso has an official logo and we do not have the file (see
-  PRODUCT.md), so this stands in and must never be presented as theirs. It is a
-  box drawn as an open carton, because a box is the noun this whole system turns
-  on: everything here is something in a box, going somewhere, coming back.
-
-  Deliberately geometric and one colour, so replacing it is dropping in an
-  `<img>` and deleting this function.
+  The mark, PROVISIONAL: a stand-in for the organisation's official logo (see
+  PRODUCT.md), never to be presented as theirs. Replace with an `<img>`.
   """
   def mark(assigns) do
     ~H"""
@@ -260,8 +198,7 @@ defmodule EstoqueOSWeb.Layouts do
     """
   end
 
-  # Only a real admin, and not one already standing in another role: the picker
-  # must not offer a way to swap shoes while wearing somebody else's.
+  # Not an admin already viewing as another role: no nested view-as.
   defp admin?(%Scope{user: %EstoqueOS.Accounts.User{role: "admin"}, view_as: nil}), do: true
   defp admin?(_scope), do: false
 
@@ -292,22 +229,9 @@ defmodule EstoqueOSWeb.Layouts do
   attr :item, :map, required: true
   attr :current_path, :string, default: nil
 
-  # One menu entry, and the only interesting thing about it is `navigate` versus
-  # `href`.
-  #
-  # A `navigate` that crosses a `live_session` cannot be a live navigation:
-  # LiveView notices, logs
-  #
-  #     navigate event to "/" failed because you are redirecting across
-  #     live_sessions. A full page reload will be performed instead
-  #
-  # and reloads the page. The reload was always going to happen — the sessions
-  # mount different `on_mount` chains — but asking the socket first spends a
-  # round trip to be told so, on the warehouse wifi this is used from.
-  #
-  # Which session a path belongs to is read from the router, not declared here.
-  # The router already is the statement, and a second copy of it in this file
-  # would be free to disagree with it.
+  # `navigate` across a `live_session` falls back to a full reload after a wasted
+  # socket round trip, so cross-session links use `href`. The session of a path
+  # is read from the router, not declared here.
   defp nav_link(assigns) do
     assigns = assign(assigns, :live?, same_live_session?(assigns.current_path, assigns.item.path))
 
@@ -341,16 +265,8 @@ defmodule EstoqueOSWeb.Layouts do
     end
   end
 
-  # Grouped the way the operation itself is sequenced: what comes in, what we
-  # hold, what goes out, and what is checked. Ten flat links were unusable on
-  # the phone this gets used on inside a warehouse.
-  # Grouped by who is doing the work, not by what the code calls things.
-  # "Operação" is the hands-on menu: the flows someone performs standing up, in
-  # a warehouse or a mission room, usually on a phone.
-  #
-  # `section` is the group's colour identity, and it is a stable English key
-  # rather than the translated label: the CSS keys off it, so a translation must
-  # never repaint the app.
+  # `section` is a stable English key, not the translated label: the CSS keys
+  # off it, so a translation must never repaint the app.
   defp nav_groups do
     [
       %{
@@ -383,8 +299,6 @@ defmodule EstoqueOSWeb.Layouts do
         label: gettext("Operation"),
         icon: "hero-clipboard-document-check",
         items: [
-          # First, because it is the first thing that happens to goods after
-          # they arrive — and because it is the entry the operator was missing.
           %{
             label: gettext("Conference"),
             path: ~p"/conferences",
@@ -397,11 +311,6 @@ defmodule EstoqueOSWeb.Layouts do
             icon: "hero-arrow-up-tray",
             roles: ~w(admin manager marketing)
           },
-          # Named for what the person is about to do. "Derrubada de carga" is
-          # what the operation calls it on the phone and it stays the movement's
-          # name in the ledger, but as a menu entry beside "Retorno de missão" it
-          # was two nouns for the two ends of one act, and nobody could tell
-          # which screen sent and which received.
           %{
             label: gettext("Send a load"),
             path: ~p"/load-out",
@@ -421,22 +330,15 @@ defmodule EstoqueOSWeb.Layouts do
         label: gettext("Stock"),
         icon: "hero-archive-box",
         items: [
-          # `:everyone` again, and the marketing role is the reason it is worth a
-          # comment: this is the same screen for them, narrowed to their stock by
-          # the scope rather than by a second menu entry. A "Marketing" group
-          # duplicating Estoque, Entradas and Dar baixa was three names for
-          # screens the system already had.
+          # Same screen for marketing, narrowed to their stock by the scope.
           %{
             label: gettext("Stock"),
             path: ~p"/stock",
             icon: "hero-squares-2x2",
             roles: :everyone
           },
-          # `:everyone` used to mean everyone, and then a role arrived that has
-          # one stock and no boxes, kits or missions in it. These now name the
-          # four roles the surgical operation is made of — the same list the
-          # `:warehouse_read` live_session carries, and `nav_roles_test.exs`
-          # walks every entry with every role to hold the two together.
+          # Roles mirror the `:warehouse_read` live_session; `nav_roles_test.exs`
+          # holds the two together.
           %{
             label: gettext("Boxes"),
             path: ~p"/boxes",
@@ -468,14 +370,7 @@ defmodule EstoqueOSWeb.Layouts do
         label: gettext("Reports"),
         icon: "hero-chart-bar",
         items: [
-          # The marketing stock's own report, and it lives here rather than in a
-          # menu of its own: a sale is a movement like any other, and this is
-          # where movements are read.
-          # Not an entry and not the logistics partner's: taking the whole stock
-          # out to a sheet and bringing a count back in is a reporting act, done
-          # sitting down, with no box in anyone's hands. It lived under Entradas
-          # and in a dropdown on the stock screen, which put "importar dados" one
-          # click away from a list anybody may read.
+          # A reporting act, not an entry, and not the logistics partner's.
           %{
             label: gettext("Data"),
             path: ~p"/reports/data",
@@ -488,14 +383,7 @@ defmodule EstoqueOSWeb.Layouts do
             icon: "hero-banknotes",
             roles: ~w(admin manager marketing auditor)
           },
-          # "Quem está com a carga?" — asked on the phone, and until the shipment
-          # was a record the system holding the stock could not answer it.
-          # The four roles the surgical operation is made of, like the boxes and
-          # the missions: a load on the road is going to or coming from one of
-          # A load carries whatever was packed into the boxes, and a mission
-          # box mixes the two stocks — so the marketing coordinator reads this
-          # for the same reason as everyone else: to know where their material
-          # is.
+          # Marketing included: a mission box mixes both stocks.
           %{
             label: gettext("In transit"),
             path: ~p"/reports/transit",
@@ -528,14 +416,8 @@ defmodule EstoqueOSWeb.Layouts do
   @doc """
   The menu as one role sees it: groups with nothing in them do not appear.
 
-  A menu entry that answers with "you don't have permission to access this
-  page" is not information, it is a door with a wall behind it. The logistics
-  partner has no business being told twice a day that the invoices they cannot
-  open exist.
-
-  This is presentation and never the gate — the router is. `roles` here mirrors
-  the `live_session` each path sits in, and `test/estoque_os_web/live/nav_roles_test.exs`
-  walks every entry with every role to hold the two together.
+  Presentation, never the gate — the router is. `roles` mirrors the
+  `live_session` of each path; `nav_roles_test.exs` holds the two together.
   """
   def visible_groups(scope) do
     role = Scope.effective_role(scope)
@@ -546,11 +428,8 @@ defmodule EstoqueOSWeb.Layouts do
   end
 
   @doc """
-  Whether this scope may open the given menu path.
-
-  Asked by screens that offer a shortcut into another one — the product page's
-  "Dar baixa" — so the shortcut and the menu answer from the same table instead
-  of each having its own opinion.
+  Whether this scope may open the given menu path, so shortcuts and the menu
+  answer from the same table.
   """
   def may_access?(scope, path) do
     role = Scope.effective_role(scope)
@@ -559,10 +438,8 @@ defmodule EstoqueOSWeb.Layouts do
     Enum.any?(all_items(), &(without_query(&1.path) == wanted and allowed?(&1, role)))
   end
 
-  # A menu path may carry a query string — the marketing entries are the same
-  # screens narrowed to one stock — and none of the questions asked about a
-  # path here are about its query: which role may open it, which section it
-  # belongs to, which `live_session` it mounts in.
+  # Menu paths may carry a query (marketing entries); it never affects role,
+  # section or `live_session`.
   defp without_query(path), do: path |> to_string() |> String.split("?") |> hd()
 
   defp allowed?(_item, nil), do: false
@@ -572,17 +449,11 @@ defmodule EstoqueOSWeb.Layouts do
   defp all_items, do: Enum.flat_map(nav_groups(), & &1.items)
 
   @doc """
-  Which section of the operation a path belongs to, and what that section is
-  called.
+  Which menu section a path belongs to, derived from the menu rather than
+  declared per screen.
 
-  Derived from the menu rather than declared per screen: the nav is already the
-  statement of how this system is divided, and a screen that had to name its own
-  section would be free to disagree with the menu it sits under.
-
-  A path the menu does not know — a detail screen like `/boxes/42`, or the
-  account settings — falls back to its longest matching prefix, and then to
-  nothing. A page with no section still renders; it simply keeps the default
-  blue rather than borrowing a colour it has no claim to.
+  An unknown path falls back to its longest matching prefix, then to nothing
+  (the page keeps the default colour).
   """
   def active_section(current_path, groups \\ nav_groups())
 
@@ -607,12 +478,8 @@ defmodule EstoqueOSWeb.Layouts do
     end
   end
 
-  # Longest prefix wins, so "/invoices/import" is claimed by the entry for
-  # "/invoices/import" rather than by "/invoices".
-  #
-  # Asked against the groups this *role* can see, not against all of them.
-  # `/stock` belongs to two entries — the surgical stock and the marketing one
-  # — and which section it lights up is a question about who is looking.
+  # Longest prefix wins. Matched against the groups this role can see, since
+  # `/stock` belongs to two entries and the answer depends on who is looking.
   defp matching_group(current_path, groups) do
     groups
     |> Enum.flat_map(fn group ->
@@ -634,10 +501,8 @@ defmodule EstoqueOSWeb.Layouts do
     current_path == path or String.starts_with?(current_path, path <> "/")
   end
 
-  # A group lights up for anything beneath it, so "/boxes/42" keeps Estoque
-  # marked. It asks `matching_group/1` rather than testing its own items,
-  # because "/reports/data" sits under Relatórios while "/stock" sits under
-  # Estoque — testing item by item would light both.
+  # Asks `matching_group/2` rather than testing its own items, which would
+  # light two groups for paths like "/reports/data" vs "/stock".
   defp group_active?(nil, _group, _groups), do: false
 
   defp group_active?(current_path, group, groups) do
@@ -656,26 +521,9 @@ defmodule EstoqueOSWeb.Layouts do
   @doc """
   Shows the flash group with standard titles and content.
 
-  One fixed container at the bottom right holding all of them, rather than each
-  notice positioning itself: two `toast` elements are both fixed to the same
-  corner, so an error arriving on top of a confirmation drew one exactly over
-  the other — reported as "um sobrepõe o outro".
-
-  So they are a stack now, newest at the bottom, and they behave like one: each
-  notice runs its own clock, folds itself away when it is up, and the ones above
-  it slide down into the space. The folding is what makes the stack readable —
-  a notice that vanishes in a single frame makes everything above it jump a row,
-  and a jump is indistinguishable from a page reloading under you.
-
-  Bottom, not top. It used to sit over the navigation bar — the one part of the
-  screen that is always in the same place — so a notice about the line just
-  recorded covered the menu the operator was reaching for. Down here it covers
-  the end of a list, which is the cheapest thing on the page to cover, and it
-  is beside the thumb that dismisses it.
-
-  ## Examples
-
-      <.flash_group flash={@flash} />
+  One fixed container holds every notice, so two `toast`s never overlap in the
+  same corner. Each notice folds away on its own clock so the ones above slide
+  down instead of jumping. Bottom, not top, to leave the navigation bar clear.
   """
   attr :flash, :map, required: true, doc: "the map of flash messages"
   attr :id, :string, default: "flash-group", doc: "the optional id of flash container"
@@ -690,10 +538,7 @@ defmodule EstoqueOSWeb.Layouts do
       <.flash kind={:info} flash={@flash} dismiss_after={info_ms()} />
       <.flash kind={:error} flash={@flash} dismiss_after={error_ms()} />
 
-      <!-- No countdown on these two, deliberately. They are not announcements,
-           they are the state of the connection, and a state that clears itself
-           after fourteen seconds would tell the operator the app is back when
-           it is not. -->
+      <%!-- No countdown on these two: they are connection state, not announcements. --%>
       <.flash
         id="client-error"
         kind={:error}
@@ -727,17 +572,13 @@ defmodule EstoqueOSWeb.Layouts do
     """
   end
 
-  # Long enough to read twice, standing up, holding a box. Errors ask for
-  # something and get more than double: "say which box the goods went into" is
-  # an instruction, and an instruction that clears itself before the operator
-  # looks back up has not been given.
+  # Long enough to read twice, standing up. Errors are instructions and get more
+  # than double.
   defp info_ms, do: 6_000
   defp error_ms, do: 14_000
 
   @doc """
-  Provides dark vs light theme toggle based on themes defined in app.css.
-
-  See <head> in root.html.heex which applies the theme before page load.
+  Dark vs light theme toggle; root.html.heex applies the theme before page load.
   """
   def theme_toggle(assigns) do
     ~H"""

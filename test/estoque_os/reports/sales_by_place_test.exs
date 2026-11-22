@@ -1,10 +1,7 @@
 defmodule EstoqueOS.Reports.SalesByPlaceTest do
   @moduledoc """
-  What was sold, grouped by where it went out from.
-
-  For the marketing stock the place *is* the event: a mission site, a fair, the
-  office counter. "Quanto vendemos em Manacapuru" was a question the ledger
-  could already answer and no screen asked.
+  What was sold, grouped by where it went out from. For the marketing stock the
+  place is the event: a mission site, a fair, the office counter.
   """
 
   use EstoqueOS.DataCase, async: true
@@ -76,7 +73,6 @@ defmodule EstoqueOS.Reports.SalesByPlaceTest do
 
     [first, second] = Reports.sales_by_place(@from, @to, segment: "marketing")
 
-    # Sorted by revenue, so the mission comes first.
     assert first.location == "Missão Manacapuru"
     assert first.kind == "mission_site"
     assert Decimal.equal?(first.quantity, 10)
@@ -88,8 +84,7 @@ defmodule EstoqueOS.Reports.SalesByPlaceTest do
     assert Decimal.equal?(second.revenue, Decimal.new("160.00"))
   end
 
-  # A donated lot has no cost, and counting it as zero would report the whole
-  # sale as margin.
+  # A donated lot has no cost; counting it as zero would report the whole sale as margin.
   test "says how many lines carry no cost", %{office: office, shirt: shirt} do
     lot = stock_in(shirt, office, 50, nil)
     sell(lot, office, 5, "40.00")
@@ -114,7 +109,6 @@ defmodule EstoqueOS.Reports.SalesByPlaceTest do
     assert Decimal.equal?(both.quantity, 10)
   end
 
-  # A write-off that went anywhere else is not a sale, whatever it looked like.
   test "counts sales and nothing else", %{office: office, shirt: shirt} do
     lot = stock_in(shirt, office, 50, "18.00")
 

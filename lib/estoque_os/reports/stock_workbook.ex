@@ -2,10 +2,8 @@ defmodule EstoqueOS.Reports.StockWorkbook do
   @moduledoc """
   The stock spreadsheet, in both directions.
 
-  Headers are Portuguese because the file is opened by people, not machines,
-  and they double as the import contract: `import_rows/1` looks columns up by
-  header name, so a coordinator can reorder or annotate columns and the file
-  still imports.
+  Headers are Portuguese (opened by people) and double as the import contract:
+  `import_rows/1` finds columns by header name, so columns may be reordered.
   """
 
   use Gettext, backend: EstoqueOSWeb.Gettext
@@ -36,15 +34,9 @@ defmodule EstoqueOS.Reports.StockWorkbook do
 
   ## Options
 
-    * `:money` — include the cost columns. Defaults to `true`. The logistics
-      operator counts stock and sends the file back, so the export cannot simply
-      be refused to them; what it can do is leave out what they were never given
-      on paper either. Their spreadsheet has always carried description,
-      quantity and box and never a price.
-
-  Dropping the columns is safe for the round trip because `import_rows/1` finds
-  columns by header name and cost is not required on import — a file exported
-  without them comes back in and reads correctly.
+    * `:money` — include the cost columns (default `true`). Logistics counts
+      from this file and may never see prices, so their export omits them; that
+      round-trips because cost is not required on import.
   """
   def to_xlsx(rows, opts \\ []) do
     columns = columns_for(opts)
@@ -65,10 +57,9 @@ defmodule EstoqueOS.Reports.StockWorkbook do
   end
 
   @doc """
-  A blank example sheet for someone to download and fill in: the canonical
-  columns with a few example rows that show the conventions — a dated lot, the
-  `MIGRACAO` placeholder for a lot nobody read, and a box-only line that just
-  registers an empty box.
+  An example sheet to fill in, showing the conventions: a dated lot, the
+  `MIGRACAO` placeholder for an unread lot, and a box-only line registering an
+  empty box.
   """
   def template do
     rows = [
@@ -122,10 +113,8 @@ defmodule EstoqueOS.Reports.StockWorkbook do
 
   defp cell(:quantity, %Decimal{} = value), do: Decimal.to_float(value)
 
-  # A product/group/box/location name is text a supplier or a colleague typed,
-  # not text this app wrote. Opened in Excel, a value starting with =, +, - or
-  # @ runs as a formula instead of reading as a name — prefixing it with an
-  # apostrophe forces text, which Excel then hides from the display.
+  # Names are typed by others; in Excel a leading =, +, - or @ runs as a formula
+  # (CSV injection). An apostrophe prefix forces text and Excel hides it.
   defp cell(_key, value) when is_binary(value) do
     if String.starts_with?(value, ["=", "+", "-", "@"]) do
       "'" <> value

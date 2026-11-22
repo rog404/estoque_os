@@ -62,11 +62,9 @@ defmodule EstoqueOSWeb.UserLive.ConfirmationTest do
                "Conta confirmada com sucesso"
 
       assert Accounts.get_user!(user.id).confirmed_at
-      # we are logged in now
       assert get_session(conn, :user_token)
       assert redirected_to(conn) == ~p"/"
 
-      # log out, new conn
       conn = build_conn()
 
       {:ok, _lv, html} =
@@ -97,7 +95,6 @@ defmodule EstoqueOSWeb.UserLive.ConfirmationTest do
 
       assert Accounts.get_user!(user.id).confirmed_at == user.confirmed_at
 
-      # log out, new conn
       conn = build_conn()
 
       {:ok, _lv, html} =

@@ -2,36 +2,25 @@ defmodule EstoqueOS.Accounts.LoginThrottle do
   @moduledoc """
   Makes repeated failed logins progressively slower.
 
-  Sign-up is closed and roles are granted deliberately, so the only way into this
-  system is a password on an account somebody created by hand. That makes the
-  login form the entire attack surface, and until now it answered as fast as the
-  network allowed, forever.
+  The delay grows with the failures rather than locking the account: a lockout
+  is a denial of service against the coordinator, a growing wait only costs a
+  guesser.
 
-  The delay grows with the failures rather than locking an account outright.
-  Locking is what an attacker wants when the goal is to keep the coordinator out
-  on the morning a mission ships — a growing wait costs a guesser everything and
-  costs somebody who mistyped their password fifteen seconds.
+  Two counters, both must clear. By email, the account being guessed at. By
+  address as a much looser backstop: a handful of accounts share one office
+  connection, so a strict address counter would lock everyone out.
 
-  Two counters, and both must clear, but they are not equally strict. By email,
-  because that is the account being guessed at. By address as a backstop, and
-  much looser: this operation has a handful of accounts behind one office
-  connection, so a strict address counter means whoever mistypes first locks out
-  everybody else. With three accounts in existence, spraying across emails is not
-  an attack worth optimising against — the email counter already catches it.
-
-  Held in ETS rather than in the database: this is a single machine with two
-  users, and a failed password should not cost a write. It resets on restart,
-  which an attacker cannot cause.
+  Held in ETS, not the database: a failed password should not cost a write, and
+  a reset on restart is not something an attacker can cause.
   """
 
   use GenServer
 
   @table :login_throttle
-  # Failures, and how long the next attempt has to wait. Under three, nothing:
-  # people mistype.
+  # {failures, seconds the next attempt waits}. Under three, nothing: people mistype.
   @email_steps [{3, 15}, {5, 60}, {7, 300}, {10, 1_800}]
 
-  # An address is a whole office. It only speaks up for volume no human produces.
+  # An address is a whole office: only volume no human produces.
   @address_steps [{30, 60}, {60, 900}]
   @forget_after_seconds 3_600
 
@@ -85,8 +74,7 @@ defmodule EstoqueOS.Accounts.LoginThrottle do
 
   defp failures_for(key, now) do
     case :ets.lookup(@table, normalize(key)) do
-      # An hour of quiet wipes the slate: somebody who got it wrong this morning
-      # is not a suspect this afternoon.
+      # An hour of quiet wipes the slate.
       [{_key, _failures, last}] when now - last > @forget_after_seconds -> 0
       [{_key, failures, _last}] -> failures
       [] -> 0

@@ -16,10 +16,8 @@ defmodule EstoqueOS.Inventory.TransactionEntry do
   schema "transaction_entries" do
     field :quantity, :decimal
     field :unit_cost, :decimal
-    # What the buyer paid, when this line was a sale. A different question from
-    # `unit_cost`, which is what the ONG paid — average cost and stock value are
-    # both derived from that one, so a sale price living in it would quietly
-    # rewrite the value of everything.
+    # What the buyer paid. Kept apart from `unit_cost` (what the ONG paid), from
+    # which average cost and stock value derive.
     field :sale_unit_price, :decimal
 
     belongs_to :transaction, Transaction

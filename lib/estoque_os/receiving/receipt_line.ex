@@ -83,10 +83,8 @@ defmodule EstoqueOS.Receiving.ReceiptLine do
   True when somebody counted this line and the number was not accepted, so it
   is waiting to be counted again.
 
-  The state the screen has to render, and the reason it cannot be derived from
-  `counted_quantity` alone: nil there means either "nobody counted" or "counted
-  and we are asking again", and those two rows say completely different things
-  to the operator standing in front of them.
+  Not derivable from `counted_quantity` alone: nil means either "nobody
+  counted" or "counted and asking again".
   """
   def awaiting_recount?(%__MODULE__{counted_quantity: nil} = line), do: attempts(line) > 0
   def awaiting_recount?(%__MODULE__{}), do: false

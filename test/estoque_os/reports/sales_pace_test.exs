@@ -1,10 +1,7 @@
 defmodule EstoqueOS.Reports.SalesPaceTest do
   @moduledoc """
-  What the sold stock is doing.
-
-  The marketing question is not "will the mission be short" but "what do I have
-  made next", and that is three readings of the same sales: what leaves most,
-  what runs out first, what is not leaving at all.
+  Three readings of the same sales: what leaves most, what runs out first, and
+  what is not leaving at all.
   """
 
   use EstoqueOS.DataCase, async: true
@@ -59,8 +56,6 @@ defmodule EstoqueOS.Reports.SalesPaceTest do
     lot
   end
 
-  # A sale is a `manual_out` to the `sale` destination — the same ledger as
-  # everything else, which is the whole point of reading pace from it.
   defp sell(lot, location, quantity, days_ago) do
     {:ok, _} =
       Inventory.post_transaction(%{
@@ -103,7 +98,6 @@ defmodule EstoqueOS.Reports.SalesPaceTest do
     medium: medium
   } do
     lot = receive_stock(medium, warehouse, 100)
-    # 90 units over 90 days is one a day, and 10 left on the shelf.
     sell(lot, warehouse, 90, 10)
 
     pace = Reports.sales_pace(@from, @to, segment: "marketing")
@@ -114,8 +108,7 @@ defmodule EstoqueOS.Reports.SalesPaceTest do
     assert row.days == 10
   end
 
-  # Half a day is not a day: a shelf that lasts eleven and a half lasts eleven,
-  # and rounding up is the direction that runs out on somebody.
+  # Rounding up is the direction that runs out on somebody.
   test "cover rounds down", %{warehouse: warehouse, medium: medium} do
     lot = receive_stock(medium, warehouse, 100)
     sell(lot, warehouse, 90, 10)
@@ -124,7 +117,7 @@ defmodule EstoqueOS.Reports.SalesPaceTest do
     pace = Reports.sales_pace(@from, @to, segment: "marketing")
 
     assert [row] = pace.cover
-    # 95 sold in 90 days, 5 left: 4.7 days, which is four.
+    # 4.7 days, rounded down.
     assert row.days == 4
   end
 
@@ -144,8 +137,6 @@ defmodule EstoqueOS.Reports.SalesPaceTest do
     assert Decimal.equal?(row.quantity, 24)
   end
 
-  # Something that was sold out entirely is not sitting idle — it is not
-  # sitting at all, and the panel is about the shelf.
   test "an empty shelf is neither covered nor idle", %{
     warehouse: warehouse,
     medium: medium

@@ -1,19 +1,12 @@
 defmodule EstoqueOSWeb.MissionLive.Index do
   @moduledoc """
-  The trips, most recent first.
-
-  A mission is created before it leaves, because the load-out has to have
-  something to belong to. `ends_on` is left blank until it is over rather than
-  guessed on the way out.
+  The trips, most recent first. A mission is created before it leaves so the
+  load-out has something to belong to.
   """
 
   use EstoqueOSWeb, :live_view
 
-  @doc """
-  Events a viewer may send. Everything else on this screen is refused.
-
-  Creating a mission decides where the next load-out gets filed.
-  """
+  # Events a viewer may send; none: creating a mission decides where the next load-out is filed.
   def viewer_events, do: ~w()
 
   alias EstoqueOS.Inventory.Locations
@@ -58,9 +51,6 @@ defmodule EstoqueOSWeb.MissionLive.Index do
               required
             />
           </label>
-          <!-- A mission usually goes somewhere the ONG has never been, so the
-               place is created here rather than in a screen the coordinator has to
-               visit first and come back from. -->
           <label class="fieldset">
             <span class="label">{gettext("Where")}</span>
             <select name="location_id" class="select select-bordered">
@@ -176,9 +166,7 @@ defmodule EstoqueOSWeb.MissionLive.Index do
     end
   end
 
-  # Presentation only: the planned return date is what the team booked, and
-  # whether today falls inside it is worth a badge. Nothing about the stock is
-  # decided from this.
+  # Presentation only; nothing about the stock is decided from this.
   defp under_way?(mission) do
     today = Date.utc_today()
 
@@ -186,9 +174,7 @@ defmodule EstoqueOSWeb.MissionLive.Index do
       Date.compare(mission.ends_on, today) != :lt
   end
 
-  # A different animal from `Coercion.blank_to_nil/1`, and it used to share the
-  # name: this walks a *map* of form attrs. An empty date input posts "", which
-  # is not the same as "no end date yet".
+  # Walks a map of form attrs (unlike `Coercion.blank_to_nil/1`); an empty date posts "".
   defp blank_dates_to_nil(attrs) do
     Map.new(attrs, fn
       {key, ""} -> {key, nil}

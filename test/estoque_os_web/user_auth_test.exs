@@ -95,9 +95,7 @@ defmodule EstoqueOSWeb.UserAuthTest do
         |> fetch_cookies()
         |> init_test_session(%{user_remember_me: true})
 
-      # the conn is already logged in and has the remember_me cookie set,
-      # now we log in again and even without explicitly setting remember_me,
-      # the cookie should be set again
+      # Logging in again without remember_me must still set the cookie.
       conn = conn |> UserAuth.log_in_user(user, %{})
       assert %{value: signed_token, max_age: max_age} = conn.resp_cookies[@remember_me_cookie]
       assert signed_token != get_session(conn, :user_token)

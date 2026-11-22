@@ -2,14 +2,10 @@ defmodule EstoqueOS.Catalog.Carrier do
   @moduledoc """
   Whoever carries a load between two places.
 
-  A party, like a supplier, and here for the same reason: the coordinator asks
-  about them by name on the phone ("quem está com a carga?"), and a name typed
-  fresh on every trip is three carriers by the third trip — the naming chaos
-  SPEC §3.13 blames for killing a previous system, arriving through the door
-  nobody guards.
+  A party like a supplier, as a record rather than free text so one carrier is
+  not three spellings (SPEC §3.13).
 
-  The CNPJ is optional. A volunteer with a van is not a company, and refusing to
-  record the trip because there is no registration would lose the trip.
+  The CNPJ is optional: a volunteer with a van is not a company.
   """
 
   use Ecto.Schema
@@ -40,8 +36,7 @@ defmodule EstoqueOS.Catalog.Carrier do
     |> unique_constraint(:cnpj)
   end
 
-  # Digits, because it arrives typed with dots and slashes and would otherwise
-  # never match itself across two entries.
+  # Digits only: typed with dots and slashes it would never match itself.
   defp normalize_cnpj(nil), do: nil
 
   defp normalize_cnpj(value) do

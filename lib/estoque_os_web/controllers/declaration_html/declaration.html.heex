@@ -5,9 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{@page_title} — {@declaration.recipient_name}</title>
     <style>
-      /* Black on white, hairlines, no filled headings. This page is printed on
-         a warehouse inkjet, often a dozen times a week, and a shaded table head
-         costs more ink than the whole rest of the document. */
+      /* Black on white, no filled headings: printed on an inkjet, ink matters. */
       @page { size: A4; margin: 16mm 14mm; }
       * { box-sizing: border-box; }
       body {
@@ -47,8 +45,7 @@
       .print-bar { margin-bottom: 14px; }
       .print-bar button { font: inherit; padding: 6px 14px; cursor: pointer; }
       .print-bar a { margin-left: 12px; font-size: 10pt; }
-      /* Repeating the head on page two is what makes a two-page load list
-         readable; the certificates never needed it because they fit. */
+      /* Repeat the table head on page two. */
       thead { display: table-header-group; }
       tr { page-break-inside: avoid; }
       @media print { .print-bar { display: none; } body { padding: 0; } }

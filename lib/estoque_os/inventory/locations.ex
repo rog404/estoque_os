@@ -32,13 +32,9 @@ defmodule EstoqueOS.Inventory.Locations do
   end
 
   @doc """
-  Every place the operation has ever had, retired ones included, for the screen
-  that manages them.
+  Every place ever, retired included, active first, for the management screen.
 
-  A separate function rather than an option on `list_locations/0`: every caller
-  of that one is filling a picker, and a picker must never offer a place that
-  was deliberately taken out of the operation. Active first, because the retired
-  ones are history and the working list is what the screen is for.
+  Separate from `list_locations/0` because pickers must never offer a retired place.
   """
   def list_all_locations do
     Location
@@ -49,9 +45,7 @@ defmodule EstoqueOS.Inventory.Locations do
   @doc """
   The place a load sits while somebody else is driving it.
 
-  There is one, and the load-out needs it by kind rather than by name: "Trânsito"
-  is a word on a seed, and a system that finds it by spelling breaks the day
-  somebody renames it.
+  Found by kind, not name, so renaming "Trânsito" does not break the load-out.
   """
   def transit_location do
     Location
@@ -64,12 +58,10 @@ defmodule EstoqueOS.Inventory.Locations do
   @doc """
   What each location holds, in the terms the operation actually thinks in.
 
-  Boxes, not units: a location's stock travels and is counted as boxes, and a
-  unit total summed across gauze and scalpels is a number nobody acts on.
+  Boxes, not units: stock travels and is counted as boxes.
 
-  The value covers only stock whose cost is known. Donations arrive with no
-  value informed, and treating those as zero would quietly understate a
-  location — `known_value` is named for what it is.
+  The value covers only stock whose cost is known; donations have none, and
+  counting them as zero would understate a location.
   """
   def location_overview do
     costs = Inventory.average_unit_costs()
@@ -102,9 +94,7 @@ defmodule EstoqueOS.Inventory.Locations do
         end
       end)
 
-    # What is on the floor rather than in a box. The screen needs it to say why
-    # a location cannot be retired: "mova as caixas" is the wrong instruction
-    # for a place whose stock was never in one.
+    # Stock on the floor, so the screen can say why a location cannot be retired.
     loose =
       StockSnapshot
       |> where([s], is_nil(s.box_id) and s.quantity != 0)
@@ -129,19 +119,14 @@ defmodule EstoqueOS.Inventory.Locations do
   @doc """
   Retires a location without erasing where stock has been.
 
-  There is no `delete_location`: transactions name the location they moved stock
-  from and to, so removing the row would tear a hole in the audit trail this
-  system exists to keep. Deactivating drops it out of `list_locations/0`, and
-  therefore out of every picker, while the history stays readable.
+  There is no `delete_location`: transactions reference locations. Deactivating
+  drops it from every picker while history stays readable.
   """
   def deactivate_location(%Location{} = location) do
     if empty?(location) do
       location |> Location.changeset(%{active: false}) |> Repo.update()
     else
-      # Not a validation on the changeset: what makes a location retirable is a
-      # fact about the ledger, not about the row. Refused here so a
-      # hand-crafted event cannot retire a place that still holds goods and
-      # take that stock out of every picker with it.
+      # Checked here, not in the changeset: retirability is a fact about the ledger.
       {:error, :not_empty}
     end
   end
@@ -149,20 +134,15 @@ defmodule EstoqueOS.Inventory.Locations do
   @doc """
   Puts a retired location back into the operation.
 
-  The mission that ran last year runs again, and re-registering it under the
-  same name is not possible — the name is unique, and the row that owns it is
-  the one holding all the history. So the way back is this, not a second row.
+  Not a second row: the name is unique and the original row holds the history.
   """
   def reactivate_location(%Location{} = location) do
     location |> Location.changeset(%{active: true}) |> Repo.update()
   end
 
   @doc """
-  Whether a location holds nothing at all: no active box, no stock loose on its
-  floor.
-
-  Boxes alone were the old question, and stock can sit at a location without
-  one — every manual entry with the box field left blank puts it there.
+  Whether a location holds nothing: no active box and no loose stock (a manual
+  entry with the box left blank puts stock there without one).
   """
   def empty?(%Location{} = location), do: empty?(location.id)
 
@@ -193,10 +173,6 @@ defmodule EstoqueOS.Inventory.Locations do
     for_segment(segment) || configured_location() || first_warehouse()
   end
 
-  # The place the operation says goods of this stock arrive at. Marketing
-  # material comes into the office and surgical supplies into the warehouse, and
-  # before this every screen preselected the same one for both — which is the
-  # location the marketing coordinator had to correct on every single entry.
   defp for_segment(nil), do: nil
 
   defp for_segment(segment) do
@@ -225,9 +201,7 @@ defmodule EstoqueOS.Inventory.Locations do
   @doc """
   Makes a place the default entry point for one stock, or takes the mark off.
 
-  One per stock: setting a new one clears whichever place held it, because two
-  places both claiming to be where marketing material arrives is a question the
-  screens would end up answering by row id.
+  One per stock: setting a new one clears the previous holder.
   """
   def set_default_for_segment(%Location{} = location, segment) do
     Repo.transaction(fn ->
@@ -269,8 +243,7 @@ defmodule EstoqueOS.Inventory.Locations do
     end
   end
 
-  # Box.changeset stores every code trimmed and upcased, so a lookup that keeps
-  # the operator's lowercase misses the box it then collides trying to create.
+  # Box.changeset stores codes trimmed and upcased; a raw lookup would miss the box.
   defp normalize_code(code), do: code |> to_string() |> String.trim() |> String.upcase()
 
   def create_box(attrs), do: %Box{} |> Box.changeset(attrs) |> Repo.insert()
@@ -278,32 +251,20 @@ defmodule EstoqueOS.Inventory.Locations do
   @doc """
   Turns whatever somebody typed into a box picker into a box at this location.
 
-  Four answers, and each one is a real thing that happens in a warehouse:
+  Four answers:
 
-    * blank — the goods are loose, which is legitimate and stays legitimate
+    * blank — the goods are loose, which is legitimate
     * a code that is here — the ordinary case
-    * a code that exists somewhere else — refused, because a box is a physical
-      object and it cannot be in two rooms; move it first
-    * a code nobody has registered — created here, and the caller says so out
-      loud
+    * a code that exists elsewhere — refused: a box cannot be in two places; move it first
+    * a code nobody has registered — created here, and the caller announces it
 
-  That last one is the "poder criar caixa" the field asked for: the operator is
-  holding a box with `AN07` written on it and the system has never heard of it.
-  Refusing them at that moment is how a warehouse ends up with goods recorded
-  as loose forever. It is announced rather than silent so a typo shows up
-  immediately, and nothing is destroyed if one gets through — an unwanted box
-  is deactivated, like everything else here.
+  Creating on the spot is deliberate: refusing an unknown box in the operator's
+  hands leaves goods recorded as loose forever.
 
-  ## Asking first
-
-  Announcing the creation afterwards turned out not to be enough. `CX-102` typed
-  where `CX-012` was meant is a box that exists, is empty, is never opened, and
-  quietly holds the difference in somebody's stock. The flash saying it was
-  created arrives after the goods are already in it.
-
-  So `create: false` stops short and answers `{:unknown, code}` instead: the
-  code is not here, nothing has been written, ask the operator whether they
-  meant it. Calling again with the default `create: true` is the yes.
+  `create: false` stops short with `{:unknown, code}` and writes nothing, so the
+  caller can ask first (a typo like `CX-102` for `CX-012` would otherwise create
+  a box that quietly holds the difference). Calling again with the default
+  `create: true` is the yes.
   """
   def resolve_box(code, location_id, opts \\ []) do
     case normalize_code(code) do
@@ -334,10 +295,8 @@ defmodule EstoqueOS.Inventory.Locations do
   @doc """
   Stock at a location that is in no box, per lot, soonest expiry first.
 
-  A real and temporary state: goods arrived and nobody has boxed them yet. It is
-  temporary because loose stock cannot travel — nothing identifies it at the
-  other end and nothing brings it back — so a load-out refuses it, and this list
-  is what a person works through to make the load possible.
+  Loose stock cannot travel (nothing identifies it at the other end), so a
+  load-out refuses it; this list is what a person works through first.
   """
   def loose_stock(location_id) do
     StockSnapshot
@@ -360,19 +319,11 @@ defmodule EstoqueOS.Inventory.Locations do
   @doc """
   Puts loose stock into a box, at the location the box is already at.
 
-  The question this answers — "how do I get a product with no box into one?" —
-  had no answer at all: `rebox/5` needs a box to take the goods *out* of, and
-  loose stock is exactly the stock that has none. So goods that arrived through
-  a manual entry with the box left blank, or through a spreadsheet count, sat
-  where no load-out would carry them and no screen would move them.
+  `rebox/5` needs a source box, which loose stock lacks. Same movement as
+  re-boxing: a `transfer` whose entries share a location and differ only in the
+  box, so no location balance moves.
 
-  Mechanically it is the same movement as re-boxing and it is one for the same
-  reason: a `transfer` whose two entries share a location and differ only in the
-  box. Nothing leaves the room, so no balance at the location moves — only where
-  inside it the goods sit.
-
-  `last_verified_at` is left alone. Putting things into a box tells us nothing
-  about whether the count in it was right.
+  `last_verified_at` is left alone: boxing says nothing about the count.
   """
   def put_in_box(%Box{} = box, lot_id, quantity, opts \\ []) do
     lot_id = to_id(lot_id)
@@ -414,21 +365,13 @@ defmodule EstoqueOS.Inventory.Locations do
   @doc """
   Moves goods from one box into another at the same location.
 
-  Re-boxing is an everyday warehouse act — two half-empty boxes become one, a
-  product ends up where its group lives — and until this existed a lot's box was
-  fixed at the moment it entered. The shelf changed and the ledger did not,
-  which is the drift that makes a stock unauditable.
+  A `transfer` whose entries share a location and differ only in the box, so
+  the ledger follows the shelf and no location balance moves.
 
-  Nothing new in the schema: it is a `transfer` whose two entries share a
-  location and differ only in the box. The goods never leave the room, so no
-  balance at the location moves — only where inside it they sit.
+  Part of a lot may move; the quantity is checked against the source box.
 
-  Part of a lot may move; the quantity is checked against what the source box
-  actually holds, because a box cannot lend what it does not have.
-
-  Neither box is marked as verified. Moving things between boxes tells us
-  nothing about whether the count was right, and stamping it would launder a
-  presumption into a verification.
+  Neither box is marked verified: that would launder a presumption into a
+  verification.
   """
   def rebox(%Box{} = from, %Box{} = to, lot_id, quantity, opts \\ []) do
     lot_id = to_id(lot_id)
@@ -499,8 +442,8 @@ defmodule EstoqueOS.Inventory.Locations do
   @doc """
   What a box is presumed to hold, per lot.
 
-  "Presumed" is the honest word: a box moves without being recounted, so these
-  numbers are only as fresh as `last_verified_at` says.
+  Presumed: a box moves without being recounted, so these numbers are only as
+  fresh as `last_verified_at`.
   """
   def box_contents(%Box{} = box) do
     StockSnapshot
@@ -513,8 +456,7 @@ defmodule EstoqueOS.Inventory.Locations do
       lot_number: l.lot_number,
       expires_on: l.expires_on,
       product: p.name,
-      # A kit can carry a Portaria 344 item, and whoever opens the box has to
-      # know that before it travels.
+      # A kit can carry a Portaria 344 (controlled) item; the box opener must know.
       controlled: p.controlled,
       location_id: s.location_id,
       quantity: s.quantity
@@ -525,18 +467,10 @@ defmodule EstoqueOS.Inventory.Locations do
   @doc """
   Boxes worth putting this product in, and why.
 
-  When a delivery lands, the question is not "which boxes exist" — it is "where
-  does this belong". A warehouse organised by whoever was holding the scanner is
-  a warehouse where finding anything means opening everything.
-
-  Ranked by how strong the reason is. A box already holding this exact product is
-  the obvious answer: splitting one product across two boxes is how a recall
-  finds half of it. Then the same group, then the same sector, which is how the
-  standard supply table already thinks — "ANESTESIA - MEDICAMENTOS" is a shelf in
-  somebody's head before it is a column in a spreadsheet.
-
-  Every suggestion carries its reason, because a list of box codes with no
-  explanation is a list nobody trusts enough to follow.
+  Ranked by reason strength: a box already holding this product (splitting one
+  product across boxes makes a recall find half of it), then the same group,
+  then the same sector (how the standard supply table is organised). Every
+  suggestion carries its reason.
   """
   def suggest_boxes(product_id, location_id, opts \\ []) do
     product = Repo.get(Product, product_id)
@@ -558,9 +492,8 @@ defmodule EstoqueOS.Inventory.Locations do
     |> join(:inner, [s], b in Box, on: b.id == s.box_id)
     |> join(:inner, [s], l in Lot, on: l.id == s.lot_id)
     |> join(:inner, [s, _b, l], p in Product, on: p.id == l.product_id)
-    # Both sides, deliberately. `enter_manually/1` refuses a box that sits
-    # somewhere else, but `post_transaction/1` does not, so a suggestion built on
-    # the position alone could offer a box that is not even in the building.
+    # Check both sides: `post_transaction/1` does not refuse a box elsewhere, so
+    # the position alone could suggest a box that is not in the building.
     |> where(
       [s, b],
       s.location_id == ^location_id and b.location_id == ^location_id and s.quantity != 0 and
@@ -598,13 +531,9 @@ defmodule EstoqueOS.Inventory.Locations do
   @doc """
   What matters about several boxes at once, without reading their contents.
 
-  Returns a map of `box_id` to the number of stock positions, the earliest expiry
-  among them and whether any of it is controlled. That is everything a listing
-  shows about a box, and asking `box_contents/1` per row to get it turns one
-  screen into one query per box.
-
-  `min` over the expiry skips nulls in SQL, which is the answer wanted: a lot with
-  no expiry on record is not the earliest expiry, it is an unknown one.
+  Returns `box_id` to position count, earliest expiry and whether any is
+  controlled, avoiding one `box_contents/1` query per row. `min` skips nulls: an
+  unknown expiry is not the earliest.
   """
   def box_summaries(box_ids) when is_list(box_ids) do
     StockSnapshot
@@ -625,15 +554,10 @@ defmodule EstoqueOS.Inventory.Locations do
   @doc """
   Moves a whole box to another location, contents and all.
 
-  This is the cheap operation the operation actually needs: a box goes from the
-  warehouse to a mission, or straight from one mission to the next, without
-  anybody opening it. The ledger records the movement of its *presumed*
-  contents and `last_verified_at` is deliberately left alone — moving a box
-  tells us nothing new about what is inside it. Divergences surface at the
-  next count, wherever that happens.
+  The ledger records the movement of its *presumed* contents; `last_verified_at`
+  is left alone and divergences surface at the next count.
 
-  A location of kind `transit` is what "estoque em trânsito" means here: the
-  goods left one place and have not arrived at the next.
+  A `transit` location is "estoque em trânsito": left one place, not yet arrived.
   """
   def move_box(%Box{} = box, destination_location_id, opts \\ []) do
     destination_location_id = to_id(destination_location_id)
@@ -664,18 +588,9 @@ defmodule EstoqueOS.Inventory.Locations do
     end
   end
 
-  # Which moves a person may make from the Boxes screen, and which have to go
-  # through the load-out.
-  #
-  # Between missions a box crosses the warehouse floor dozens of times, and
-  # demanding a load-out for each of those is how people stop using the system.
-  # But a box arriving at a mission, or entering transit, is the moment the
-  # movement acquires a *reason* — which trip it belongs to — and only the
-  # load-out asks. A box teleported there by one click is stock nobody can
-  # attribute afterwards.
-  #
-  # Enforced here rather than in the select: a rule the ledger depends on cannot
-  # live in a template.
+  # Moves to a mission site or transit must go through the load-out, which
+  # records the trip; anything else is cheap enough to do by hand. Enforced here
+  # because a rule the ledger depends on cannot live in a template.
   defp movable_by_hand?(nil), do: false
 
   defp movable_by_hand?(location_id) do
@@ -685,9 +600,7 @@ defmodule EstoqueOS.Inventory.Locations do
     end
   end
 
-  # An empty box changes address without the ledger hearing about it. There is
-  # nothing to move, and a transaction carrying no entries is a record of nothing
-  # having happened — noise in the one place that has to stay readable.
+  # An empty box posts nothing: a transaction with no entries is noise in the ledger.
   defp maybe_post_move(multi, box, destination_location_id, opts) do
     case move_entries(box, destination_location_id) do
       [] ->

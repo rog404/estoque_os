@@ -16,17 +16,14 @@ defmodule EstoqueOS.Catalog.Product do
 
   schema "products" do
     field :name, :string
-    # Which stock this belongs to: the surgical one, or the marketing material
-    # that is sold rather than consumed. See `segments/0`.
     field :segment, :string, default: "medical"
     field :ncm, :string
     field :stock_unit, :string, default: "UN"
     field :controlled, :boolean, default: false
     # Whether a lot arriving with no expiry is normal or worth an alarm.
     field :expiry_expected, :boolean, default: true
-    # The same question about the lot number itself. Gauze carries one printed
-    # on the pack, so a blank means nobody read it; a donated blanket carries
-    # none, and flagging that buries the cases that matter.
+
+    # Same question for the lot number: a donated blanket has none, and flagging it buries real cases.
     field :lot_expected, :boolean, default: true
     field :min_stock_override, :decimal
     field :expiry_alert_days_override, :integer
@@ -36,10 +33,8 @@ defmodule EstoqueOS.Catalog.Product do
     field :active, :boolean, default: true
 
     belongs_to :product_group, ProductGroup
-    # Set once, by `Kits.create_kit/1`, never through a product form: this is
-    # what lets a kit be issued, searched and reported on exactly like any
-    # other product, rather than needing its own screen for every one of
-    # those.
+    # Set once by `Kits.create_kit/1`, never via a product form; lets a kit be
+    # issued, searched and reported like any product.
     belongs_to :kit, Kit
 
     has_many :identifiers, ProductIdentifier
@@ -99,15 +94,11 @@ defmodule EstoqueOS.Catalog.Product do
   @doc """
   The two stocks this system holds.
 
-    * `medical` — what a surgical mission consumes and donates. The default,
-      because it is what the operation is for and what 322 of the 322 seeded
-      products are.
-    * `marketing` — material the ONG *sells*: shirts, banners, the things that
-      leave with a price on the way out rather than a mission attached.
+    * `medical` — what a surgical mission consumes and donates. The default.
+    * `marketing` — material the ONG *sells* (shirts, banners).
 
-  A closed list on purpose. "Segment" is exactly the kind of field that grows a
-  fourteenth value typed by hand, and the marketing role's entire view is a
-  filter on it — a typo would quietly show somebody a stock that is not theirs.
+  A closed list on purpose: the marketing role's default view filters on it, and
+  a hand-typed typo would show the wrong stock.
   """
   def segments, do: @segments
 
@@ -116,15 +107,9 @@ defmodule EstoqueOS.Catalog.Product do
   @doc """
   The units this operation counts things in.
 
-  Offered as a list rather than typed, because a text field is how one product
-  arrives as `UN`, another as `Un`, a third as `UND` and a fourth as `unidade` —
-  the naming chaos SPEC §3.13 blames for killing a previous SAP attempt, arriving
-  through the back door of a form nobody thought was important.
-
-  These are the units that turn up in the sample invoices in `priv/samples/` plus the
-  handful the warehouse uses by hand. It is not a closed set in the database:
-  `normalize_unit/1` still accepts anything an NF-e brings in, because refusing
-  a supplier's unit at import time would block a delivery over a label.
+  Offered as a list, not typed, so `UN`, `Un` and `unidade` do not coexist
+  (SPEC §3.13). Not closed in the database: `normalize_unit/1` still accepts any
+  unit an NF-e brings, since refusing it would block a delivery over a label.
   """
   def stock_units, do: @stock_units
 end

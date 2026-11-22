@@ -62,10 +62,8 @@ defmodule EstoqueOSWeb.UserLive.LoginTest do
     test "redirects to login page with a flash error if credentials are invalid", %{
       conn: conn
     } do
-      # A fresh email per run, cleared after: LoginThrottle is one shared ETS
-      # table with no sandbox, and a fixed email accumulates a failure every
-      # time this test runs in the same node until it trips the throttle and
-      # this test starts asserting the wrong flash message.
+      # Fresh email per run: LoginThrottle is a shared ETS table with no sandbox,
+      # so a fixed email would eventually trip the throttle and change the flash.
       email = "test-#{System.unique_integer([:positive])}@email.com"
       on_exit(fn -> EstoqueOS.Accounts.LoginThrottle.clear([{:email, email}]) end)
 

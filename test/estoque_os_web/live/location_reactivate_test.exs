@@ -1,11 +1,7 @@
 defmodule EstoqueOSWeb.LocationReactivateTest do
   @moduledoc """
-  A place leaves the operation and comes back.
-
-  The mission that ran last year runs again, and the name is unique — so the way
-  back has to be the same row, not a second one typed in with the same name.
-  Retiring one is still only allowed once nothing is standing there, and "there"
-  now means the floor as well as the boxes.
+  A place leaves the operation and comes back as the same row (the name is
+  unique). Retiring one requires nothing standing there, floor included.
   """
 
   use EstoqueOSWeb.ConnCase, async: true
@@ -50,7 +46,6 @@ defmodule EstoqueOSWeb.LocationReactivateTest do
 
     {:ok, view, html} = live(conn, ~p"/locations")
 
-    # One list. The retired place keeps its row and says so on it.
     assert text(html) =~ "Missão Tefé"
     assert text(html) =~ "desativado"
 
@@ -64,8 +59,6 @@ defmodule EstoqueOSWeb.LocationReactivateTest do
     assert Enum.any?(Locations.list_locations(), &(&1.id == site.id))
   end
 
-  # A row offers one way out, never both: a place that is working can be
-  # retired, a retired one can come back.
   test "a working location is not offered the way back", %{conn: conn, warehouse: warehouse} do
     {:ok, _view, html} = live(conn, ~p"/locations")
 
@@ -98,7 +91,6 @@ defmodule EstoqueOSWeb.LocationReactivateTest do
     refute text(empty) =~ "Nenhum local cadastrado"
   end
 
-  # The retired ones are history; the working list is what the screen is for.
   test "retired places sort below the working ones", %{conn: conn} do
     site = location_fixture(%{name: "Alfa", kind: "warehouse"})
     {:ok, _} = Locations.deactivate_location(site)
@@ -147,8 +139,6 @@ defmodule EstoqueOSWeb.LocationReactivateTest do
     refute Locations.get_location!(site.id).active
   end
 
-  # The context is what says no, so an event that never passed through the
-  # screen gets the same answer.
   test "the context refuses a location that still holds stock" do
     site = location_fixture(%{name: "Missão Tefé", kind: "mission_site"})
     stock_at(site, 5)

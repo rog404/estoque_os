@@ -2,15 +2,11 @@ defmodule EstoqueOS.Samples do
   @moduledoc """
   Where the sample fiscal documents and spreadsheets live.
 
-  Under `priv/` rather than at the project root, because that is what a release
-  packages: the seeds read the standard supply table and the kit sheet, and
-  `EstoqueOS.Release.seed/0` has to be able to find them on a server where
-  there is no checkout and no working directory to be relative to.
+  Under `priv/` because that is what a release packages; seeds must find them
+  where there is no checkout or working directory.
 
-  The documents themselves describe fictional companies. They are real in shape
-  — two NF-e in layout 4.00, one with a structured `rastro` group and one with
-  lot data only in `infAdProd` free text, plus a CC-e — and that shape is what
-  the parser is tested against.
+  The documents are real in shape, fictional in party: two NF-e (one with a
+  `rastro` group, one with lot data only in `infAdProd`) and a CC-e.
   """
 
   @doc """

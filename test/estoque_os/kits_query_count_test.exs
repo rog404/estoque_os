@@ -1,9 +1,7 @@
 defmodule EstoqueOS.KitsQueryCountTest do
   @moduledoc """
-  `Kits.availability/2` used to run one balance query per component. An N+1 is
-  invisible in a test that only checks the answer, and invisible on a
-  development database with two or three components. So this counts the
-  queries.
+  Guards `Kits.availability/2` against an N+1, which a test that only checks
+  the answer cannot see, so this counts the queries.
   """
 
   use EstoqueOS.DataCase, async: false
@@ -61,8 +59,6 @@ defmodule EstoqueOS.KitsQueryCountTest do
     two_lines = count_queries(fn -> Kits.availability(small_kit, warehouse.id) end)
     twelve_lines = count_queries(fn -> Kits.availability(large_kit, warehouse.id) end)
 
-    # The kit listing asks this of every kit on screen, so a query per line is a
-    # query per line per kit.
     assert twelve_lines == two_lines,
            "#{two_lines} queries for 2 components, #{twelve_lines} for 12"
   end

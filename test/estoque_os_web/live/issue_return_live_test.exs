@@ -67,9 +67,7 @@ defmodule EstoqueOSWeb.IssueReturnLiveTest do
       html = view |> element("button", "Eletrodo ECG adulto") |> render_click()
       assert html =~ "100 disponíveis aqui"
 
-      # The quantity goes into the basket; nothing is written until it is
-      # confirmed, which is what lets a wrong line be removed instead of
-      # corrected by an adjustment on the record forever.
+      # Nothing is written until the basket is confirmed.
       html = view |> element("#issue-form") |> render_submit(%{"quantity" => "30"})
 
       assert html =~ "Saindo juntos"
@@ -86,8 +84,6 @@ defmodule EstoqueOSWeb.IssueReturnLiveTest do
       assert Decimal.equal?(Inventory.balance(location_id: warehouse.id), Decimal.new(70))
     end
 
-    # The operator often does not know the catalog name — they know they are
-    # standing in front of a shelf.
     test "lists what is actually at the location before anything is typed", %{conn: conn} do
       {:ok, _view, html} = live(conn, ~p"/issue")
 
@@ -97,8 +93,6 @@ defmodule EstoqueOSWeb.IssueReturnLiveTest do
     end
 
     test "a product with nothing here is not offered", %{conn: conn, mission: mission} do
-      # Absent from the warehouse listing on its own merits: this product's
-      # stock is all at the mission.
       absent = product_fixture(%{name: "Cânula de Guedel"})
       lot = lot_fixture(%{product_id: absent.id})
       stock_in(lot, mission, 25)
@@ -112,17 +106,13 @@ defmodule EstoqueOSWeb.IssueReturnLiveTest do
     test "picking from the shelf opens the same form as the search", %{conn: conn} do
       {:ok, view, _html} = live(conn, ~p"/issue")
 
-      # "Separar", not "Adicionar": this screen takes goods out of stock, and a
-      # row whose action read "add" said the opposite of what the screen does.
+      # "Separar", not "Adicionar": this screen takes goods out of stock.
       html = view |> element("button", "Separar") |> render_click()
 
       assert html =~ "disponíveis aqui" or html =~ "Eletrodo ECG adulto"
       assert has_element?(view, "#issue-form")
     end
 
-    # The whole reason the basket exists: nothing here is ever deleted, so a
-    # line posted by mistake could only be undone by a correcting adjustment
-    # filed forever.
     test "a line added by mistake is removed, not corrected", %{
       conn: conn,
       warehouse: warehouse
@@ -132,9 +122,7 @@ defmodule EstoqueOSWeb.IssueReturnLiveTest do
       view |> element("button", "Separar") |> render_click()
       view |> element("#issue-form") |> render_submit(%{"quantity" => "30"})
 
-      # An icon now, so it is found by the name it carries for anyone who
-      # cannot see it — which is the only reason an icon-only button is allowed
-      # to be one.
+      # Icon-only button, found by its accessible name.
       html = view |> element(~s(button[aria-label^="Remover"])) |> render_click()
 
       refute html =~ "Saindo juntos"
@@ -161,7 +149,6 @@ defmodule EstoqueOSWeb.IssueReturnLiveTest do
 
       assert Decimal.equal?(Inventory.balance(location_id: warehouse.id), Decimal.new(135))
 
-      # One event, not two.
       assert [transaction] = manual_issues()
       assert length(transaction.entries) == 2
     end
@@ -193,8 +180,7 @@ defmodule EstoqueOSWeb.IssueReturnLiveTest do
     |> EstoqueOS.Repo.all()
   end
 
-  # Only the "into box" select. The page has other selects — where the return
-  # comes from and where it arrives — and those are legitimately preselected.
+  # Only the "into box" field: the page's other selects are legitimately preselected.
   defp box_select(html) do
     case Regex.run(~r{<input[^>]*to_box_code[^>]*>}s, html) do
       [field] -> field
@@ -211,10 +197,7 @@ defmodule EstoqueOSWeb.IssueReturnLiveTest do
       assert html =~ "IR01"
     end
 
-    # This screen used to print what the ledger expected *and* type it into the
-    # field for you — on the one screen where the ledger is least worth
-    # trusting, because after a mission it is a hypothesis. Counting with the
-    # answer written in the box measures nothing.
+    # After a mission the ledger is only a hypothesis; a prefilled answer measures nothing.
     test "counts blind: the expected quantity is neither shown nor prefilled", %{conn: conn} do
       {:ok, _view, html} = live(conn, ~p"/returns")
 
@@ -235,9 +218,8 @@ defmodule EstoqueOSWeb.IssueReturnLiveTest do
       assert html =~ "esperado à vista"
     end
 
-    # The hazard the blank field created: "o que não voltou foi usado" is ticked
-    # by default, so a blank line read as zero would write the whole mission off
-    # as consumed with nobody having counted anything.
+    # "O que não voltou foi usado" is ticked by default, so a blank read as zero
+    # would write the whole mission off as consumed.
     test "a blank sheet is refused, not read as nothing came back", %{
       conn: conn,
       mission_lot: mission_lot,
@@ -270,16 +252,12 @@ defmodule EstoqueOSWeb.IssueReturnLiveTest do
       assert html =~ "baixado como consumido na missão"
     end
 
-    # Every line used to land on "sem caixa", so somebody re-picked a box for
-    # each of forty rows after every mission.
     test "preselects the warehouse box that already holds the product", %{
       conn: conn,
       warehouse: warehouse,
       warehouse_box: warehouse_box,
       warehouse_lot: warehouse_lot
     } do
-      # The warehouse copy of this product lives in IR04, which makes IR04 the
-      # box this return belongs in.
       stock_in(warehouse_lot, warehouse, 10, box_id: warehouse_box.id)
 
       {:ok, _view, html} = live(conn, ~p"/returns")
@@ -322,14 +300,11 @@ defmodule EstoqueOSWeb.IssueReturnLiveTest do
 
       assert html =~ "Retorno recebido"
       assert Decimal.equal?(Inventory.balance(box_id: warehouse_box.id), Decimal.new(60))
-      # The 20 that stayed behind were written off as used.
       assert Decimal.equal?(Inventory.balance(location_id: mission.id), Decimal.new(0))
       assert Decimal.equal?(Inventory.balance(location_id: warehouse.id), Decimal.new(160))
     end
 
-    # A return can name forty boxes and invent three of them. All three are
-    # named before any of them exist — asking three times in a row is how the
-    # third one gets waved through.
+    # All invented boxes are named at once; asking one by one waves the last through.
     test "boxes the return would invent are named before they are created", %{
       conn: conn,
       mission: mission,
@@ -360,7 +335,6 @@ defmodule EstoqueOSWeb.IssueReturnLiveTest do
 
       assert html =~ "WH9O"
       refute Enum.any?(Locations.list_boxes(warehouse.id), &(&1.code == "WH9O"))
-      # Nothing was written while the question was open.
       assert Decimal.equal?(Inventory.balance(location_id: mission.id), Decimal.new(80))
 
       view |> element("#confirm-new-box") |> render_click()

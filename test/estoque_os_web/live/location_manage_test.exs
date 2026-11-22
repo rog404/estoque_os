@@ -49,16 +49,14 @@ defmodule EstoqueOSWeb.LocationManageTest do
 
     {:ok, view, html} = live(conn, ~p"/locations")
 
-    # The trigger is offered, disabled, and says what would make it work. Gone
-    # entirely, it read as a feature this row does not have — the operator could
-    # not tell "not yet" from "never" from "broken".
+    # Offered but disabled, so "not yet" is not mistaken for "never" or "broken".
     trigger =
       Regex.run(~r{<button[^>]*data-confirm-open="deactivate-#{location.id}"[^>]*>}, html) |> hd()
 
     assert trigger =~ "disabled"
     assert html =~ "Mova ou desative as caixas dele primeiro."
 
-    # ...and the event is refused if it arrives anyway.
+    # The event is refused if it arrives anyway.
     assert render_submit(view, "deactivate", %{"id" => location.id}) =~ "Mova"
     assert Locations.get_location!(location.id).active == true
   end

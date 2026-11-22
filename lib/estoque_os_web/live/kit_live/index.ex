@@ -1,18 +1,12 @@
 defmodule EstoqueOSWeb.KitLive.Index do
   @moduledoc """
-  Kits and what the stock can actually cover.
-
-  The number that matters before a mission is not "how many kits exist" but
-  "how many can I put together, and what stops the next one".
+  Kits and what the stock can actually cover: how many can be put together and
+  what stops the next one.
   """
 
   use EstoqueOSWeb, :live_view
 
-  @doc """
-  Events a viewer may send. Everything else on this screen is refused.
-
-  Picking a location only changes what availability is reported for.
-  """
+  # Events a viewer may send; everything else is refused.
   def viewer_events, do: ~w(location)
 
   alias EstoqueOS.Kits
@@ -145,8 +139,7 @@ defmodule EstoqueOSWeb.KitLive.Index do
 
   @impl true
   def handle_event("create", %{"name" => name}, socket) do
-    # A kit starts empty and gains its components on its own screen. Asking for
-    # the whole bill of materials in one form is how a kit gets half entered.
+    # A kit starts empty and gains components on its own screen, so it is never half entered.
     case Kits.create_kit(%{name: String.trim(name)}) do
       {:ok, kit} ->
         {:noreply, push_navigate(socket, to: ~p"/kits/#{kit.id}")}

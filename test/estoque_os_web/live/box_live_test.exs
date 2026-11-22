@@ -9,9 +9,7 @@ defmodule EstoqueOSWeb.BoxLiveTest do
   alias EstoqueOS.Inventory.Locations
   alias EstoqueOS.Repo
 
-  # Moving a box, creating one and stamping a count are all writes. These passed
-  # as a viewer only because the events were unguarded; the role they always
-  # required is operator.
+  # Moving a box, creating one and stamping a count are writes: operator role.
   setup :register_and_log_in_operator
 
   setup do
@@ -70,8 +68,7 @@ defmodule EstoqueOSWeb.BoxLiveTest do
       assert Decimal.equal?(Inventory.balance(location_id: annex.id), Decimal.new(300))
     end
 
-    # A mission and transit are not on the menu here: arriving at either is the
-    # moment the movement acquires a trip, and only the load-out asks which.
+    # Only the load-out records which trip a mission or transit arrival belongs to.
     test "does not offer a mission or transit as somewhere to carry a box", %{conn: conn} do
       {:ok, _view, html} = live(conn, ~p"/boxes")
 
@@ -86,8 +83,7 @@ defmodule EstoqueOSWeb.BoxLiveTest do
       end
     end
 
-    # And the rule lives in the context, so a hand-crafted event cannot get past
-    # a select that simply does not offer the option.
+    # The rule lives in the context, so a hand-crafted event cannot bypass the select.
     test "refuses a mission even when the event asks for one", %{
       conn: conn,
       box: box,
@@ -136,8 +132,6 @@ defmodule EstoqueOSWeb.BoxLiveTest do
       assert html =~ "300"
     end
 
-    # Counting a box and saying it was counted are different acts, and this
-    # screen only ever offered the second.
     test "leads to the blind count of this box", %{conn: conn, box: box} do
       {:ok, _view, html} = live(conn, ~p"/boxes/#{box}")
 
@@ -185,7 +179,6 @@ defmodule EstoqueOSWeb.BoxLiveTest do
 
       assert Decimal.equal?(Inventory.balance(box_id: box.id), Decimal.new(180))
       assert Decimal.equal?(Inventory.balance(box_id: other.id), Decimal.new(120))
-      # The goods never left the room.
       assert Decimal.equal?(Inventory.balance(location_id: warehouse.id), Decimal.new(300))
     end
 
@@ -208,17 +201,14 @@ defmodule EstoqueOSWeb.BoxLiveTest do
       assert Decimal.equal?(Inventory.balance(box_id: box.id), Decimal.new(300))
     end
 
-    # The same question the conference and manual entry ask. A code one
-    # character wrong makes a box that exists, is empty, and is never opened
-    # again.
+    # A code one character wrong would create an empty box nobody opens again.
     test "an unknown box code is not created until it is confirmed", %{
       conn: conn,
       box: box,
       lot: lot,
       warehouse: warehouse
     } do
-      # The re-box column only exists when the room has somewhere else to put
-      # things.
+      # The re-box column only exists when the room has another box.
       box_fixture(%{code: "BL08", location_id: warehouse.id})
 
       {:ok, view, _html} = live(conn, ~p"/boxes/#{box}")
@@ -232,7 +222,6 @@ defmodule EstoqueOSWeb.BoxLiveTest do
       refute Enum.any?(Locations.list_boxes(warehouse.id), &(&1.code == "BL0O"))
       assert Decimal.equal?(Inventory.balance(box_id: box.id), Decimal.new(300))
 
-      # Declining leaves the goods exactly where they were.
       view |> element("#cancel-new-box") |> render_click()
       refute Enum.any?(Locations.list_boxes(warehouse.id), &(&1.code == "BL0O"))
     end
@@ -260,7 +249,6 @@ defmodule EstoqueOSWeb.BoxLiveTest do
       assert Decimal.equal?(Inventory.balance(box_id: box.id), Decimal.new(290))
     end
 
-    # Re-boxing says nothing about whether the count was right.
     test "does not stamp either box as verified", %{
       conn: conn,
       box: box,
@@ -311,10 +299,7 @@ defmodule EstoqueOSWeb.BoxLiveTest do
       %{loose_lot: lot}
     end
 
-    # The question this answers had no answer: `rebox` needs a box to take the
-    # goods *out* of, and loose stock is exactly the stock with none. Goods that
-    # arrived through a manual entry with the box left blank sat where no
-    # load-out would carry them and no screen would move them.
+    # `rebox` needs a box to take goods out of, and loose stock has none.
     test "is listed on the box screen, waiting for a box", %{conn: conn, box: box} do
       {:ok, _view, html} = live(conn, ~p"/boxes/#{box.id}")
 
@@ -340,7 +325,6 @@ defmodule EstoqueOSWeb.BoxLiveTest do
 
       assert html =~ "Guardado em BL01"
 
-      # Nothing left the room: only where inside it the goods sit changed.
       assert Decimal.equal?(
                Inventory.balance(lot_id: lot.id, location_id: warehouse.id),
                at_location
@@ -376,8 +360,7 @@ defmodule EstoqueOSWeb.BoxLiveTest do
       assert Decimal.equal?(Inventory.balance(lot_id: lot.id, box_id: box.id), Decimal.new(0))
     end
 
-    # Putting things into a box says nothing about whether the count in it was
-    # right, and stamping it would launder a presumption into a verification.
+    # Stamping it would launder a presumption into a verification.
     test "does not mark the box as counted", %{conn: conn, box: box, loose_lot: lot} do
       {:ok, view, _html} = live(conn, ~p"/boxes/#{box.id}")
 

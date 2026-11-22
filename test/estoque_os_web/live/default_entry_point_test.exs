@@ -1,12 +1,7 @@
 defmodule EstoqueOSWeb.DefaultEntryPointTest do
   @moduledoc """
-  Which door goods come in through, per stock.
-
-  The two stocks share the warehouse and the boxes, but not the place a
-  delivery lands: surgical supplies arrive at the warehouse and marketing
-  material at the São Paulo office. Every screen that preselects a location used
-  to read one global default, so one of the two coordinators corrected it by
-  hand on every single entry.
+  Which door goods come in through, per stock: surgical supplies arrive at the
+  warehouse, marketing material at the São Paulo office.
   """
 
   use EstoqueOSWeb.ConnCase, async: true
@@ -45,8 +40,7 @@ defmodule EstoqueOSWeb.DefaultEntryPointTest do
     assert marketing =~ ~s{value="#{office.id}" selected}
   end
 
-  # One per stock: two places both claiming to be where marketing material
-  # arrives is a question the screens would answer by row id.
+  # One per stock; two claimants would be settled arbitrarily by row id.
   test "marking a second place moves the mark", %{
     conn: conn,
     warehouse: warehouse,
@@ -76,8 +70,7 @@ defmodule EstoqueOSWeb.DefaultEntryPointTest do
     refute Locations.get_location!(office.id).default_for_segment
   end
 
-  # Nothing marked is the state every install starts in, and the old behaviour
-  # is what has to answer then.
+  # Nothing marked is the state every install starts in.
   test "falls back to the warehouse while nothing is marked", %{warehouse: warehouse} do
     assert Locations.default_location("marketing").id == warehouse.id
     assert Locations.default_location().id == warehouse.id

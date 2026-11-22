@@ -2,34 +2,17 @@ defmodule EstoqueOSWeb.BoxLive.Count do
   @moduledoc """
   Counting one box, blind, and then standing behind the number.
 
-  The sheet does not show what the ledger presumes. Shown the expected number, a
-  person counting a hundred gauzes finds ninety-eight and writes a hundred — not
-  dishonestly, but because the eye stops when it reaches the answer it was given.
-  A count that confirms the ledger it was copied from measures nothing.
+  The sheet hides what the ledger presumes, or the eye stops at the answer it
+  was given. Three steps:
 
-  So the screen is three steps, and each one exists for a reason:
+    1. **Count.** Blank lines are not counted; never record them as zero.
+    2. **Recount, if anything disagrees.** Diverging lines are named, never by
+       how much, and counted again while the box is still open.
+    3. **Confirm.** Only now are numbers shown side by side and anything written.
 
-    1. **Count.** Blank lines are not counted and keep what the ledger presumed;
-       recording an uncounted line as zero is how a stock becomes fiction.
-
-    2. **Recount, if anything disagrees.** The lines that diverge are named —
-       *which* items, never by how much — and counted again. A first count that
-       disagrees with the ledger is as likely to be a miscount as a real loss,
-       and the cheapest moment to tell them apart is while the box is still
-       open.
-
-    3. **Confirm.** Only now are the numbers shown side by side, and only now is
-       anything written. By this point the count is fixed, so seeing the
-       difference cannot bend it.
-
-  If the second count still disagrees with the ledger, the adjustment is filed
-  with a `review_reason` and the manager is shown it on the dashboard. Somebody
-  counted the same box twice and the stock was still not what we thought.
-
-  A manager may reveal what the ledger expected — the exception this screen
-  otherwise exists to prevent. It is off by default, it is theirs alone, and
-  taking it is written into the transaction's notes, so a count made with the
-  answer in view is never later read as a blind one.
+  If the second count still disagrees, the adjustment is filed with a
+  `review_reason` for the manager. A manager may reveal the expected figure;
+  that is recorded in the transaction's notes so the count never reads as blind.
   """
 
   use EstoqueOSWeb, :live_view
@@ -38,14 +21,8 @@ defmodule EstoqueOSWeb.BoxLive.Count do
 
   alias EstoqueOS.Inventory.Locations
 
-  @doc """
-  Events a viewer may send. Everything else on this screen is refused.
-
-  Counting is all draft until `commit`, which is the one event that posts
-  adjustments. Revealing the expected figure, checking a count and starting
-  over move nothing — they are how somebody standing in another role's shoes
-  can see what this screen actually does.
-  """
+  # Events a viewer may send; everything else is refused. All draft until
+  # `commit`, the one event that posts adjustments.
   def viewer_events, do: ~w(reveal check recount start_over)
 
   @impl true
@@ -113,7 +90,6 @@ defmodule EstoqueOSWeb.BoxLive.Count do
         {gettext("The ledger presumes this box is empty.")}
       </p>
 
-      <!-- STEP 1 — count, blind. -->
       <form :if={@step == :count and @rows != []} id="count-form" phx-submit="check" class="mt-6">
         <.data_table rows={@rows} row_id={&"row-#{&1.lot_id}"}>
           <:col :let={row} label={gettext("Product")} emphasis={:identity}>
@@ -144,7 +120,6 @@ defmodule EstoqueOSWeb.BoxLive.Count do
         </div>
       </form>
 
-      <!-- STEP 2 — recount, naming the items but never the gap. -->
       <form :if={@step == :recount} id="recount-form" phx-submit="recount" class="mt-6">
         <.recount_notice count={length(@recount_lots)} />
 
@@ -170,7 +145,6 @@ defmodule EstoqueOSWeb.BoxLive.Count do
         </div>
       </form>
 
-      <!-- STEP 3 — what will change, before anything changes. -->
       <div :if={@step == :confirm} class="mt-6">
         <.panel
           title={gettext("What this count will change")}
@@ -232,7 +206,6 @@ defmodule EstoqueOSWeb.BoxLive.Count do
         </div>
       </div>
 
-      <!-- After recording. -->
       <section :if={@step == :done and @divergences != []} class="mt-8">
         <h2 class="font-semibold">{gettext("What the count changed")}</h2>
         <p class="text-sm text-base-content/70">
@@ -288,9 +261,7 @@ defmodule EstoqueOSWeb.BoxLive.Count do
     end
   end
 
-  # First submit. Nothing is written: either the numbers agree with the ledger
-  # and we go straight to the confirmation, or they do not and the same items
-  # get counted a second time.
+  # First submit writes nothing: agreement goes to confirm, divergence to recount.
   def handle_event("check", params, socket) do
     counts = submitted_counts(params)
     divergent = Auditing.divergent(socket.assigns.box, counts)
@@ -306,13 +277,11 @@ defmodule EstoqueOSWeb.BoxLive.Count do
     end
   end
 
-  # Second submit. The recounted lines replace the first numbers; whatever was
-  # counted only once and agreed the first time stands.
+  # Recounted lines replace the first numbers; lines that agreed the first time stand.
   def handle_event("recount", params, socket) do
     counts = Map.merge(socket.assigns.first_counts, submitted_counts(params))
 
-    # Still short of the ledger after two counts. That is no longer a miscount,
-    # and it is not the counter's to close alone.
+    # Still different after two counts: no longer a miscount, not the counter's to close alone.
     escalate? = Auditing.divergent(socket.assigns.box, counts) != []
 
     {:noreply, to_confirm(socket, counts, escalate?)}
@@ -379,16 +348,12 @@ defmodule EstoqueOSWeb.BoxLive.Count do
     |> Map.new()
   end
 
-  # The ledger rows know the numbers; the count sheet knows what the things are
-  # called. The screen needs both.
-  # What the dialog promises has to be what the result reports. It counted every
-  # line somebody typed into, so a count where one of two lines matched the
-  # ledger announced "2 lote(s) mudam" and then recorded "1 lote(s)
-  # corrigido(s) de 2 contado(s)".
+  # Counts only lines that change, so the dialog matches the recorded result.
   defp changing(preview) do
     Enum.count(preview, &(not Decimal.equal?(&1.difference, 0)))
   end
 
+  # Ledger rows know the numbers; the count sheet knows the names.
   defp describe(rows, lines) do
     Enum.map(lines, fn line ->
       row = Enum.find(rows, &(&1.lot_id == line.lot_id)) || %{product: "—", lot_number: nil}

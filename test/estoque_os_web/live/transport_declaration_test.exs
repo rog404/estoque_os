@@ -1,12 +1,8 @@
 defmodule EstoqueOSWeb.TransportDeclarationTest do
   @moduledoc """
-  The paper that travels with a load.
-
-  The carrier asks for a declaration of what is inside, who sends it and who
-  receives it. It used to be typed in Word for every trip, with the item list
-  copied out of this system by hand — so what is pinned here is that the list on
-  the paper is the ledger's list, and that the recipient written on a signed
-  document is not rewritten later by a change to the location.
+  The declaration that travels with a load: its item list is the ledger's list,
+  and the recipient on a signed document is not rewritten by a later location
+  change.
   """
 
   use EstoqueOSWeb.ConnCase, async: true
@@ -92,8 +88,6 @@ defmodule EstoqueOSWeb.TransportDeclarationTest do
     assert text(html) =~ "Luva cirúrgica"
   end
 
-  # The list is the ledger's, not a second one typed by hand: that is the whole
-  # reason this screen exists.
   test "prints the goods the load actually carried", %{conn: conn, shipment: shipment} do
     {:ok, view, _html} = live(conn, ~p"/shipments/#{shipment.id}/declaracao")
     fill(view, @recipient)
@@ -111,8 +105,7 @@ defmodule EstoqueOSWeb.TransportDeclarationTest do
     assert paper =~ "962667"
   end
 
-  # A donated lot has no cost, and a value that quietly counted it as zero would
-  # declare a number that is not the goods' worth.
+  # Counting a donated lot as zero would declare a value that is not the goods' worth.
   test "says how many lines carry no value", %{conn: conn, shipment: shipment} do
     {:ok, view, _html} = live(conn, ~p"/shipments/#{shipment.id}/declaracao")
     fill(view, @recipient)
@@ -124,8 +117,7 @@ defmodule EstoqueOSWeb.TransportDeclarationTest do
     assert paper =~ "1 item(ns) recebido(s) como doação"
   end
 
-  # One paper per load. A second declaration for the same goods is the situation
-  # where two signed documents disagree about what travelled.
+  # One paper per load, or two signed documents could disagree about what travelled.
   test "rewriting fills the same paper in again", %{conn: conn, shipment: shipment} do
     {:ok, view, _html} = live(conn, ~p"/shipments/#{shipment.id}/declaracao")
     fill(view, @recipient)
@@ -140,8 +132,7 @@ defmodule EstoqueOSWeb.TransportDeclarationTest do
     assert second.scheduling_code == "AG-5000"
   end
 
-  # The registration is what was declared on the day. A location renamed next
-  # month must not rewrite a document already signed.
+  # A location renamed later must not rewrite a document already signed.
   test "keeps the recipient it was written with", %{
     conn: conn,
     shipment: shipment,
@@ -159,8 +150,6 @@ defmodule EstoqueOSWeb.TransportDeclarationTest do
     refute paper =~ "Missão PVH 2027"
   end
 
-  # A blank sheet with the ONG's letterhead is a document waiting to say
-  # something untrue.
   test "refuses to print a declaration nobody wrote", %{conn: conn, shipment: shipment} do
     conn = get(conn, ~p"/shipments/#{shipment.id}/declaracao/imprimir")
 

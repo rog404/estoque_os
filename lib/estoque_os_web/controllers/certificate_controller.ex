@@ -3,14 +3,11 @@ defmodule EstoqueOSWeb.CertificateController do
   Prints the two certificates a donation needs: the termo de doação the ONG
   signs, and the termo de recebimento the hospital signs back.
 
-  They are A4-styled HTML rather than generated PDFs on purpose: a mission
-  notebook has a browser and no guarantee of anything else, and Ctrl+P →
-  "Salvar como PDF" produces the same file without another binary to install.
+  A4-styled HTML, not generated PDFs: a mission notebook has only a browser, and
+  Ctrl+P produces the PDF.
 
-  Built from the movement itself, now that a donation is an ordinary manual
-  issue rather than its own record. Only an issue that actually went to a
-  donation gets one — a certificate for goods that went to the PACU would be a
-  document claiming something that never happened.
+  Only an issue that actually went to a donation gets one; anything else would
+  certify something that never happened.
   """
 
   use EstoqueOSWeb, :controller

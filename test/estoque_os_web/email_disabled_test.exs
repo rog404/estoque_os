@@ -1,11 +1,9 @@
 defmodule EstoqueOSWeb.EmailDisabledTest do
   @moduledoc """
-  Production runs without a mailer, so the flows that need one must say so
-  rather than hand over a form that leads nowhere.
+  Production runs without a mailer, so flows that need one must say so rather
+  than offer a form that leads nowhere.
 
-  `async: false` and the flag flipped for real: `email_enabled?/0` reads
-  application env, which is global, and a concurrent test reading it mid-flip
-  would see the wrong installation.
+  `async: false`: `email_enabled?/0` reads global application env.
   """
 
   use EstoqueOSWeb.ConnCase, async: false
@@ -19,8 +17,6 @@ defmodule EstoqueOSWeb.EmailDisabledTest do
     :ok
   end
 
-  # The whole point of the gate is that nothing on the way in depends on a
-  # message arriving.
   test "the login page keeps the password form and drops the magic link", %{conn: conn} do
     {:ok, _lv, html} = live(conn, ~p"/users/log-in")
 
@@ -54,7 +50,6 @@ defmodule EstoqueOSWeb.EmailDisabledTest do
     assert redirected_to(conn) == ~p"/users/log-in"
   end
 
-  # The one flow that still has to work, because it is the only one left.
   test "an account can still change its own password", %{conn: conn} do
     user = user_fixture()
     conn = log_in_user(conn, user)

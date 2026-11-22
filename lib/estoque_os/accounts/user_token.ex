@@ -24,23 +24,9 @@ defmodule EstoqueOS.Accounts.UserToken do
   end
 
   @doc """
-  Generates a token that will be stored in a signed place,
-  such as session or cookie. As they are signed, those
-  tokens do not need to be hashed.
-
-  The reason why we store session tokens in the database, even
-  though Phoenix already provides a session cookie, is because
-  Phoenix's default session cookies are not persisted, they are
-  simply signed and potentially encrypted. This means they are
-  valid indefinitely, unless you change the signing/encryption
-  salt.
-
-  Therefore, storing them allows individual user
-  sessions to be expired. The token system can also be extended
-  to store additional data, such as the device used for logging in.
-  You could then use this information to display all valid sessions
-  and devices in the UI and allow users to explicitly expire any
-  session they deem invalid.
+  Generates a session token, stored unhashed because it lives in a signed
+  cookie. It is persisted so individual sessions can be expired; a signed
+  cookie alone is valid indefinitely.
   """
   def build_session_token(user) do
     token = :crypto.strong_rand_bytes(@rand_size)
@@ -49,12 +35,8 @@ defmodule EstoqueOS.Accounts.UserToken do
   end
 
   @doc """
-  Checks if the token is valid and returns its underlying lookup query.
-
-  The query returns the user found by the token, if any, along with the token's creation time.
-
-  The token is valid if it matches the value in the database and it has
-  not expired (after @session_validity_in_days).
+  Returns the lookup query for a session token: `{user, token_inserted_at}`
+  while unexpired.
   """
   def verify_session_token_query(token) do
     query =
@@ -69,15 +51,8 @@ defmodule EstoqueOS.Accounts.UserToken do
   @doc """
   Builds a token and its hash to be delivered to the user's email.
 
-  The non-hashed token is sent to the user email while the
-  hashed part is stored in the database. The original token cannot be reconstructed,
-  which means anyone with read-only access to the database cannot directly use
-  the token in the application to gain access. Furthermore, if the user changes
-  their email in the system, the tokens sent to the previous email are no longer
-  valid.
-
-  Users can easily adapt the existing code to provide other types of delivery methods,
-  for example, by phone numbers.
+  Only the hash is stored, so read-only database access cannot yield a usable
+  token. Tokens sent to a previous email stop being valid when it changes.
   """
   def build_email_token(user, context) do
     build_hashed_token(user, context, user.email)
@@ -97,13 +72,8 @@ defmodule EstoqueOS.Accounts.UserToken do
   end
 
   @doc """
-  Checks if the token is valid and returns its underlying lookup query.
-
-  If found, the query returns a tuple of the form `{user, token}`.
-
-  The given token is valid if it matches its hashed counterpart in the
-  database. This function also checks whether the token has expired. The context
-  of a magic link token is always "login".
+  Lookup query for a magic link token (context "login"): `{user, token}`
+  while unexpired.
   """
   def verify_magic_link_token_query(token) do
     case Base.url_decode64(token, padding: false) do
@@ -125,15 +95,7 @@ defmodule EstoqueOS.Accounts.UserToken do
   end
 
   @doc """
-  Checks if the token is valid and returns its underlying lookup query.
-
-  The query returns the user_token found by the token, if any.
-
-  This is used to validate requests to change the user
-  email.
-  The given token is valid if it matches its hashed counterpart in the
-  database and if it has not expired (after @change_email_validity_in_days).
-  The context must always start with "change:".
+  Lookup query for an email-change token; the context must start with "change:".
   """
   def verify_change_email_token_query(token, "change:" <> _ = context) do
     case Base.url_decode64(token, padding: false) do
@@ -152,13 +114,8 @@ defmodule EstoqueOS.Accounts.UserToken do
   end
 
   @doc """
-  Checks if the token is valid and returns its underlying lookup query.
-
-  If found, the query returns a tuple of the form `{user, token}`. Same shape
-  as `verify_magic_link_token_query/1` — a short-lived, single-use, emailed
-  proof of ownership of the address — but under its own context so a
-  "esqueci minha senha" link and a daily magic-link login can never be
-  confused for one another, and so consuming one never affects the other.
+  Like `verify_magic_link_token_query/1` but under its own context, so a reset
+  link and a login link can never be confused or consume one another.
   """
   def verify_reset_password_token_query(token) do
     case Base.url_decode64(token, padding: false) do

@@ -1,12 +1,7 @@
 defmodule EstoqueOS.KitEditingTest do
   @moduledoc """
-  A kit is a recipe, and recipes change: a component is discontinued, a quantity
-  was wrong, the surgical team asks for one more drape.
-
-  Editing reaches into no box. What is inside one is whatever the ledger says was
-  moved there, and that is untouched. What does change is what the box's label
-  means, so the screen says how many boxes carry it — a warning, not a refusal.
-  A recipe that cannot be corrected is a recipe that goes stale.
+  A kit is a recipe, and editing it reaches into no box: what is inside one is
+  whatever the ledger says was moved there.
   """
 
   use EstoqueOS.DataCase, async: true
@@ -126,8 +121,6 @@ defmodule EstoqueOS.KitEditingTest do
 
       {:ok, _} = Kits.update_kit_item(item, %{quantity: Decimal.new(99)})
 
-      # The kits already built are whatever the ledger says was converted. A
-      # recipe is not a claim about them.
       assert Decimal.equal?(
                Inventory.balance(box_id: box.id, product_id: kit.product.id),
                before

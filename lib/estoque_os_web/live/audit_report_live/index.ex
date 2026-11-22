@@ -1,20 +1,13 @@
 defmodule EstoqueOSWeb.AuditReportLive.Index do
   @moduledoc """
-  The report a Brazilian auditor asks for: what moved in a period, what was
-  adjusted and why, and which controlled substances are in stock right now.
-
-  Adjustments are given their own block rather than being mixed into the
-  movement list. Stock that changed without goods moving is exactly what an
-  audit is about, and hiding it in a long table would be a kind of lying.
+  The auditor's report: what moved in a period, what was adjusted and why, and
+  which controlled substances are in stock now. Adjustments get their own block:
+  stock changing without goods moving is what an audit is about.
   """
 
   use EstoqueOSWeb, :live_view
 
-  @doc """
-  Events a viewer may send. Everything else on this screen is refused.
-
-  Reporting only.
-  """
+  # Events a viewer may send; everything else is refused. Reporting only.
   def viewer_events, do: ~w(period filter)
 
   import EstoqueOS.Coercion, only: [parse_date: 2]
@@ -53,8 +46,7 @@ defmodule EstoqueOSWeb.AuditReportLive.Index do
     |> assign(:totals, totals(summary, adjustments))
   end
 
-  # Derived from the tables already on screen rather than from four more
-  # queries: the headline and the detail can never disagree.
+  # Derived from the tables on screen so headline and detail cannot disagree.
   defp totals(summary, adjustments) do
     %{
       events: sum_by(summary, :transactions),
@@ -131,8 +123,6 @@ defmodule EstoqueOSWeb.AuditReportLive.Index do
         </div>
       </form>
 
-      <!-- The period's size before its detail. An auditor asks "how much moved"
-           long before "what moved", and the answer was buried in a table. -->
       <div class="grid grid-cols-4 gap-3 mt-6">
         <.stat label={gettext("Movements")} value={quantity(@totals.events)} />
         <.stat label={gettext("Units in")} value={quantity(@totals.units_in)} />

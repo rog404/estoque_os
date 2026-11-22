@@ -31,7 +31,7 @@ defmodule EstoqueOSWeb.BoxLookupTest do
 
   test "opens for an authorised user", %{conn: conn} do
     assert {:ok, _lv, html} = live(conn, ~p"/boxes/lookup")
-    # Rendered in pt_BR, not the English msgid.
+    # pt_BR translation, not the English msgid.
     assert html =~ "O que tem nesta caixa"
   end
 

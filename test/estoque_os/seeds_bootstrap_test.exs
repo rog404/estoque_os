@@ -23,7 +23,6 @@ defmodule EstoqueOS.SeedsBootstrapTest do
           ] do
         user = Accounts.get_user_by_email(email)
         assert user.role == role
-        # Loggable straight away: the forced first-login reset is cleared.
         refute user.must_reset_password
         assert Accounts.get_user_by_email_and_password(email, Seeds.bootstrap_password())
       end
@@ -48,7 +47,6 @@ defmodule EstoqueOS.SeedsBootstrapTest do
         kits |> Enum.find(&(&1.name == "Kit Paciente")) |> Map.fetch!(:id) |> Kits.get_kit!()
 
       assert length(patient.items) > 20
-      # The hand-written list has no catalog yet, so every line is unresolved.
       assert Enum.all?(patient.items, &is_nil(&1.product_id))
 
       for other <- ~w(Anestesia Enfermagem) do

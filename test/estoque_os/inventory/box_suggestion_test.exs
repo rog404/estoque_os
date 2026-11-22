@@ -1,11 +1,7 @@
 defmodule EstoqueOS.Inventory.BoxSuggestionTest do
   @moduledoc """
-  When a delivery lands, the question is not "which boxes exist" — it is "where
-  does this belong". A warehouse organised by whoever was holding the scanner is
-  a warehouse where finding anything means opening everything.
-
-  Every suggestion carries its reason. A list of box codes with no explanation is
-  a list nobody trusts enough to follow.
+  Where a delivery belongs. Every suggestion carries its reason, or nobody
+  trusts the list enough to follow it.
   """
 
   use EstoqueOS.DataCase, async: true
@@ -49,8 +45,6 @@ defmodule EstoqueOS.Inventory.BoxSuggestionTest do
           entries: [
             %{
               lot_id: lot.id,
-              # The box's own location, so the fixture never invents stock that
-              # is in a box in one place and at a location in another.
               location_id: box.location_id,
               box_id: box.id,
               quantity: Decimal.new(10)
@@ -82,7 +76,6 @@ defmodule EstoqueOS.Inventory.BoxSuggestionTest do
 
     assert [first, second, third] = Locations.suggest_boxes(gauze.id, warehouse.id)
 
-    # Splitting one product across two boxes is how a recall finds half of it.
     assert first.box.code == "SM01"
     assert first.reason == :same_product
     assert second.box.code == "GR01"
@@ -105,8 +98,6 @@ defmodule EstoqueOS.Inventory.BoxSuggestionTest do
     box = box_fixture(%{code: "UN01", location_id: warehouse.id})
     put.(drug, box)
 
-    # A suggestion with no reason is noise, and noise is what makes people stop
-    # reading suggestions.
     assert Locations.suggest_boxes(gauze.id, warehouse.id) == []
   end
 

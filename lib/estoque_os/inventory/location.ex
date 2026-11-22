@@ -20,10 +20,8 @@ defmodule EstoqueOS.Inventory.Location do
     field :kind, :string
     field :notes, :string
     field :active, :boolean, default: true
-    # The stock this place is the default entry point for, or nil for a place
-    # that is nobody's default. Goods for the surgical operation arrive at the
-    # warehouse and marketing material at the office, and the screens that
-    # preselect a location read this rather than one global default.
+    # The stock this place is the default entry point for (warehouse for
+    # surgical, office for marketing), or nil.
     field :default_for_segment, :string
 
     belongs_to :parent, __MODULE__

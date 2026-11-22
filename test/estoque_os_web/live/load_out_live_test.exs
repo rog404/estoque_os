@@ -50,8 +50,7 @@ defmodule EstoqueOSWeb.LoadOutLiveTest do
     assert html =~ "300"
     assert html =~ "Tudo vem selecionado"
 
-    # The unboxed stock is reported, never offered: it has no input to type a
-    # quantity into, and the screen says where to resolve it.
+    # Unboxed stock is reported, never offered: no quantity input.
     assert html =~ "não estão em caixa e não podem viajar"
     refute html =~ ~s(name="picks)
   end
@@ -59,8 +58,7 @@ defmodule EstoqueOSWeb.LoadOutLiveTest do
   test "asks before the whole warehouse leaves the building", %{conn: conn} do
     {:ok, _view, html} = live(conn, ~p"/load-out")
 
-    # The ledger is append-only: the moment before the write is the only place
-    # to be careful, so it states the consequence in the operation's numbers.
+    # The ledger is append-only, so confirmation states the consequence up front.
     assert html =~ "data-confirm-open=\"confirm-load-out\""
     assert html =~ "confirm-load-out"
     assert html =~ "<dialog"
@@ -97,13 +95,11 @@ defmodule EstoqueOSWeb.LoadOutLiveTest do
 
     assert Decimal.equal?(Inventory.balance(location_id: mission.id), Decimal.new(300))
 
-    # The 40 unboxed units wait for the conference rather than travelling.
     assert Decimal.equal?(Inventory.balance(location_id: warehouse.id), Decimal.new(40))
   end
 
   test "asks for something to send", %{conn: conn, box: box, mission: mission} do
-    # With the box gone, the warehouse holds only unboxed stock — which is
-    # exactly the case where there is nothing that can leave.
+    # With the box gone only unboxed stock remains: nothing can leave.
     {:ok, _} =
       EstoqueOS.Outbound.load_out(%{
         source_location_id: box.location_id,

@@ -8,8 +8,7 @@ defmodule EstoqueOSWeb.KitLiveTest do
   alias EstoqueOS.{Inventory, Kits}
   alias EstoqueOS.Inventory.Locations
 
-  # Packing and consuming a kit move stock. These passed as a viewer only because
-  # the events were unguarded.
+  # Packing and consuming a kit move stock: operator role.
   setup :register_and_log_in_operator
 
   setup do
@@ -54,10 +53,7 @@ defmodule EstoqueOSWeb.KitLiveTest do
       assert html =~ "kits possíveis"
       assert html =~ "limitado por: Caneta de eletrocautério"
 
-      # Scoped to the element that states it. `assert html =~ "6"` passed
-      # whether or not the feature worked: a bare digit is in every
-      # `oklch(96.5%`, every `w-6`, every id on the page. Six pens cap it at six
-      # kits, and that is what this asserts.
+      # Scope to the element: a bare digit is in every `oklch(96.5%`, `w-6` and id.
       assert has_element?(view, "p", "6 kits possíveis")
     end
   end
@@ -68,8 +64,7 @@ defmodule EstoqueOSWeb.KitLiveTest do
 
       assert html =~ "Avental EG"
 
-      # 40 gowns on the shelf, 4 per kit, so this line covers 10 kits. Both
-      # numbers scoped to their column: as bare `=~` they matched the stylesheet.
+      # Scoped to their column: bare `=~` matched the stylesheet.
       assert has_element?(view, ~s([data-label="Em estoque"]), "40")
       assert has_element?(view, ~s([data-label="Cobre"]), "10")
     end
@@ -90,18 +85,16 @@ defmodule EstoqueOSWeb.KitLiveTest do
         |> render_submit(%{"box_id" => "#{box.id}"})
 
       assert html =~ "Kits montados"
-      # 2 kits: the box holds 2 of the kit's own product now.
+
       assert Decimal.equal?(
                Inventory.balance(box_id: box.id, product_id: kit.product.id),
                Decimal.new(2)
              )
 
-      # 8 gowns and 2 pens left stock for good.
       assert Decimal.equal?(Inventory.balance(location_id: warehouse.id), Decimal.new(38))
     end
 
-    # Packing invented a box from whatever was in the field. A code one
-    # character wrong makes a box that exists, is empty, and is never opened.
+    # A code one character wrong would create an empty box nobody opens.
     test "an unknown box code is not created until it is confirmed", %{
       conn: conn,
       kit: kit,
@@ -118,7 +111,6 @@ defmodule EstoqueOSWeb.KitLiveTest do
 
       assert html =~ "Criar a caixa KT0O"
       refute Enum.any?(Locations.list_boxes(warehouse.id), &(&1.code == "KT0O"))
-      # Nothing was packed while the question was open.
       assert Decimal.equal?(Inventory.balance(location_id: warehouse.id), Decimal.new(46))
 
       view |> element("#confirm-new-box") |> render_click()
@@ -189,7 +181,7 @@ defmodule EstoqueOSWeb.KitLiveTest do
       assert html =~ "o que precisa"
       assert html =~ box.code
 
-      # 2 kits need 8 gowns. Scoped, because "8" alone is in half the CSS.
+      # Scoped, because "8" alone is in half the CSS.
       assert has_element?(view, ~s([data-label="Necessário"]), "8")
       refute html =~ "id=\"review-form\""
     end
@@ -239,8 +231,6 @@ defmodule EstoqueOSWeb.KitLiveTest do
       assert html =~ "ainda não tem componentes"
     end
 
-    # The product *is* the component: it is named once, and the line takes the
-    # catalog's own wording rather than something retyped beside it.
     test "adds a component picked from the search", %{conn: conn, kit: kit} do
       drape = product_fixture(%{name: "Campo cirúrgico 50x50"})
 
@@ -258,9 +248,6 @@ defmodule EstoqueOSWeb.KitLiveTest do
       assert Decimal.equal?(item.quantity, Decimal.new(2))
     end
 
-    # The question being answered while a recipe is written is "do we have any
-    # of this" — a component nobody has is a kit that cannot be assembled, and
-    # it is worth knowing before the line is added.
     test "the search says how much of each item is here", %{
       conn: conn,
       kit: kit,
@@ -289,10 +276,7 @@ defmodule EstoqueOSWeb.KitLiveTest do
       assert html =~ "250 UN aqui"
     end
 
-    # `Catalog.list_products/1` returns the first fifty products alphabetically.
-    # The old datalist was fed from exactly that, and so was the name lookup on
-    # submit, so a catalog of any real size refused most of itself with "não
-    # está no catálogo" — about products that are.
+    # `Catalog.list_products/1` returns only the first fifty alphabetically.
     test "finds a product past the fiftieth in the catalog", %{conn: conn, kit: kit} do
       for index <- 1..60, do: product_fixture(%{name: "Aaa produto #{index}"})
       zinc = product_fixture(%{name: "Zinco pomada"})
@@ -309,8 +293,7 @@ defmodule EstoqueOSWeb.KitLiveTest do
       assert Enum.any?(Kits.get_kit!(kit.id).items, &(&1.product_id == zinc.id))
     end
 
-    # Two lines for one product would have `availability/2` count the same stock
-    # against each of them, so a kit needing 4 and 2 of a thing covers neither.
+    # Two lines for one product would make `availability/2` count the same stock twice.
     test "offers no way to add a product the recipe already lists", %{
       conn: conn,
       kit: kit,
@@ -325,8 +308,7 @@ defmodule EstoqueOSWeb.KitLiveTest do
       assert Enum.count(Kits.get_kit!(kit.id).items, &(&1.product_id == gown.id)) == 1
     end
 
-    # A recipe made of free text cannot say how many kits the stock covers,
-    # cannot be packed and cannot be consumed — so there is no free text left.
+    # Free-text components cannot be counted, packed or consumed, so none are allowed.
     test "says so when the catalog has never heard of it", %{conn: conn, kit: kit} do
       {:ok, view, _html} = live(conn, ~p"/kits/#{kit.id}")
 
@@ -372,9 +354,7 @@ defmodule EstoqueOSWeb.KitLiveTest do
       refute Enum.any?(Kits.get_kit!(kit.id).items, &(&1.id == item.id))
     end
 
-    # An operator viewing Kit A must not be able to reach into Kit B by typing
-    # a different id into the same event — the id in the event params comes
-    # straight from the client, and Kit B's own page was never opened.
+    # Event params come straight from the client, so another kit's item id must be refused.
     test "an item id from another kit is refused, not mutated", %{conn: conn, kit: kit} do
       other_product = product_fixture(%{name: "Máscara cirúrgica"})
 
@@ -412,9 +392,8 @@ defmodule EstoqueOSWeb.KitLiveTest do
   describe "editing the recipe as logistics" do
     setup :register_and_log_in_logistics
 
-    # Logistics packs and counts stock; changing what a kit is *made of* is a
-    # planning decision reserved for admin/manager, same split as the minimum
-    # on ProductLive.Show.
+    # Changing what a kit is made of is a planning decision for admin/manager,
+    # like the minimum on ProductLive.Show.
     test "cannot add, change, or remove a recipe component", %{conn: conn, kit: kit} do
       drape = product_fixture(%{name: "Campo cirúrgico 50x50"})
       item = hd(Kits.get_kit!(kit.id).items)

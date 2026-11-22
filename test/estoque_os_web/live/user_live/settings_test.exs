@@ -46,11 +46,8 @@ defmodule EstoqueOSWeb.UserLive.SettingsTest do
       assert %{"error" => "Você precisa entrar para acessar esta página."} = flash
     end
 
-    # This used to redirect to the login page, and it was reported as a bug —
-    # ten minutes after signing in, "Configurações" answered with a login form
-    # while every other screen still worked, so the app looked like it had
-    # forgotten you at random. Nothing here is secret: it is your own address
-    # and two empty forms.
+    # Nothing here is secret (your own address and two empty forms), so a lapsed
+    # sudo window must not bounce to the login page.
     test "opens after the sudo window, with the changes held back", %{conn: conn} do
       old =
         DateTime.utc_now(:second) |> DateTime.add(-25, :minute)
@@ -63,15 +60,11 @@ defmodule EstoqueOSWeb.UserLive.SettingsTest do
       assert html =~ "Configurações da conta"
       assert html =~ "precisa de uma entrada recente"
 
-      # The buttons are there and disabled, which is how every other guarded
-      # control in this app behaves.
       assert html =~ "disabled"
     end
 
-    # The other half of the same bug: the window could lapse between opening the
-    # screen and pressing the button, and `true = sudo_mode?(user)` raised a
-    # MatchError. A crashed LiveView explains nothing to somebody who just typed
-    # a password.
+    # The window can lapse between opening the screen and pressing the button;
+    # that must not raise a MatchError.
     test "refuses the change instead of crashing when the window has lapsed", %{conn: conn} do
       old = DateTime.utc_now(:second) |> DateTime.add(-25, :minute)
 
@@ -169,7 +162,6 @@ defmodule EstoqueOSWeb.UserLive.SettingsTest do
       refute Accounts.get_user_by_email(user.email)
       assert Accounts.get_user_by_email(email)
 
-      # use confirm token again
       {:error, redirect} = live(conn, ~p"/users/settings/confirm-email/#{token}")
       assert {:live_redirect, %{to: path, flash: flash}} = redirect
       assert path == ~p"/users/settings"

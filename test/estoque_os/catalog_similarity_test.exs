@@ -1,11 +1,7 @@
 defmodule EstoqueOS.CatalogSimilarityTest do
   @moduledoc """
-  A previous attempt at this system died on supplier naming chaos: the same item
-  entered three ways is a catalog nobody can search. The unique index on
-  `lower(name)` only catches an exact repeat, which is the one case that never
-  happens in practice — people vary the accent, the spacing and the word order.
-
-  So creating a product asks first.
+  The unique index on `lower(name)` only catches an exact repeat; people vary the
+  accent, the spacing and the word order, so creating a product asks first.
   """
 
   use EstoqueOS.DataCase, async: true
@@ -34,8 +30,7 @@ defmodule EstoqueOS.CatalogSimilarityTest do
     test "a shared word is not a match on its own" do
       product_fixture(%{name: "Gaze estéril 7,5 cm com raio-x detectável"})
 
-      # "Gaze" alone must not read as the same product, or every gauze in the
-      # catalog blocks every other one.
+      # Otherwise every gauze in the catalog blocks every other one.
       assert Catalog.similar_products("Gaze") == []
     end
 
@@ -85,10 +80,8 @@ defmodule EstoqueOS.CatalogSimilarityTest do
     end
 
     test "a size is not a spelling: two airway sizes are two products" do
-      # Real names from the standard supply table. These share eight of nine
-      # tokens and used to score 0.89 — the token that tells an infant's airway
-      # from an adult's weighed the same as "com". Warning about this pair 161
-      # times over is how an operator learns to click the warning away.
+      # Eight of nine tokens match, but the size token must outweigh "com";
+      # false warnings teach operators to click them away.
       product_fixture(%{name: "TUBO ENDOTRAQUEAL PRE-FORMADO 3.0 MM - COM BALÃO"})
 
       assert Catalog.similar_products("TUBO ENDOTRAQUEAL PRE-FORMADO 7.0 MM - COM BALÃO") == []
@@ -103,9 +96,7 @@ defmodule EstoqueOS.CatalogSimilarityTest do
     end
 
     test "finds the duplicate that the noise was hiding" do
-      # Both of these are in the ONG's own standard table, differing by one
-      # space. The old scoring put them below a hundred and sixty pairs of
-      # legitimately different sizes, so nobody was ever going to find it.
+      # Differs by one space; must outrank legitimately different sizes.
       product_fixture(%{name: "TUBO ENDOTRAQUEAL 4.0MM - COM BALAO"})
 
       assert [%{product: found, score: score}] =
@@ -116,17 +107,14 @@ defmodule EstoqueOS.CatalogSimilarityTest do
     end
 
     test "the same measurement written two ways is one measurement" do
-      # The case this module's own docstring names, which it used to score 0.6
-      # against itself: `7,5cm` tore into `7` and `5cm` while `7.5 CM` became
-      # `7`, `5`, `cm`.
+      # `7,5cm` and `7.5 CM` must tokenize alike.
       product_fixture(%{name: "Gaze Estéril 7,5cm"})
 
       assert [%{score: 1.0}] = Catalog.similar_products("GAZE ESTERIL 7.5 CM")
     end
 
     test "a name with no measurement is still compared on its words" do
-      # Refusing to compare is not the same as deciding they differ: one side
-      # having no number to check means the rule has nothing to say.
+      # No number on one side means the measurement rule has nothing to say.
       product_fixture(%{name: "Compressa de gaze"})
 
       assert [%{product: found}] = Catalog.similar_products("compressa gaze")
@@ -134,8 +122,7 @@ defmodule EstoqueOS.CatalogSimilarityTest do
     end
 
     test "words still decide when the measurements agree" do
-      # Same suture size, different material. Numbers cannot separate these and
-      # are not asked to; the word overlap does its ordinary job.
+      # Same suture size, different material: numbers cannot separate these.
       product_fixture(%{name: "FIO DE SUTURA 4-0 MONOCRYL AGULHA P-3"})
 
       assert [%{product: found}] =
@@ -147,7 +134,6 @@ defmodule EstoqueOS.CatalogSimilarityTest do
     test "the unique index still stops a byte-for-byte repeat", %{} do
       product_fixture(%{name: "Ursinho de pelúcia"})
 
-      # Even confirmed: two rows with the same name are never right.
       assert {:error, changeset} =
                Catalog.create_product_checked(%{name: "ursinho de pelúcia"}, confirmed: true)
 

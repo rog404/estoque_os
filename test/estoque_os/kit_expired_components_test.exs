@@ -1,14 +1,9 @@
 defmodule EstoqueOS.KitExpiredComponentsTest do
   @moduledoc """
-  A kit is sealed. Once an expired item is inside one, nobody opens it to read
-  the date — and FEFO would reach for the expired lot first, precisely because
-  it is the oldest. So assembly is refused while any component has expired
-  stock at the location, with no override: the remedy is to write the expired
-  stock off, which is a movement with a reason code and leaves a record.
-
-  FEFO itself is unchanged everywhere else. Issuing, loading out and returning
-  still draw the oldest lot first, expired or not — that is a decision a person
-  makes with the goods in their hand, and it is visible when they make it.
+  A kit is sealed, and FEFO would reach for the expired lot first. So assembly is
+  refused while any component has expired stock at the location, with no
+  override: the remedy is a write-off, which leaves a record. FEFO is unchanged
+  everywhere else.
   """
 
   use EstoqueOS.DataCase, async: true
@@ -103,8 +98,7 @@ defmodule EstoqueOS.KitExpiredComponentsTest do
       fresh_lot = lot_fixture(%{product_id: ctx.gauze.id, expires_on: good_until})
       tape_lot = lot_fixture(%{product_id: ctx.tape.id, expires_on: good_until})
 
-      # Plenty of good gauze as well: the refusal is about the expired stock
-      # being there, not about there being too little of anything.
+      # Plenty of good gauze too: the refusal is about the expired stock, not shortage.
       stock(expired_lot, ctx.warehouse, 30, ctx.box)
       stock(fresh_lot, ctx.warehouse, 500, ctx.box)
       stock(tape_lot, ctx.warehouse, 100, ctx.box)
@@ -120,8 +114,6 @@ defmodule EstoqueOS.KitExpiredComponentsTest do
       assert line.expired.earliest_expiry == ctx.expired_on
     end
 
-    # No `allow_expired`. A checkbox would be a warning somebody clicks past,
-    # and the written-off stock is the record that a click is not.
     test "there is no override", ctx do
       assert {:error, {:expired_components, _}} =
                Kits.assemble(ctx.kit, 1, %{
@@ -140,7 +132,6 @@ defmodule EstoqueOS.KitExpiredComponentsTest do
       assert line.item.product_id == ctx.gauze.id
     end
 
-    # The point of refusing rather than warning: the way out is a movement.
     test "writing the expired stock off unblocks assembly", ctx do
       {:ok, _} =
         Inventory.post_transaction(%{
@@ -163,8 +154,7 @@ defmodule EstoqueOS.KitExpiredComponentsTest do
       assert {:ok, %{quantity: _}} = assemble(ctx.kit, 5, ctx)
     end
 
-    # Everything else still draws oldest-first, expired included. Kits are the
-    # exception, and only kits.
+    # Only kits refuse expired stock; everything else draws oldest-first.
     test "issuing still picks the expired lot first", ctx do
       user = EstoqueOS.AccountsFixtures.user_fixture()
 
@@ -182,9 +172,8 @@ defmodule EstoqueOS.KitExpiredComponentsTest do
     end
   end
 
-  # The signal after the fact, which is what makes the block worth having
-  # rather than a substitute for it: a component can expire *after* it is
-  # sealed in, and the kit lot's own expiry is the date the first one does.
+  # A component can expire after it is sealed in; the kit lot's expiry is the
+  # date the first one does.
   describe "a kit already assembled" do
     test "carries the earliest expiry of what went into it", ctx do
       soon = Date.add(Date.utc_today(), 20)
@@ -197,8 +186,6 @@ defmodule EstoqueOS.KitExpiredComponentsTest do
 
       assert {:ok, %{lot: kit_lot}} = assemble(ctx.kit, 3, ctx)
 
-      # So "this kit contains something expired" is answerable by the same
-      # expiry report as everything else, on the day it becomes true.
       assert kit_lot.expires_on == soon
     end
   end

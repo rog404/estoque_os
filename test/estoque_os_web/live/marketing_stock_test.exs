@@ -1,13 +1,8 @@
 defmodule EstoqueOSWeb.MarketingStockTest do
   @moduledoc """
-  The second stock, and the person who looks after it.
-
-  Marketing material is sold rather than consumed on a mission, and the role
-  that handles it sees that stock and nothing else. The confinement is a `where`
-  in every query that lists a product — not a template that renders fewer rows —
-  so these tests go after the screens by their events and their addresses rather
-  than by what is drawn: an event arrives over a socket whether or not a button
-  was ever rendered for it.
+  The second stock and its role. The confinement is a `where` in every product
+  query, not a template rendering fewer rows, so these tests go by events and
+  addresses: an event arrives over a socket whether or not a button was rendered.
   """
 
   use EstoqueOSWeb.ConnCase, async: true
@@ -50,8 +45,7 @@ defmodule EstoqueOSWeb.MarketingStockTest do
       })
   end
 
-  # `refute html =~ "..."` matches markup as happily as text, so anything
-  # asserting a product is *absent* strips the tags first.
+  # `refute html =~ ...` matches markup too, so absence checks strip the tags first.
   defp text(html), do: String.replace(html, ~r{<[^>]*>}s, " ")
 
   defp invoice_with(product, number) do
@@ -85,9 +79,6 @@ defmodule EstoqueOSWeb.MarketingStockTest do
   describe "the marketing role" do
     setup %{conn: conn}, do: register_and_log_in_as(%{conn: conn}, "marketing")
 
-    # The stock is a filter now, not a fence: the screen opens on marketing
-    # because that is where this person works, and the surgical shelf is one
-    # tap away because the operation asked for it that way.
     test "opens on its own stock and can ask for the other", %{
       conn: conn,
       gauze: gauze,
@@ -116,9 +107,7 @@ defmodule EstoqueOSWeb.MarketingStockTest do
       assert html =~ ~s(value="marketing" checked)
     end
 
-    # The write-off screen is narrowed to the stock it is showing, and the
-    # address is what changes which one that is — the refusal is about the
-    # screen's state, not about the person.
+    # The refusal is about the screen's state (its address), not the person.
     test "searches the stock the screen is showing", %{conn: conn, gauze: gauze} do
       {:ok, view, _html} = live(conn, ~p"/issue")
 
@@ -154,8 +143,7 @@ defmodule EstoqueOSWeb.MarketingStockTest do
       assert html =~ shirt.name
     end
 
-    # A mission mixes marketing material and surgical supply in the same box,
-    # and the person who packed the shirts is the person who counts them.
+    # Marketing included: a mission box mixes marketing material and supplies.
     test "opens the boxes, the locations and the missions", %{conn: conn} do
       for path <- ~w(/boxes /locations /kits /missions /reports/audit) do
         assert {:ok, _view, _html} = live(conn, path),
@@ -170,9 +158,8 @@ defmodule EstoqueOSWeb.MarketingStockTest do
       end
     end
 
-    # Writing the whole warehouse at once is a planning act, and planning is
-    # still admin and manager. That gate is about what a role *does*, which is
-    # a different question from which stock it works in.
+    # Writing the whole warehouse at once is a planning act (admin/manager),
+    # independent of which stock the role works in.
     test "still cannot import a whole spreadsheet", %{conn: conn} do
       assert {:error, {:redirect, %{to: _}}} = live(conn, ~p"/reports/data")
     end
@@ -193,8 +180,6 @@ defmodule EstoqueOSWeb.MarketingStockTest do
       {:ok, _view, html} = live(conn, ~p"/invoices/#{theirs.id}")
       assert html =~ shirt.name
 
-      # And the other delivery opens rather than being refused: it is a
-      # document of the same operation.
       assert {:ok, _view, _html} = live(conn, ~p"/invoices/#{surgical.id}")
     end
 
@@ -202,10 +187,7 @@ defmodule EstoqueOSWeb.MarketingStockTest do
       response = get(conn, ~p"/stock/export.xlsx")
 
       assert response.status == 200
-      # The workbook is a zip, so the product names are compressed rather than
-      # sitting in the body — what matters here is that the request is served
-      # from the same narrowing, which `Reports.export_stock/1` is asked
-      # directly about below.
+      # The workbook is a zip, so names are compressed; assert on the export function directly.
       assert {:ok, binary} = EstoqueOS.Reports.export_stock(segment: "marketing")
       refute binary =~ gauze.name
     end
@@ -215,13 +197,10 @@ defmodule EstoqueOSWeb.MarketingStockTest do
 
       refute text(html) =~ gauze.name
 
-      # 120 shirts and not 520 units: the headline number is the marketing
-      # stock, not the warehouse.
+      # 120 shirts, not 520 units: the headline is the marketing stock.
       assert html =~ "120"
 
-      # Boxes and kit readiness are the surgical operation asking itself
-      # questions. An empty panel titled "Caixas para recontar" would read as
-      # "nothing to do", which is a different and untrue statement.
+      # An empty box panel would read as "nothing to do", which is untrue.
       refute html =~ "Caixas para recontar"
       refute html =~ "Pronto para a próxima missão"
     end
@@ -236,8 +215,7 @@ defmodule EstoqueOSWeb.MarketingStockTest do
   describe "selling" do
     setup %{conn: conn}, do: register_and_log_in_as(%{conn: conn}, "marketing")
 
-    # Where the goods go is answered first now: the price field belongs to a
-    # sale, so the screen has to know it is one before a line is priced.
+    # The destination is chosen first: the price field only belongs to a sale.
     defp sell(conn, product, quantity, price) do
       {:ok, view, _html} = live(conn, ~p"/issue")
 
@@ -255,9 +233,6 @@ defmodule EstoqueOSWeb.MarketingStockTest do
     test "the line asks for a price, and the ledger keeps it", %{conn: conn, shirt: shirt} do
       {:ok, view, _html} = live(conn, ~p"/issue")
 
-      # The price belongs to a sale, so it appears once the write-off says it
-      # is one — which is also what lets an admin sell without the field being
-      # tied to the product's stock.
       view |> form("#destination-form", %{"destination" => "sale"}) |> render_change()
       view |> element("#search-form") |> render_change(%{"query" => shirt.name})
       html = view |> element("button", shirt.name) |> render_click()
@@ -275,7 +250,6 @@ defmodule EstoqueOSWeb.MarketingStockTest do
 
       assert [entry] = entries
       assert Decimal.equal?(entry.sale_unit_price, Decimal.new("39.90"))
-      # The cost the goods came in at is untouched: two numbers, two questions.
       assert Decimal.equal?(entry.quantity, Decimal.new(-3))
     end
 
@@ -289,8 +263,6 @@ defmodule EstoqueOSWeb.MarketingStockTest do
 
       html = view |> element("#basket-form") |> render_submit(%{})
 
-      # The goods are gone either way once posted, and the price is not
-      # recoverable afterwards.
       assert html =~ "preço de venda"
       assert Repo.aggregate(from(t in Transaction, where: t.destination == "sale"), :count) == 0
     end
@@ -301,7 +273,6 @@ defmodule EstoqueOSWeb.MarketingStockTest do
       {:ok, _view, html} = live(conn, ~p"/reports/sales")
 
       assert html =~ shirt.name
-      # 4 × 25,00
       assert html =~ "100,00"
     end
   end
@@ -309,8 +280,6 @@ defmodule EstoqueOSWeb.MarketingStockTest do
   describe "the roles that have both stocks" do
     setup %{conn: conn}, do: register_and_log_in_operator(%{conn: conn})
 
-    # The surgical stock is where the supplies coordinator works, so that is
-    # where the screen opens — and both stocks are one filter away.
     test "open on the surgical stock and reach the other in one filter", %{
       conn: conn,
       gauze: gauze,
@@ -321,7 +290,6 @@ defmodule EstoqueOSWeb.MarketingStockTest do
       assert html =~ gauze.name
       refute text(html) =~ shirt.name
 
-      # Ticking neither stock is how the panel says "both".
       both = view |> element("#filter-form") |> render_submit(%{"segment" => ""})
 
       assert text(both) =~ gauze.name

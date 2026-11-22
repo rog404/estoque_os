@@ -5,12 +5,7 @@ defmodule EstoqueOSWeb.KitLive.Show do
 
   use EstoqueOSWeb, :live_view
 
-  @doc """
-  Events a viewer may send. Everything else on this screen is refused.
-
-  Packing a kit moves stock; choosing a location, checking what a quantity
-  would need, and changing your mind about the quantity only report.
-  """
+  # Events a viewer may send; everything else is refused. Packing a kit moves stock.
   def viewer_events,
     do: ~w(location review review_again search_components pick_component clear_component)
 
@@ -41,9 +36,8 @@ defmodule EstoqueOSWeb.KitLive.Show do
      |> load_context()}
   end
 
-  # `review` is the conference: a kit and a quantity typed nowhere else, so
-  # any refresh of the kit, the stock, or the location makes it stale and it
-  # goes back to nil rather than show a list that no longer matches.
+  # `review` goes back to nil on any refresh of kit, stock or location rather
+  # than show a stale list.
   defp load_context(socket) do
     location_id = socket.assigns.location_id
 
@@ -56,9 +50,8 @@ defmodule EstoqueOSWeb.KitLive.Show do
     |> load_component_results()
   end
 
-  # Re-run after every reload, not only when somebody types: the quantities in
-  # the list are "how much is here", and both the location picker and adding a
-  # component change what that means.
+  # Re-run on every reload: the location picker and adding a component change
+  # the "how much is here" quantities.
   defp load_component_results(socket) do
     results =
       case String.trim(socket.assigns[:component_query] || "") do
@@ -91,17 +84,14 @@ defmodule EstoqueOSWeb.KitLive.Show do
     end)
   end
 
-  # A picked component holds a quantity, and a quantity read at another location
-  # is the wrong number on screen. Dropped rather than shown stale when the new
-  # results no longer carry it.
+  # A pick holds a quantity read at one location: dropped, not shown stale, when
+  # the new results no longer carry it.
   defp refresh_pick(nil, _results), do: nil
 
   defp refresh_pick(pick, results) do
     Enum.find(results, &(&1.product.id == pick.product.id))
   end
 
-  # After a recipe edit: reload the kit, recompute what the stock covers, and say
-  # what happened.
   defp reload(socket, message) do
     socket
     |> assign(:kit, Kits.get_kit!(socket.assigns.kit.id))
@@ -110,17 +100,14 @@ defmodule EstoqueOSWeb.KitLive.Show do
     |> put_flash(:info, message)
   end
 
-  # The recipe is a planning decision, not a write one: `roles_that_write()`
-  # covers assembly (packing stock into a kit), which logistics does every
-  # day, but changing what a kit *is made of* is the narrower `roles_that_plan()`
-  # gate — same split ProductLive.Show draws around the minimum.
+  # The recipe is a planning decision: `roles_that_write()` covers assembly, but
+  # changing what a kit is made of needs the narrower `roles_that_plan()`, as
+  # with the minimum in ProductLive.Show.
   defp may_plan?(scope) do
     Scope.effective_role(scope) in User.roles_that_plan()
   end
 
-  # Borrowing a role does not disable anything any more — the screen looks like
-  # the borrowed person's and the refusal happens on the event. What is left
-  # here is the one reason that is about the role itself.
+  # The one reason that is about the role itself; view-as disables nothing.
   defp plan_block(scope) do
     if may_plan?(scope) do
       nil
@@ -242,10 +229,7 @@ defmodule EstoqueOSWeb.KitLive.Show do
                 <:col :let={line} label={gettext("Available here")} align={:right}>
                   {quantity(line.available)}
                 </:col>
-                <!-- Always rendered, `invisible` when there is nothing to say:
-                     a cell that appears only on the offending rows changes the
-                     height of those rows, and this list is read with a thumb
-                     already on the next one. -->
+                <%!-- Always rendered, `invisible` when empty: a cell that appears only on offending rows changes their height. --%>
                 <:col :let={line} label={gettext("Expired here")} align={:right}>
                   <span class={["text-error", is_nil(line.expired) && "invisible"]}>
                     {quantity((line.expired || %{quantity: 0}).quantity)}
@@ -282,9 +266,6 @@ defmodule EstoqueOSWeb.KitLive.Show do
                   {gettext("Assemble")}
                 </.button>
 
-                <!-- Supply turns up in instalments. Waiting for the slowest
-                     supplier means the assembly gets done the night before a
-                     flight. -->
                 <.check
                   name="allow_partial"
                   label={gettext("Assemble what has arrived, and note what is missing")}
@@ -297,10 +278,7 @@ defmodule EstoqueOSWeb.KitLive.Show do
         </.write_gate>
       </div>
 
-      <!-- Editing the recipe reaches into no box: what is inside one is whatever
-           the ledger says was moved there. What changes is what the box's label
-           means, so the count is said out loud rather than the change being
-           refused. A recipe that cannot be corrected goes stale. -->
+      <%!-- Editing the recipe touches no box; the count of assembled kits is said out loud instead of refusing the edit. --%>
       <p :if={@role_may_write? and @assembled_count > 0} class="alert alert-info mt-6">
         {gettext(
           "%{count} kit(s) already assembled are in stock. Editing the recipe does not touch them.",
@@ -313,17 +291,7 @@ defmodule EstoqueOSWeb.KitLive.Show do
         allowed={@controls_enabled?}
         reason={plan_block(@current_scope)}
       >
-        <!-- Search, then pick — the same two steps as the manual entry and the
-             write-off, and for the same reason. It used to be one free-text
-             field backed by a `datalist`, which showed a bare list of names and
-             was fed by `Catalog.list_products/1`: the first fifty products in
-             the catalog, alphabetically. Everything after "C" was invisible in
-             the list *and* refused on submit — "não está no catálogo", about a
-             product that is.
-             The list says how much of each item is here, because that is the
-             question being asked while a recipe is written: a component nobody
-             has any of is a kit that cannot be assembled, and it is worth
-             knowing before the line is added rather than after. -->
+        <%!-- Search, then pick, as in manual entry and write-off. The list shows how much of each item is here: a component nobody has makes the kit unassemblable. --%>
         <form id="component-search" phx-change="search_components" class="field-row mt-4">
           <label class="fieldset grow min-w-72">
             <span class="label">{gettext("Add a component")}</span>
@@ -343,9 +311,7 @@ defmodule EstoqueOSWeb.KitLive.Show do
           {gettext("Nothing in the catalog matches that.")}
         </p>
 
-        <!-- Below the field, never above it: this appears while somebody is
-             typing, and anything appearing above the input pushes the input
-             down mid-keystroke. -->
+        <%!-- Below the field, never above: it appears mid-keystroke and would push the input down. --%>
         <ul
           :if={@component_results != [] and is_nil(@component_pick)}
           class="menu bg-base-100 rounded-box mt-3 w-full border border-base-300"
@@ -365,8 +331,6 @@ defmodule EstoqueOSWeb.KitLive.Show do
                 {result.product.name}
                 <.status :if={result.product.controlled} kind={:controlled} />
               </span>
-              <!-- Always rendered, so a row does not change height when it
-                   happens to be one already in the recipe. -->
               <span class="shrink-0 text-sm text-base-content/80">
                 <span :if={result.in_recipe?}>{gettext("already in the recipe")}</span>
                 <span :if={not result.in_recipe?}>
@@ -449,11 +413,6 @@ defmodule EstoqueOSWeb.KitLive.Show do
             {possible_for(@availability, item)}
           </:col>
 
-          <!-- One actions column rather than an Edit column and a Remove column. Two
-               headers for two verbs made the recipe read as a form with a table
-               attached; the quantity and the two things you can do to it belong
-               to the row, not to columns of their own. Icons carry them, and the
-               words survive as the accessible name and the tooltip. -->
           <:col :let={item} label={gettext("Actions")} hide_label_on_card={true} field={:inline} group>
             <div class="flex items-center justify-end gap-1">
               <form phx-submit="update_item" phx-value-id={item.id} class="flex items-center gap-1">
@@ -511,9 +470,7 @@ defmodule EstoqueOSWeb.KitLive.Show do
     Enum.find(availability.lines, &(&1.item.id == item.id))
   end
 
-  # Built fewer than asked for — a success worth naming differently: kits
-  # exist now, and the message says what stopped the rest rather than
-  # pretending the request was met in full.
+  # Built fewer than asked: say what stopped the rest.
   defp handle_assembly({:ok, %{requested: requested, quantity: built, bottleneck: item}}, socket) do
     {:noreply,
      socket
@@ -572,8 +529,6 @@ defmodule EstoqueOSWeb.KitLive.Show do
     end)
   end
 
-  # One row per resolved component: how much `quantity` kits need, how much is
-  # at the location in total, and which boxes to go stand at for it.
   defp build_review(socket, quantity, params) do
     %{availability: availability, kit: kit, location_id: location_id} = socket.assigns
     breakdown = Kits.box_breakdown(kit, location_id)
@@ -676,8 +631,7 @@ defmodule EstoqueOSWeb.KitLive.Show do
     end
   end
 
-  # The yes. The code and the assembly riding on it were held rather than
-  # written, so this replays the same submission with permission to create.
+  # Replays the held assembly with permission to create the box.
   def handle_event("confirm_new_box", _params, socket) do
     %{quantity: quantity, params: params} = socket.assigns.new_box
 
@@ -697,7 +651,6 @@ defmodule EstoqueOSWeb.KitLive.Show do
 
       %{product: product} ->
         attrs = %{
-          # The name the catalog uses, not one somebody retyped beside it.
           description: product.name,
           quantity: to_decimal(params["quantity"]),
           product_id: product.id
@@ -723,8 +676,7 @@ defmodule EstoqueOSWeb.KitLive.Show do
     end
   end
 
-  # Only the item belonging to the kit loaded in this socket, never another
-  # kit's — the id/item_id in the event params comes straight from the client.
+  # Only an item of this socket's kit: the event's id comes straight from the client.
   defp kit_item(socket, id) do
     item_id = String.to_integer(id)
     Enum.find(socket.assigns.kit.items, &(&1.id == item_id))
@@ -756,9 +708,7 @@ defmodule EstoqueOSWeb.KitLive.Show do
      )}
   end
 
-  # Not a warning: assembly is refused. Naming the component and the date is
-  # what makes the next step obvious, because the next step is to write that
-  # stock off and try again.
+  # Assembly is refused, not warned; name the component and date so the next step is clear.
   defp handle_result({:error, {:expired_components, lines}}, socket) do
     first = List.first(lines)
 

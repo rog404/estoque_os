@@ -1,9 +1,7 @@
 defmodule EstoqueOS.ManualIssueBoxTest do
   @moduledoc """
-  FEFO picks across the whole location by default — the same behaviour as
-  always. A line naming a `box_id` narrows that to just the one box, which is
-  how the write-off screen lets an operator override the recommendation
-  instead of always trusting it.
+  FEFO picks across the whole location by default; a line naming a `box_id`
+  narrows it to that box, so the operator can override the recommendation.
   """
 
   use EstoqueOS.DataCase, async: true
@@ -65,7 +63,6 @@ defmodule EstoqueOS.ManualIssueBoxTest do
                destination: "pacu"
              })
 
-    # 10 from the box expiring soonest, then 5 more from the other.
     assert Decimal.equal?(Inventory.balance(lot_id: near_lot.id), Decimal.new(0))
     assert Decimal.equal?(Inventory.balance(lot_id: far_lot.id), Decimal.new(5))
   end
@@ -102,7 +99,6 @@ defmodule EstoqueOS.ManualIssueBoxTest do
 
     assert Decimal.equal?(missing, Decimal.new(10))
 
-    # Nothing was posted while it was refused.
     assert Decimal.equal?(Inventory.balance(location_id: warehouse.id), Decimal.new(20))
   end
 end

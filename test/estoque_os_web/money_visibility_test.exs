@@ -1,16 +1,9 @@
 defmodule EstoqueOSWeb.MoneyVisibilityTest do
   @moduledoc """
-  The logistics operator is a partner outside the ONG. The spreadsheet they have
-  always returned carries description, quantity and box, and never a price.
+  The logistics operator is a partner outside the ONG and never sees a price.
 
-  Until four roles existed, a role said whether you could *write*; whether you
-  could *see* was the same answer for everyone who could log in, so that partner
-  could read every purchase price in the catalog and what each location is
-  worth. These tests hold the line where it was drawn.
-
-  They assert on rendered output rather than on assigns on purpose: hiding a
-  number in markup still ships it to the browser, and "not rendered" is the only
-  version of this that is true.
+  Assertions are on rendered output, not assigns: hiding a number in markup
+  still ships it to the browser, so "not rendered" is the only true version.
   """
 
   use EstoqueOSWeb.ConnCase, async: true
@@ -90,8 +83,7 @@ defmodule EstoqueOSWeb.MoneyVisibilityTest do
     end
 
     test "downloads the count spreadsheet, trimmed rather than refused", %{conn: conn} do
-      # Refusing the export is not an option — sending it back counted is their
-      # job. What leaves is the sheet they have always had on paper.
+      # Refusing the export is not an option (they return it counted); it is trimmed.
       conn = get(conn, ~p"/stock/export.xlsx")
 
       assert conn.status == 200
@@ -108,7 +100,6 @@ defmodule EstoqueOSWeb.MoneyVisibilityTest do
       refute "Custo unitário" in headers
       refute "Total" in headers
 
-      # And it still reads back in, which is the whole point of the round trip.
       assert Enum.any?(rows, &(&1.product == "Compressa de gaze"))
     end
   end

@@ -1,9 +1,6 @@
 defmodule EstoqueOSWeb.CertificateTest do
   @moduledoc """
-  The donations module was retired, but the two certificates it printed are the
-  paper a hospital signs. They are now built from the manual issue itself, and
-  these tests are what stops the capability from having quietly died with the
-  module it used to live in.
+  The two certificates a hospital signs, built from the manual issue itself.
   """
 
   use EstoqueOSWeb.ConnCase, async: true
@@ -62,10 +59,8 @@ defmodule EstoqueOSWeb.CertificateTest do
     assert body =~ "Compressa de gaze"
     assert body =~ "L-99"
 
-    # Quantities are stated as handed over, not as the negative the ledger keeps.
-    # Read with the markup gone: `-30` is also a substring a numeric Tailwind
-    # class like `border-base-300` could grow to contain, and matching that
-    # would pass this refute on luck rather than on the document's own text.
+    # Quantities are stated as handed over, not as the ledger's negative. Strip
+    # tags before the refute: `-30` can appear inside a Tailwind class.
     assert body =~ "30"
     refute visible_text(body) =~ "-30"
   end
@@ -78,15 +73,12 @@ defmodule EstoqueOSWeb.CertificateTest do
     assert body =~ "Hospital Regional de Tefé"
   end
 
-  # The ledger says "no value informed" by keeping NULL; a signed document has to
-  # carry a figure for every line it lists. Both are true at once, and this is
-  # where they meet.
+  # The ledger keeps NULL for "no value informed"; a signed document needs a figure per line.
   test "declares donated goods at the symbolic minimum, and the total agrees", %{conn: conn} do
     toy = product_fixture(%{name: "Brinquedo doado"})
     lot = lot_fixture(%{product_id: toy.id})
     location = location_fixture()
 
-    # Received as a donation: no unit cost, on purpose.
     {:ok, _} =
       Inventory.post_transaction(%{
         type: "donation_in",
@@ -105,11 +97,9 @@ defmodule EstoqueOSWeb.CertificateTest do
     body = conn |> get(~p"/issues/#{transaction.id}/termo/doacao") |> html_response(200)
 
     assert body =~ "R$ 0,01"
-    # 7 × 0,01 on the line, and the footer total has to match it.
     assert body =~ "R$ 0,07"
     assert body =~ "valor simbólico"
 
-    # And the ledger was not touched by any of that.
     entry = hd(Repo.preload(transaction, :entries).entries)
     assert is_nil(entry.unit_cost)
   end

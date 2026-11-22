@@ -1,8 +1,7 @@
 defmodule EstoqueOSWeb.HomeDrillTest do
   @moduledoc """
-  The overview shows a preview and hands off. What is being pinned here is the
-  handoff being honest: the link appears only when the list is actually capped,
-  and it lands on the narrowed view rather than on everything.
+  The overview shows a preview and hands off: the link appears only when the
+  list is capped, and lands on the narrowed view.
   """
 
   use EstoqueOSWeb.ConnCase, async: true
@@ -41,7 +40,6 @@ defmodule EstoqueOSWeb.HomeDrillTest do
 
     {:ok, view, html} = live(conn, ~p"/")
 
-    # Six qualify; the preview is a preview, so exactly five are on screen.
     shown = Enum.count(lots, &String.contains?(html, &1.lot_number))
     assert shown == 5, "expected 5 of 6 expiring lots previewed, got #{shown}"
 
@@ -53,18 +51,15 @@ defmodule EstoqueOSWeb.HomeDrillTest do
       |> render_click()
       |> follow_redirect(conn)
 
-    # The situation filter is a row of chips, so the link arriving filtered
-    # shows as the matching chip already ticked.
+    # The situation filter is a row of chips; the matching one arrives ticked.
     assert stock_html =~ ~r/name="situation\[\]"[^>]*value="expiring"[^>]*checked/
   end
 
-  # Shortages are the one listing with nowhere deeper to go, so this card
-  # carries more rows and offers no handoff. If a shortages screen is ever
-  # built, this is the test that should fail and be rewritten.
+  # Shortages have nowhere deeper to go, so this card lists in full with no
+  # handoff; a future shortages screen should make this test fail.
   test "shortages are listed in full on the overview, with no handoff", %{conn: conn} do
-    # `below_minimum/1` only considers products that have moved at least once —
-    # the seeded catalog gives all 322 lines a minimum, and listing the
-    # untouched ones would bury the few that actually ran low.
+    # `below_minimum/1` only considers products that have moved at least once,
+    # or the seeded catalog's untouched lines would bury the ones that ran low.
     products =
       for _ <- 1..7 do
         product = product_fixture(%{min_stock_override: Decimal.new(100)})

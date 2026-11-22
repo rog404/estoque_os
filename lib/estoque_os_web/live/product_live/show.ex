@@ -1,25 +1,13 @@
 defmodule EstoqueOSWeb.ProductLive.Show do
   @moduledoc """
   One product: where it is now, what was paid for it, and everything that ever
-  moved it.
-
-  This is the screen a recall needs. "Which lot of that gauze went to Tefé" was
-  previously answerable only by reading the stock list, the invoices and the
-  audit report and joining them by eye — three screens, none of them about the
-  product.
-
-  The price history is given its own block. The unit price is the number this
-  whole system exists to produce, and an average hides the thing worth seeing: a
-  price that doubled between two invoices is a conversation with a supplier.
+  moved it. This is the screen a recall needs. The price history has its own
+  block because an average hides a price that doubled between invoices.
   """
 
   use EstoqueOSWeb, :live_view
 
-  @doc """
-  Events a viewer may send. Everything else on this screen is refused.
-
-  Reporting only.
-  """
+  # Events a viewer may send; everything else is refused. Reporting only.
   def viewer_events, do: ~w()
 
   alias EstoqueOS.Accounts.Scope
@@ -33,21 +21,16 @@ defmodule EstoqueOSWeb.ProductLive.Show do
 
   @impl true
   def mount(%{"id" => id}, _session, socket) do
-    # No stock gate here any more. The two stocks are two filters on one
-    # operation, and this page refusing to open by id was the fence talking —
-    # what a person may *change* is still decided by role, further down.
+    # No stock gate: what a person may change is decided by role, further down.
     mount_product(socket, ProductHistory.for_product(id))
   end
 
-  # A code from the same location, because a fixed example is a code standing
-  # somewhere else — which is the one answer this field must not suggest.
+  # A box from the same location: a fixed example might stand elsewhere.
   defp placeholder_box([%{code: code} | _rest]), do: code
   defp placeholder_box(_none), do: nil
 
-  # `create: false` on purpose. Creating a box is an act with a place in it —
-  # which warehouse, written on which box in marker pen — and the box screen is
-  # where that conversation already happens. From here, an unknown code is a
-  # typo far more often than it is a new box.
+  # `create: false` on purpose: boxes are created on the box screen, and an
+  # unknown code here is far more often a typo.
   defp stow(socket, lot_id, location_id, params) do
     case Locations.resolve_box(params["box_code"], location_id, create: false) do
       {:ok, nil} ->
@@ -120,9 +103,7 @@ defmodule EstoqueOSWeb.ProductLive.Show do
      |> assign_positions(history)}
   end
 
-  # The loose lines carry the boxes of their own location, because the box a
-  # lot may go into is one standing in the same place. Grouped by location so a
-  # product sitting loose in two warehouses offers each one its own list.
+  # Boxes grouped by location: a loose lot may only go into a box standing in the same place.
   defp assign_positions(socket, history) do
     boxes =
       history.positions
@@ -136,20 +117,12 @@ defmodule EstoqueOSWeb.ProductLive.Show do
     |> assign(:boxes_at, boxes)
   end
 
-  # Marketing writes, and still not here: the boxes belong to the surgical
-  # operation and every screen about them is already closed to that role. This
-  # page is the one place the two meet, so it asks the question itself.
+  # Asks the box-handling question itself: this page is where the two stocks meet.
   defp may_box?(scope) do
     EstoqueOSWeb.UserAuth.role_may_write?(scope) and
       Scope.effective_role(scope) in User.roles_that_box()
   end
 
-  # A third question, and not a rung above `@writable?`. The logistics operator
-  # records what physically happened; the minimum a mission carries is a
-  # planning decision argued with the ONG team, and the dashboard raises alarms
-  # off it. The auditor is the mirror image — reads everything, changes nothing.
-  # The log had one sentence and assumed every row in it was the minimum, so the
-  # first other kind of change would have read "minimum true → false".
   defp change_line(%{field: "active", to_value: "true"}), do: gettext("put back in the catalog")
   defp change_line(%{field: "active"}), do: gettext("taken out of the catalog")
 
@@ -168,21 +141,19 @@ defmodule EstoqueOSWeb.ProductLive.Show do
     )
   end
 
-  # Which shelf, not just "it has stock": the fix is to move it or write it off,
-  # and the person reading this is the one who has to decide which.
   defp stock_block([]), do: nil
 
   defp stock_block(positions) do
     gettext("Still %{count} position(s) in stock. Empty them first.", count: length(positions))
   end
 
+  # The minimum is a planning decision, separate from `@writable?`: logistics
+  # records what happened but does not plan; the auditor reads but changes nothing.
   defp may_plan?(scope) do
     Scope.effective_role(scope) in User.roles_that_plan()
   end
 
-  # Borrowing a role does not disable anything any more — the screen looks like
-  # the borrowed person's and the refusal happens on the event. What is left
-  # here is the one reason that is about the role itself.
+  # The one reason that is about the role itself; view-as disables nothing.
   defp plan_block(scope) do
     if may_plan?(scope) do
       nil
@@ -211,16 +182,7 @@ defmodule EstoqueOSWeb.ProductLive.Show do
             {gettext("no lot expected")}
           </span>
         </:subtitle>
-        <!-- The screen that answers "how much of this is left" is the screen
-             somebody is standing on when they decide to take some out. Sending
-             them to the menu, then to a search field, to type the name of the
-             product whose page they were already reading, is three steps to
-             arrive where they started. The product travels in the link and
-             comes out picked.
-
-             Only for whoever may actually write the movement off — the same
-             table the menu reads, so this shortcut and the menu can never
-             disagree about who is allowed through. -->
+        <%!-- The write-off link carries the product, and is gated by the same table the menu reads. --%>
         <:actions>
           <.button
             :if={Layouts.may_access?(@current_scope, ~p"/issue") and @history.product.active}
@@ -231,16 +193,7 @@ defmodule EstoqueOSWeb.ProductLive.Show do
             {gettext("Write off")}
           </.button>
 
-          <!-- Taking a product out of the catalog is a manager's decision, like
-               the minimum below and unlike anything else on this page: it
-               removes the product from every picker in the app at once. It is
-               refused while any of it is still on a shelf, and the reason says
-               which shelf — a greyed-out button with nothing to hover is the
-               same dead end as a hidden one.
-
-               The trigger is soft and the dialog's confirm is solid: this is
-               reversible from this same screen, so the loud red belongs on the
-               button that actually does it. -->
+          <%!-- A manager's decision, like the minimum: it removes the product from every picker. Refused while stock remains; reversible from this screen, hence the soft trigger. --%>
           <.write_gate may={may_plan?(@current_scope)} allowed={@controls_enabled?}>
             <.commit_action
               :if={@history.product.active}
@@ -276,9 +229,6 @@ defmodule EstoqueOSWeb.ProductLive.Show do
       <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-6">
         <.stat label={gettext("On hand")} value={quantity(on_hand(@history))} dense />
         <.stat label={gettext("Stored lots")} value={length(@history.positions)} dense />
-        <!-- The one figure on this screen that is a decision rather than a
-             measurement, so it is the one that can be typed into. Everything
-             else here is the ledger reporting itself. -->
         <div class="panel px-3 py-2 flex flex-col gap-0.5">
           <p class="eyebrow text-base-content/60">{gettext("Minimum")}</p>
           <form id="minimum-form" phx-submit="set_minimum" class="flex items-center gap-2 mt-1">
@@ -308,13 +258,7 @@ defmodule EstoqueOSWeb.ProductLive.Show do
         </div>
         <.stat label={gettext("Movements")} value={@history.movement_count} dense />
 
-        <!-- The answer to "it came in on three invoices at three prices, what is
-             it worth". Weighted by what is still on the shelf, and it never goes
-             near the ledger: the entries keep the price they entered at.
-
-             The hint is not decoration. Donations are left out of the average
-             rather than counted as zero, so a figure covering half the stock has
-             to say so, or it gets quoted as though it covered all of it. -->
+        <%!-- Weighted by what is on the shelf; entries keep their own price. The hint is required: donations are left out of the average, so partial coverage must say so. --%>
         <.stat
           :if={@sees_money? and @cost}
           label={gettext("Average unit cost")}
@@ -326,9 +270,6 @@ defmodule EstoqueOSWeb.ProductLive.Show do
         />
       </div>
 
-      <!-- Small and quiet, and only once there is something to say. The
-           question it answers — "who lowered the minimum, and when" — is asked
-           after a mission runs short, which is exactly when nobody remembers. -->
       <details :if={@changes != []} class="mt-3 text-sm">
         <summary class="cursor-pointer text-base-content/70">
           {gettext("What was changed here")}
@@ -366,15 +307,7 @@ defmodule EstoqueOSWeb.ProductLive.Show do
             {quantity(row.quantity)}
           </:col>
 
-          <!-- `:if` on the slot, not on the cell: a column that only some rows
-               would render is a table whose rows have different widths. The
-               column appears for whoever handles boxes, and a line that is
-               already in one renders the slot empty rather than skipping it.
-
-               Loose stock cannot travel, so the fastest route from "I am
-               looking at this product" to "it is in a box" belongs here. The
-               box's own screen keeps its list; this is the other door to the
-               same act. -->
+          <%!-- `:if` on the slot, not the cell: a column only some rows render gives rows different widths. --%>
           <:col
             :let={row}
             :if={@may_box?}
@@ -403,8 +336,6 @@ defmodule EstoqueOSWeb.ProductLive.Show do
                   boxes={@boxes_at[row.location_id] || []}
                 />
 
-                <!-- The whole line, because putting away half of what is on the
-                     floor is the exception. Type less to send part of it. -->
                 <input
                   type="text"
                   name="quantity"
@@ -423,8 +354,6 @@ defmodule EstoqueOSWeb.ProductLive.Show do
         </.data_table>
       </.panel>
 
-      <!-- The panel goes, not just its column: a price history with the prices
-           taken out is an invitation to ask what is being kept back. -->
       <.panel
         :if={@sees_money?}
         title={gettext("What was paid")}
@@ -515,9 +444,7 @@ defmodule EstoqueOSWeb.ProductLive.Show do
 
   defp unpriced?(%{unpriced_quantity: unpriced}), do: Decimal.compare(unpriced, 0) == :gt
 
-  # What the average actually covers. An average is a claim about a quantity,
-  # and quoting it without saying which quantity is how a stock value ends up
-  # describing a third of the shelf.
+  # An average is a claim about a quantity: say which one it covers.
   defp cost_coverage(%{average: nil, unpriced_quantity: unpriced}) do
     gettext("no value informed for any of the %{quantity} on hand",
       quantity: quantity(unpriced)
@@ -547,8 +474,6 @@ defmodule EstoqueOSWeb.ProductLive.Show do
   defp who(%{user: %{email: email}}), do: email
   defp who(_transaction), do: "—"
 
-  # The sign is the fastest way to read a ledger line: it says arrival or
-  # departure without decoding the movement type first.
   defp signed(%Decimal{} = value) do
     if Decimal.compare(value, 0) == :gt, do: "+" <> quantity(value), else: quantity(value)
   end
@@ -558,14 +483,8 @@ defmodule EstoqueOSWeb.ProductLive.Show do
   end
 
   @impl true
-  # Two gates, and they are separate questions. `@writable?` is whether this
-  # session may act at all — an admin borrowing a role may not. `may_plan?` is
-  # whether this role plans, which the logistics operator does not. The markup
-  # disables the field either way; this is the half that cannot be bypassed by
-  # a socket message.
-  # The same act as the one on the box's screen, reached from the other side.
-  # The location is the line's own: a lot loose in two warehouses has two lines
-  # and each one puts its stock into a box standing where that stock is.
+  # The same act as on the box screen. The location is the line's own: a lot
+  # loose in two warehouses has two lines, each boxed where its stock stands.
   def handle_event("stow", %{"lot" => lot_id, "location" => location_id} = params, socket) do
     if socket.assigns.may_box? and socket.assigns.writable? do
       stow(socket, lot_id, to_id(location_id), params)
@@ -624,8 +543,8 @@ defmodule EstoqueOSWeb.ProductLive.Show do
     end
   end
 
-  # The same two questions the minimum asks, and asked here rather than trusted
-  # to the markup: the button can be absent and the event still arrive.
+  # `@writable?` (may this session act) and `may_plan?` (does this role plan) are
+  # checked here, not trusted to the markup: the event can arrive without the button.
   defp with_catalog_rights(socket, fun) do
     scope = socket.assigns.current_scope
 

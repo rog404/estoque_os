@@ -2,11 +2,8 @@ defmodule EstoqueOS.Kits.KitLotProvenance do
   @moduledoc """
   One component lot that went into one kit lot, and how much of it.
 
-  A kit lot's row in `lots` says nothing about what it is made of — same as
-  every other product, its identity is the recipe (`kit_items`), not the
-  batch. This is what a recall reads: given a component lot, which kit lots
-  drew from it, so the kits built from a bad batch can be found without
-  opening every box on the shelf.
+  What a recall reads: given a component lot, which kit lots drew from it, so
+  kits from a bad batch are found without opening every box.
   """
 
   use Ecto.Schema

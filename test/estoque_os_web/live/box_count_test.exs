@@ -63,14 +63,10 @@ defmodule EstoqueOSWeb.BoxCountTest do
       assert html =~ "1 item(ns) controlado(s)"
       assert html =~ "nunca contada"
 
-      # The controlled box is listed first. There is no second page ranking the
-      # same boxes any more: the list somebody already opens *is* the order.
       assert position(html, "AUC1") < position(html, "AU01")
     end
 
     test "the guided list is gone, and so is its address", %{conn: conn} do
-      # A dead link is worse than a missing one: it looks like a screen that
-      # broke rather than a screen that went.
       assert conn |> get("/audit") |> Map.fetch!(:status) == 404
     end
 
@@ -82,8 +78,7 @@ defmodule EstoqueOSWeb.BoxCountTest do
 
       {:ok, _view, html} = live(conn, ~p"/boxes")
 
-      # Alphabetically it would open the list. There is nothing in it to count,
-      # so it is the last thing worth walking to.
+      # Alphabetically it would come first, but there is nothing in it to count.
       assert position(html, "AUC1") < position(html, "AA00")
       assert position(html, "AU01") < position(html, "AA00")
     end
@@ -106,8 +101,7 @@ defmodule EstoqueOSWeb.BoxCountTest do
     } do
       {:ok, view, _html} = live(conn, ~p"/boxes/#{box}/count")
 
-      # 300 presumed, 287 counted: a divergence, so the flow asks for the
-      # recount before it will write anything.
+      # A divergence, so the flow asks for the recount before writing anything.
       view |> element("#count-form") |> render_submit(%{"counts" => %{"#{lot.id}" => "287"}})
       view |> element("#recount-form") |> render_submit(%{"counts" => %{"#{lot.id}" => "287"}})
 
@@ -120,11 +114,8 @@ defmodule EstoqueOSWeb.BoxCountTest do
       assert Repo.reload!(box).last_verified_at
     end
 
-    # The dialog counted every line somebody typed into, so a count where one of
-    # two lines agreed with the ledger promised "2 lote(s) mudam" and then
-    # recorded "1 lote(s) corrigido(s) de 2 contado(s)". What the confirmation
-    # promises is the last thing read before an irreversible write, so it has to
-    # be the number the write actually produces.
+    # The confirmation is the last thing read before an irreversible write, so it
+    # must promise the number the write produces.
     test "the confirmation counts what changes, not what was typed", %{
       conn: conn,
       warehouse: warehouse,
@@ -174,7 +165,6 @@ defmodule EstoqueOSWeb.BoxCountTest do
 
       assert html =~ "0 lote(s) corrigido(s) de 0 contado(s)"
       assert Decimal.equal?(Inventory.balance(box_id: box.id), Decimal.new(300))
-      # The box is still stamped as looked at.
       assert Repo.reload!(box).last_verified_at
     end
 
@@ -189,7 +179,6 @@ defmodule EstoqueOSWeb.BoxCountTest do
 
       {:ok, _view, html} = live(conn, ~p"/boxes")
 
-      # Both boxes are still listed, but only the untouched one is overdue.
       assert position(html, "AUC1") < position(html, "AU01")
       assert html =~ "nunca contada"
 

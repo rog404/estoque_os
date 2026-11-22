@@ -17,19 +17,10 @@ defmodule EstoqueOS.Inventory.Transaction do
 
   @reason_codes ~w(expiry damage loss count_correction other)
 
-  # Where a manual issue went. A closed list because the point is to be able to
-  # ask the ledger what was donated; free prose in `notes` could never answer
-  # that.
-  #
-  # `disposal` is last and is the odd one out: every other entry is a place the
-  # goods were used or given to, and this is the one where they were thrown
-  # away. It exists for the same reason as the rest — it was being recorded as a
-  # donation with an explanatory note, which makes "how much did we throw out"
-  # a question only a human reading notes can answer.
-  # `sale` is the marketing stock's ordinary exit: goods leave with a price on
-  # them. It is a `manual_out` like the rest — what makes it a sale is where it
-  # went and the `sale_unit_price` on its entries, not a transaction type of its
-  # own, because everything else about it is a write-off.
+  # Where a manual issue went. A closed list so the ledger can answer "what was
+  # donated" or "what was thrown out", which free-text `notes` cannot.
+  # `sale` is the marketing stock's exit: a `manual_out` whose `sale_unit_price`
+  # is on its entries, not a transaction type of its own.
   @destinations ~w(pacu operating_room donation pre_and_post triage disposal sale)
 
   @types_requiring_both_locations ~w(transfer load_out)
@@ -52,8 +43,7 @@ defmodule EstoqueOS.Inventory.Transaction do
     field :recipient_tax_id, :string
     field :notes, :string
     field :review_reason, :string
-    # Somebody looked at the divergence and said it was fine. The reason stays
-    # where it is — this closes the alert without erasing what raised it.
+    # Closes the alert without erasing `review_reason`.
     field :review_acknowledged_at, :utc_datetime
     field :review_acknowledgement, :string
 
@@ -62,10 +52,8 @@ defmodule EstoqueOS.Inventory.Transaction do
     belongs_to :user, User
     belongs_to :review_acknowledged_by, User
     belongs_to :invoice, Invoice
-    # Which surgical trip this movement belongs to, when it belongs to one.
     belongs_to :mission, EstoqueOS.Missions.Mission
-    # The trip the goods *left*, when a load-out goes straight from one mission
-    # to the next instead of coming home first.
+    # The trip the goods *left*, for a load-out straight from one mission to the next.
     belongs_to :source_mission, EstoqueOS.Missions.Mission
 
     has_many :entries, TransactionEntry
@@ -93,7 +81,7 @@ defmodule EstoqueOS.Inventory.Transaction do
       :source_mission_id
     ])
     |> put_default_occurred_at()
-    # Who moved the stock is not optional: it is the answer an auditor asks for.
+    # `user_id` is required: an auditor asks who moved the stock.
     |> validate_required([:type, :occurred_at, :user_id])
     |> validate_inclusion(:type, @types)
     |> update_change(:recipient_tax_id, &normalize_tax_id/1)
@@ -113,8 +101,7 @@ defmodule EstoqueOS.Inventory.Transaction do
     )
   end
 
-  # A CNPJ is worth having as digits: it arrives typed with dots and slashes and
-  # would otherwise never match itself across two entries.
+  # Digits only: typed with dots and slashes it would never match itself.
   defp normalize_tax_id(nil), do: nil
 
   defp normalize_tax_id(value) do

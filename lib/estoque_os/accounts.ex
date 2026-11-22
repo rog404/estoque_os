@@ -9,34 +9,16 @@ defmodule EstoqueOS.Accounts do
   alias EstoqueOS.Accounts.{User, UserNotifier, UserToken}
 
   @doc """
-  Whether this installation can send email.
+  Whether this installation can send email. Off by default: accounts are
+  handed out by an admin, so nothing depends on a message arriving.
 
-  It cannot, by default. The operation runs on accounts an administrator hands
-  out (see `create_user_with_temporary_password/3`), so nothing about getting
-  in or staying in depends on a message arriving — which means a deployment
-  with no mailer configured is a supported deployment rather than a broken one,
-  and the demo does not need a domain and an outbound provider to be usable.
-
-  Every flow that can only work by email — the magic link, "esqueci minha
-  senha", confirming a changed address — is gated on this, at the router and
-  in the screens both. Turning it back on is this flag plus a Swoosh adapter;
-  the flows themselves are intact and tested.
+  Email-only flows (magic link, password reset, confirming a changed address)
+  are gated on this in the router and the screens.
   """
   def email_enabled?, do: Application.get_env(:estoque_os, :email_enabled, false)
 
-  ## Database getters
-
   @doc """
   Gets a user by email.
-
-  ## Examples
-
-      iex> get_user_by_email("foo@example.com")
-      %User{}
-
-      iex> get_user_by_email("unknown@example.com")
-      nil
-
   """
   def get_user_by_email(email) when is_binary(email) do
     Repo.get_by(User, email: email)
@@ -44,15 +26,6 @@ defmodule EstoqueOS.Accounts do
 
   @doc """
   Gets a user by email and password.
-
-  ## Examples
-
-      iex> get_user_by_email_and_password("foo@example.com", "correct_password")
-      %User{}
-
-      iex> get_user_by_email_and_password("foo@example.com", "invalid_password")
-      nil
-
   """
   def get_user_by_email_and_password(email, password)
       when is_binary(email) and is_binary(password) do
@@ -64,31 +37,11 @@ defmodule EstoqueOS.Accounts do
   Gets a single user.
 
   Raises `Ecto.NoResultsError` if the User does not exist.
-
-  ## Examples
-
-      iex> get_user!(123)
-      %User{}
-
-      iex> get_user!(456)
-      ** (Ecto.NoResultsError)
-
   """
   def get_user!(id), do: Repo.get!(User, id)
 
-  ## User registration
-
   @doc """
   Registers a user.
-
-  ## Examples
-
-      iex> register_user(%{field: value})
-      {:ok, %User{}}
-
-      iex> register_user(%{field: bad_value})
-      {:error, %Ecto.Changeset{}}
-
   """
   def register_user(attrs) do
     %User{}
@@ -97,22 +50,16 @@ defmodule EstoqueOS.Accounts do
   end
 
   @doc """
-  Provisions an account the way this app actually gets new users: an admin
-  vouches for the email and the role, and hands the person a temporary
-  password to log in with. There is no self-service sign-up to fall back on.
+  Provisions an account: an admin vouches for email and role and hands over a
+  temporary password. There is no self-service sign-up.
 
-  The account is created pre-confirmed (the admin already vouched for the
-  address) and flagged `must_reset_password: true`, so the very first thing
-  the new session can do — anywhere in the app — is set a real password; see
-  `EstoqueOSWeb.UserAuth`'s `:require_password_not_pending` gate.
+  Created pre-confirmed and flagged `must_reset_password: true`, so the first
+  session must set a real password (`EstoqueOSWeb.UserAuth`'s
+  `:require_password_not_pending` gate). Insert, password and role commit
+  together, so a crash never leaves an account without a password.
 
-  Insert, password/confirm, and role all commit or roll back together, so a
-  crash mid-chain (or two admins racing on the same email) never leaves a
-  half-provisioned account with an email but no password.
-
-  Pass `:password` in `opts` to set a specific one (tests, `mix estoque.user
-  --password`); otherwise one is generated and returned alongside the user so
-  the caller can show it exactly once.
+  Pass `:password` in `opts` to set one; otherwise one is generated and
+  returned alongside the user, to be shown once.
   """
   def create_user_with_temporary_password(email, role, opts \\ []) do
     password = Keyword.get_lazy(opts, :password, &random_password/0)
@@ -137,13 +84,8 @@ defmodule EstoqueOS.Accounts do
 
   defp random_password, do: 18 |> :crypto.strong_rand_bytes() |> Base.url_encode64()
 
-  ## Settings
-
   @doc """
-  Checks whether the user is in sudo mode.
-
-  The user is in sudo mode when the last authentication was done no further
-  than 20 minutes ago. The limit can be given as second argument in minutes.
+  Whether the last authentication was within the limit (default 20 minutes).
   """
   def sudo_mode?(user, minutes \\ -20)
 
@@ -157,12 +99,6 @@ defmodule EstoqueOS.Accounts do
   Returns an `%Ecto.Changeset{}` for changing the user email.
 
   See `EstoqueOS.Accounts.User.email_changeset/3` for a list of supported options.
-
-  ## Examples
-
-      iex> change_user_email(user)
-      %Ecto.Changeset{data: %User{}}
-
   """
   def change_user_email(user, attrs \\ %{}, opts \\ []) do
     User.email_changeset(user, attrs, opts)
@@ -193,12 +129,6 @@ defmodule EstoqueOS.Accounts do
   Returns an `%Ecto.Changeset{}` for changing the user password.
 
   See `EstoqueOS.Accounts.User.password_changeset/3` for a list of supported options.
-
-  ## Examples
-
-      iex> change_user_password(user)
-      %Ecto.Changeset{data: %User{}}
-
   """
   def change_user_password(user, attrs \\ %{}, opts \\ []) do
     User.password_changeset(user, attrs, opts)
@@ -208,15 +138,6 @@ defmodule EstoqueOS.Accounts do
   Updates the user password.
 
   Returns a tuple with the updated user, as well as a list of expired tokens.
-
-  ## Examples
-
-      iex> update_user_password(user, %{password: ...})
-      {:ok, {%User{}, [...]}}
-
-      iex> update_user_password(user, %{password: "too short"})
-      {:error, %Ecto.Changeset{}}
-
   """
   def update_user_password(user, attrs) do
     user
@@ -225,10 +146,8 @@ defmodule EstoqueOS.Accounts do
   end
 
   @doc """
-  Changes what a user is allowed to do.
-
-  Roles are granted deliberately — there is no self-service path to a role
-  that can write to the ledger.
+  Changes what a user is allowed to do. Roles are granted deliberately; there
+  is no self-service path to a role that can write to the ledger.
   """
   def update_user_role(%User{} = user, role) do
     user
@@ -242,8 +161,6 @@ defmodule EstoqueOS.Accounts do
   def list_users do
     Repo.all(from u in User, order_by: [asc: u.email])
   end
-
-  ## Session
 
   @doc """
   Generates a session token.
@@ -279,20 +196,9 @@ defmodule EstoqueOS.Accounts do
   @doc """
   Logs the user in by magic link.
 
-  There are three cases to consider:
-
-  1. The user has already confirmed their email. They are logged in
-     and the magic link is expired.
-
-  2. The user has not confirmed their email and no password is set.
-     In this case, the user gets confirmed, logged in, and all tokens -
-     including session ones - are expired. In theory, no other tokens
-     exist but we delete all of them for best security practices.
-
-  3. The user has not confirmed their email but a password is set.
-     This cannot happen in the default implementation but may be the
-     source of security pitfalls. See the "Mixing magic link and password registration" section of
-     `mix help phx.gen.auth`.
+  A confirmed user is logged in and the link expires. An unconfirmed user with
+  no password is confirmed and all tokens are expired. An unconfirmed user
+  with a password raises (session fixation risk).
   """
   def login_user_by_magic_link(token) do
     {:ok, query} = UserToken.verify_magic_link_token_query(token)
@@ -322,14 +228,8 @@ defmodule EstoqueOS.Accounts do
     end
   end
 
-  @doc ~S"""
+  @doc """
   Delivers the update email instructions to the given user.
-
-  ## Examples
-
-      iex> deliver_user_update_email_instructions(user, current_email, &url(~p"/users/settings/confirm-email/#{&1}"))
-      {:ok, %{to: ..., body: ...}}
-
   """
   def deliver_user_update_email_instructions(%User{} = user, current_email, update_email_url_fun)
       when is_function(update_email_url_fun, 1) do
@@ -351,9 +251,6 @@ defmodule EstoqueOS.Accounts do
 
   @doc """
   Delivers password reset instructions to the given user.
-
-  This is the only path left for an existing user to change their password —
-  see `reset_user_password_by_token/2`.
   """
   def deliver_reset_password_instructions(%User{} = user, reset_password_url_fun)
       when is_function(reset_password_url_fun, 1) do
@@ -381,11 +278,9 @@ defmodule EstoqueOS.Accounts do
   @doc """
   Consumes a password reset token and sets the new password in one step.
 
-  Re-verifies the token against the database at submission time — not a user
-  struct loaded when the page first rendered — so a token already spent by
-  one tab is refused by another, even if that tab was rendered before the
-  race. Returns `{:error, :invalid_token}` when the token is missing, already
-  used, or expired; otherwise the same shape as `update_user_password/2`.
+  Re-verifies the token at submission time, so a token already spent in one
+  tab is refused in another. Returns `{:error, :invalid_token}` when missing,
+  used or expired; otherwise the shape of `update_user_password/2`.
   """
   def reset_user_password_by_token(token, attrs) do
     Repo.transact(fn ->
@@ -405,8 +300,6 @@ defmodule EstoqueOS.Accounts do
     Repo.delete_all(from(UserToken, where: [token: ^token, context: "session"]))
     :ok
   end
-
-  ## Token helper
 
   defp update_user_and_delete_all_tokens(changeset) do
     Repo.transact(fn ->

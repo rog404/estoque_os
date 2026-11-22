@@ -1,15 +1,8 @@
 defmodule EstoqueOS.Catalog.ProductActivationTest do
   @moduledoc """
-  Taking a product out of the catalog, and putting it back.
-
-  The catalog carries 322 products and the operation uses a fraction of them; a
-  product nobody stocks any more is a wrong answer waiting in every picker. The
-  flag that hides it already existed and every query already asked for it — what
-  did not exist was the way to set it, or the record of who did.
-
-  Nothing is deleted. The two facts these tests hold are that the history keeps
-  naming a retired product, and that a product still sitting on a shelf cannot
-  be hidden from the screens somebody would use to find it.
+  Taking a product out of the catalog, and putting it back. Nothing is deleted:
+  history keeps naming a retired product, and a product still on a shelf cannot
+  be hidden.
   """
 
   use EstoqueOS.DataCase, async: true
@@ -98,9 +91,6 @@ defmodule EstoqueOS.Catalog.ProductActivationTest do
       refute updated.active
     end
 
-    # The flag is not the point on its own — every picker asking for it is. A
-    # deactivated product that still comes back from a search is the bug this
-    # whole thing exists to prevent.
     test "removes it from the catalog listing and from search", ctx do
       assert Enum.any?(Catalog.list_products(), &(&1.id == ctx.product.id))
       assert Enum.any?(Catalog.list_products(search: "gaze"), &(&1.id == ctx.product.id))
@@ -123,8 +113,7 @@ defmodule EstoqueOS.Catalog.ProductActivationTest do
       assert change.user_id == user.id
     end
 
-    # The row is what owns the history, so it has to survive: a recall asks
-    # about goods that left years ago, and a product that vanished cannot answer.
+    # The row owns the history: a recall asks about goods that left years ago.
     test "leaves the row, its lots and its movements alone", ctx do
       receive_stock(ctx, 10)
       write_off(ctx, 10)

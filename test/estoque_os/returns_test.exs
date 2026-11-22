@@ -1,8 +1,7 @@
 defmodule EstoqueOS.ReturnsTest do
   @moduledoc """
-  Manual issue and the return of a mission — the messiest moment in the
-  operation, where things come back in different boxes than they left in and
-  part of the load simply does not come back at all.
+  Manual issue and the return of a mission: goods come back in different boxes
+  than they left in, and part of the load does not come back at all.
   """
 
   use EstoqueOS.DataCase, async: true
@@ -200,7 +199,7 @@ defmodule EstoqueOS.ReturnsTest do
       assert consumed.type == "manual_out"
 
       assert Decimal.equal?(Inventory.balance(location_id: warehouse.id), Decimal.new(60))
-      # Nothing of that lot is left on the mission's books.
+
       assert Decimal.equal?(
                Inventory.balance(lot_id: sooner.id, location_id: mission.id),
                Decimal.new(0)
@@ -228,7 +227,6 @@ defmodule EstoqueOS.ReturnsTest do
                  ]
                })
 
-      # The 40 that did not come back are still someone's to explain.
       assert Decimal.equal?(
                Inventory.balance(lot_id: sooner.id, location_id: mission.id),
                Decimal.new(40)

@@ -17,15 +17,10 @@ defmodule EstoqueOSWeb.StockController do
         _ -> nil
       end
 
-    # The file the logistics operator counts on leaves without the cost columns.
-    # Refusing them the export is not an option — sending it back counted is
-    # their job — so what leaves is the sheet they have always had on paper.
+    # Logistics must still export (they send it back counted), minus the cost columns.
     money? = EstoqueOSWeb.UserAuth.sees_money?(conn.assigns[:current_scope])
 
-    # The same narrowing the stock screen applies, and read from the same place.
-    # It is a filter now rather than a fence, so what the address asks for wins
-    # and the role only decides the default — but the file and the page must
-    # still agree, or "exporta e confere" stops being a check.
+    # Same narrowing as the stock screen: the file and the page must agree.
     segment =
       EstoqueOS.Accounts.Scope.segment(
         conn.assigns[:current_scope],
@@ -47,7 +42,6 @@ defmodule EstoqueOSWeb.StockController do
     end
   end
 
-  @doc "Hands down a blank example spreadsheet to fill in and import."
   def template(conn, _params) do
     case EstoqueOS.Reports.StockWorkbook.template() do
       {:ok, binary} ->

@@ -3,20 +3,14 @@ defmodule EstoqueOSWeb.InvoiceLive.Show do
   Step 2 of the import: confirm what each line is, how many units come in the
   supplier's packaging, and post the whole thing into the ledger.
 
-  The unit price — the number that costs the coordinator a week of manual work
-  per mission — is shown live as the conversion factor is typed.
+  The unit price is shown live as the conversion factor is typed.
   """
 
   use EstoqueOSWeb, :live_view
 
-  @doc """
-  Events a viewer may send. Everything else on this screen is refused.
-
-  Searching the catalog resolves nothing on its own, and neither does choosing
-  what a line will be: `pick`, `choose_new` and `unpick` move a selection around
-  in this session and touch no row. Only `resolve` writes it down. Posting the
-  invoice and opening a receipt write too.
-  """
+  # Events a viewer may send; everything else is refused. Searching and choosing
+  # (`pick`, `choose_new`, `unpick`) only move a selection; `resolve`, posting
+  # and opening a receipt write.
   def viewer_events,
     do:
       ~w(search edit cancel_edit pick choose_new unpick preview_factor open_matches close_matches)
@@ -29,14 +23,8 @@ defmodule EstoqueOSWeb.InvoiceLive.Show do
 
   @impl true
   def mount(%{"id" => id}, _session, socket) do
-    # The whole document, whichever stock the reader works in. A delivery used
-    # to be refused when none of its lines were yours, which is the fence the
-    # operation asked to take down — and which barred the marketing coordinator
-    # from the invoice they had just imported, since a fresh one has no
-    # resolved line at all.
-    #
-    # The lines are still shown per stock further down, because a mixed
-    # delivery is two people's work and each of them confirms their own.
+    # The whole document, whichever stock the reader works in: a fresh invoice
+    # has no resolved line, so filtering would bar its importer.
     invoice = Invoices.get_invoice!(id)
 
     mount_invoice(socket, invoice, invoice.segment)
@@ -49,21 +37,16 @@ defmodule EstoqueOSWeb.InvoiceLive.Show do
      |> assign(:locations, Locations.list_locations())
      |> assign(:location_id, default_location_id(invoice))
      |> assign(:candidates, %{})
-     # What the operator typed into each line's one field, what they picked out
-     # of the list, and the lines where they chose to create instead. Together
-     # these are the state of the picker, per line, held here because the field
-     # and the list are the same control and have to agree.
+     # Per-line picker state: typed query, picked product, lines creating a new
+     # one. Held here because the field and the list are one control.
      |> assign(:queries, %{})
      |> assign(:chosen, %{})
      |> assign(:creating, MapSet.new())
-     # What was typed into the conversion factor, per line, so the unit price
-     # can answer as it is typed instead of only after the line is confirmed.
+     # Typed conversion factor per line, so the unit price answers live.
      |> assign(:factors, %{})
-     # Lines whose suggestion list is open. The list belongs to the field, so it
-     # appears when the field is being used and goes away when it is not.
+     # Lines whose suggestion list is open.
      |> assign(:browsing, MapSet.new())
-     # Lines a resolved item has been reopened on. A confirmed line collapses
-     # to its summary; this is the way back in.
+     # Confirmed lines reopened for editing.
      |> assign(:editing, MapSet.new())
      |> assign(:segment, segment)
      |> assign(:posted, nil)
@@ -71,8 +54,7 @@ defmodule EstoqueOSWeb.InvoiceLive.Show do
      |> assign_receipts(invoice)}
   end
 
-  # The door this delivery comes in through, which is the invoice's stock and
-  # not the reader's: shirts arrive at the office whoever is confirming them.
+  # The invoice's stock decides the door, not the reader's: shirts arrive at the office.
   defp default_location_id(invoice) do
     case Locations.default_location(invoice.segment) do
       nil -> nil
@@ -96,8 +78,7 @@ defmodule EstoqueOSWeb.InvoiceLive.Show do
     |> assign(:candidates, candidates_for(invoice, socket.assigns[:candidates] || %{}))
   end
 
-  # Ranked catalog suggestions per unresolved line, computed once and kept in
-  # assigns so typing a search only recomputes the row being searched.
+  # Computed once per unresolved line so a search only recomputes its own row.
   defp candidates_for(invoice, existing) do
     Enum.reduce(invoice.items, existing, fn item, acc ->
       cond do
@@ -195,23 +176,11 @@ defmodule EstoqueOSWeb.InvoiceLive.Show do
           </ul>
         </div>
 
-        <!-- One line, one card. This was a table, and the columns were sized
-             from their content: confirming one row changed the width of all of
-             them, and the product name — long, and longer than the supplier's
-             own wording — landed in a badge that cannot wrap. The row has to
-             settle when it is confirmed, and a card can do that where a shared
-             column cannot. -->
-        <!-- Once it is posted there are no decisions left on this screen, and a
-             card per line is a screen you scroll to read four columns. What it
-             becomes is what it now is: a record, read across. -->
+        <%!-- One card per line while deciding, so confirming a row cannot resize shared columns. Once posted nothing is left to decide, so it becomes a table. --%>
         <.panel :if={@invoice.status == "posted"} title={gettext("What was posted")} flush>
           <.data_table rows={@invoice.items} row_id={&"item-#{&1.id}"}>
             <:col :let={item} label={gettext("Product")} emphasis={:identity}>
               {(item.product && item.product.name) || item.description}
-              <!-- The supplier's own wording stays reachable, small: it is what
-                   is printed on the box somebody is holding, and it is how a
-                   line gets recognised when the catalog name does not match
-                   what is written on the carton. -->
               <p :if={item.product} class="text-xs opacity-60">{item.description}</p>
             </:col>
 
@@ -243,9 +212,6 @@ defmodule EstoqueOSWeb.InvoiceLive.Show do
             class={["panel", resolved?(item, @editing) && "border-success/40"]}
           >
             <div class="panel-body space-y-2">
-              <!-- What the supplier wrote, in full and never truncated: it is
-                   the only description of the goods that exists until somebody
-                   matches it, and it carries the lot and dates glued on. -->
               <header class="flex flex-wrap items-start justify-between gap-x-6 gap-y-1">
                 <div class="min-w-0">
                   <p class="font-medium">{item.description}</p>
@@ -269,9 +235,6 @@ defmodule EstoqueOSWeb.InvoiceLive.Show do
                 />
               </header>
 
-              <!-- CONFIRMED: everything the line decided, on one line, with the
-                   unit price loud. This is the number the whole system exists to
-                   produce. -->
               <div
                 :if={resolved?(item, @editing)}
                 class="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2 border-t border-base-200 pt-2"
@@ -303,18 +266,8 @@ defmodule EstoqueOSWeb.InvoiceLive.Show do
                 </div>
               </div>
 
-              <!-- UNRESOLVED: the whole width, because this is where the work is. -->
               <div :if={not resolved?(item, @editing)} class="space-y-2 border-t border-base-200 pt-2">
-                <!-- One field. It used to be two — a search box, and a separate
-                     "Corresponde a" droplist that the results landed in — so
-                     typing appeared to do nothing and the suggestions seemed to
-                     come from opening an empty droplist. They were always one
-                     question: what is this line?
-
-                     The matches hang off the field rather than sitting under it
-                     permanently: a list of ten that is always on screen makes a
-                     card the operator has to scroll past on every line, when
-                     nine lines in ten are decided by one glance and one click. -->
+                <%!-- One field; matches hang off it instead of sitting permanently under it, so cards stay short. --%>
                 <div
                   :if={is_nil(decided(assigns, item))}
                   id={"picker-#{item.id}"}
@@ -341,14 +294,7 @@ defmodule EstoqueOSWeb.InvoiceLive.Show do
                     </label>
                   </form>
 
-                  <!-- Suggestions before anything is typed, results after, and
-                       creating always last. Offered above the matches it becomes
-                       the fastest path, and the catalog fills with the same item
-                       spelled three ways.
-
-                       Absolute, so opening it does not shove the price and the
-                       conversion factor down the page under the operator's
-                       cursor. -->
+                  <%!-- Creating stays last, or the catalog fills with one item spelled three ways. Absolute, so opening it does not shove the fields down under the cursor. --%>
                   <ul
                     :if={browsing?(assigns, item)}
                     id={"matches-#{item.id}"}
@@ -388,9 +334,6 @@ defmodule EstoqueOSWeb.InvoiceLive.Show do
                   phx-value-item={item.id}
                   class="space-y-3"
                 >
-                  <!-- What the line was decided to be, once it has been decided.
-                       Named out loud with a way back, because the decision is
-                       otherwise invisible above a form full of numbers. -->
                   <div
                     :if={product = decided(assigns, item)}
                     class="flex flex-wrap items-center gap-2"
@@ -399,12 +342,6 @@ defmodule EstoqueOSWeb.InvoiceLive.Show do
                       <span class="text-xs opacity-60 font-normal">{gettext("Matches")}:</span>
                       {product_label(product)}
                     </p>
-                    <!-- Right after the name, not a separate text link off to the
-                         side: the wrong product picked out of the catalog is a
-                         mistake read at the name itself, and the way back should
-                         sit where the eye already is. Icon-only per the button
-                         vocabulary — the word survives as `title` and
-                         `aria-label`. -->
                     <button
                       type="button"
                       phx-click="unpick"
@@ -423,14 +360,7 @@ defmodule EstoqueOSWeb.InvoiceLive.Show do
                     value={chosen_value(assigns, item)}
                   />
 
-                  <!-- Only for a line about to become a new catalog product. It
-                       used to be rendered on every unresolved line, which made
-                       the card tall and asked a question most lines never face.
-
-                       The operator still reads it before committing: a catalog
-                       name outlives the invoice that introduced it, and the
-                       supplier's wording arrives with the shipment's lot and
-                       dates glued on, often truncated mid-word. -->
+                  <%!-- Only for a new product; the operator reads the name because a catalog name outlives the invoice and the supplier's wording arrives truncated. --%>
                   <label :if={creating?(assigns, item)} class="fieldset">
                     <span class="label">{gettext("Name of the new product")}</span>
                     <input
@@ -483,9 +413,6 @@ defmodule EstoqueOSWeb.InvoiceLive.Show do
                       />
                     </label>
 
-                    <!-- Live, as the factor is typed: the unit price is the
-                         answer this screen exists to give, and seeing it move is
-                         how a wrong factor gets caught. -->
                     <div class="fieldset">
                       <span class="label">{gettext("Unit price")}</span>
                       <p class="text-lg font-semibold tabular-nums leading-tight">
@@ -502,13 +429,6 @@ defmodule EstoqueOSWeb.InvoiceLive.Show do
                       </span>
                     </div>
 
-                    <!-- On the price's own line, pushed to the far corner. It
-                         had a row of its own, which cost every card a line of
-                         height for one button and put the whole width between
-                         the number being confirmed and the button confirming
-                         it. `ml-auto` keeps it in the corner while there is
-                         room and lets it wrap on a phone like everything else
-                         in this row. -->
                     <div class="fieldset ml-auto flex-row gap-2">
                       <.button
                         :if={item.product_id}
@@ -606,16 +526,13 @@ defmodule EstoqueOSWeb.InvoiceLive.Show do
     """
   end
 
-  # Confirmed *and* not reopened. Both halves matter: a line the operator has
-  # asked to change reads as unresolved again, form and all.
+  # Confirmed and not reopened: a line being changed reads as unresolved again.
   defp resolved?(item, editing) do
     not is_nil(item.product_id) and not MapSet.member?(editing, item.id)
   end
 
-  # What this line has been decided to be, before it is written down: a product
-  # picked out of the list, `:new` for one about to be created, or nil while the
-  # question is still open. A line reopened for editing starts at whatever it
-  # already says, so "Change" does not mean "start again".
+  # A picked product, `:new` for one being created, or nil while undecided. A
+  # reopened line starts at what it already says.
   defp decided(assigns, item) do
     cond do
       Map.has_key?(assigns.chosen, item.id) -> assigns.chosen[item.id]
@@ -648,10 +565,8 @@ defmodule EstoqueOSWeb.InvoiceLive.Show do
     end
   end
 
-  # What the factor currently reads as: what was typed, if anything was typed
-  # and it parses, otherwise the value the invoice line already carries. A
-  # factor typed to something unparsable (or emptied) falls back rather than
-  # showing a price for a number that is not there.
+  # The typed factor if it parses, else the line's own; never a price for a
+  # number that is not there.
   defp preview_factor(assigns, item) do
     case assigns.factors[item.id] do
       nil -> item.conversion_factor
@@ -677,8 +592,7 @@ defmodule EstoqueOSWeb.InvoiceLive.Show do
     {:noreply,
      socket
      |> assign(:editing, MapSet.put(socket.assigns.editing, item_id))
-     # Reopening starts from what is actually saved, not from a factor typed
-     # and abandoned the last time this line was open.
+     # Reopen from what is saved, not a previously abandoned factor.
      |> assign(:factors, Map.delete(socket.assigns.factors, item_id))}
   end
 
@@ -697,8 +611,6 @@ defmodule EstoqueOSWeb.InvoiceLive.Show do
     {:noreply, assign(socket, :factors, Map.put(socket.assigns.factors, item_id, factor))}
   end
 
-  # Clicking into the field is the question being asked, so that is when the
-  # answers appear — ranked suggestions for this line before a word is typed.
   def handle_event("open_matches", %{"item" => item_id}, socket) do
     {:noreply, open_matches(socket, String.to_integer(item_id))}
   end
@@ -713,15 +625,13 @@ defmodule EstoqueOSWeb.InvoiceLive.Show do
 
     {:noreply,
      socket
-     # Typing counts as using the field: results the operator cannot see are
-     # the bug this screen was rebuilt to fix.
+     # Typing counts as using the field, so results are always visible.
      |> open_matches(item_id)
      |> assign(:queries, Map.put(socket.assigns.queries, item_id, query))
      |> assign(:candidates, Map.put(socket.assigns.candidates, item_id, products))}
   end
 
-  # Choosing, not confirming. The line still needs its conversion factor before
-  # anything is written, so this only records what was picked.
+  # Choosing, not confirming: the conversion factor is still needed before any write.
   def handle_event("pick", %{"item" => item_id, "product" => product_id}, socket) do
     item_id = String.to_integer(item_id)
     product = Catalog.get_product!(product_id)
@@ -733,8 +643,7 @@ defmodule EstoqueOSWeb.InvoiceLive.Show do
      |> close_matches(item_id)}
   end
 
-  # Reveals the name field and nothing else. The product is created when the
-  # line is confirmed, so backing out here costs nothing.
+  # The product is created when the line is confirmed, so backing out is free.
   def handle_event("choose_new", %{"item" => item_id}, socket) do
     item_id = String.to_integer(item_id)
 
@@ -750,13 +659,10 @@ defmodule EstoqueOSWeb.InvoiceLive.Show do
 
     {:noreply,
      socket
-     # `nil` rather than a delete: a line that already carries a product must
-     # fall back to "undecided", not to the product it is being changed away
-     # from, or "Change" would do nothing.
+     # `nil`, not a delete: a line with a product must fall back to "undecided",
+     # or "Change" would do nothing.
      |> assign(:chosen, Map.put(socket.assigns.chosen, item_id, nil))
      |> assign(:creating, MapSet.delete(socket.assigns.creating, item_id))
-     # "Change" is the question being asked again, so the answers come with it
-     # rather than waiting for a second click into a field that just appeared.
      |> open_matches(item_id)}
   end
 
@@ -770,8 +676,7 @@ defmodule EstoqueOSWeb.InvoiceLive.Show do
        socket
        |> put_flash(:info, gettext("Item confirmed."))
        |> assign(:editing, MapSet.delete(socket.assigns.editing, item.id))
-       # The picker for this line is spent. Left behind, reopening the line
-       # would show a stale choice rather than what was actually saved.
+       # The picker is spent; leaving it would show a stale choice on reopen.
        |> assign(:chosen, Map.delete(socket.assigns.chosen, item.id))
        |> assign(:creating, MapSet.delete(socket.assigns.creating, item.id))
        |> assign(:queries, Map.delete(socket.assigns.queries, item.id))
@@ -871,18 +776,12 @@ defmodule EstoqueOSWeb.InvoiceLive.Show do
     Enum.find(invoice.items, &(&1.id == item_id))
   end
 
-  # "__new__" creates a catalog product for an item nobody has bought before.
-  # The name comes from the field the operator can edit, never straight from the
-  # invoice: a catalog name outlives the invoice that introduced it, and the
-  # supplier's description carries the shipment's own data inside it.
-  # A product invented while resolving a line is filed under the stock the
-  # person resolving it works in. Without this, marketing imports its own XML,
-  # creates its own products, and none of them are theirs.
-  # The stock the invoice was imported for, not the reader's. A coordinator who
-  # holds both stocks resolving a marketing delivery must not create shirts in
-  # the surgical catalog because that is where their own default points.
+  # The invoice's stock, not the reader's: a coordinator holding both stocks
+  # must not create shirts in the surgical catalog.
   defp new_product_segment(socket), do: socket.assigns.invoice.segment
 
+  # "__new__" creates a catalog product; the name comes from the editable field,
+  # never straight from the invoice, whose wording carries shipment data.
   defp resolution_attrs(item, %{"product_id" => "__new__"} = params, segment) do
     name =
       case String.trim(params["new_product_name"] || "") do
@@ -898,9 +797,8 @@ defmodule EstoqueOSWeb.InvoiceLive.Show do
 
   defp resolution_attrs(_item, params, _segment) do
     case params["product_id"] do
-      # Blank now means the operator pressed "Change" and picked nothing yet.
-      # It used to fall back to the product already on the line, which made
-      # changing a line silently confirm it as what it already was.
+      # Blank means "Change" was pressed and nothing picked; never fall back to
+      # the line's current product.
       value when value in [nil, ""] ->
         {:error, :missing_product}
 

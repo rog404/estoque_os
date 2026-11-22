@@ -2,40 +2,21 @@ defmodule EstoqueOS.DemoData do
   @moduledoc """
   The scenario the screens are demonstrated and developed against.
 
-  `EstoqueOS.Seeds` loads the truth a fresh install has: the locations, the 322
-  lines of the standard supply table, and the five kits. It creates no stock,
-  which is correct — a new install has none. This builds a warehouse that has
-  been running for a while on top of it, because the screens that matter most
-  are the ones that compare. A stock list with one lot in it teaches nothing,
-  and "below minimum" means nothing without something having been used up.
+  `EstoqueOS.Seeds` loads what a fresh install has (locations, supply table,
+  kits) and no stock. This builds a warehouse that has been running a while on
+  top of it, because the screens that compare need history to compare.
 
-  It lives in `lib/` rather than in `priv/repo/`, unlike the usual seed script,
-  because the demo deployment has to be able to run it: there is no checkout on
-  the server and no `mix`. `EstoqueOS.Release.demo/0` calls it, and
-  `mix dev.seeds` calls the same function so the two cannot drift.
+  Lives in `lib/` because the demo deployment has no checkout and no `mix`;
+  `EstoqueOS.Release.demo/0` and `mix dev.seeds` call the same function.
 
-  What it builds:
+  Builds: one admin account, one warehouse with ten boxes (one the office box),
+  medical supply with spread expiries, office equipment, marketing stock, two
+  invoices (one posted, one pending), one kit resolved and assembled and four
+  left unresolved, two closed missions, one open mission, a few short products
+  and boxes counted at different times.
 
-    * four accounts, one per role, so the demo can be walked through as each
-    * one warehouse, "Principal", with ten boxes — one of them the office box
-    * medical supply in lots that expire on a spread, a few already expired
-    * office equipment and stationery, which travel from mission to mission and
-      are never issued
-    * two invoices: one conferred, resolved and posted, so its goods are in
-      stock at a real unit cost; one imported and left waiting, which is the
-      state most invoices are actually in
-    * one kit fully resolved against the catalog and assembled into stock, and
-      four left as the spreadsheets wrote them — naming items in free text that
-      the catalog does not have — because that is the state the kit screens
-      exist to work through
-    * two closed missions with their load-out, consumption, donation and return
-    * one mission under way, so the live screens have something to show
-    * a handful of products left short, and boxes counted at different times
-
-  Refuses to run twice: running it again would silently double every balance.
-
-  Sized for a free-tier database with a ten thousand row ceiling. It settles
-  around fifteen hundred.
+  Refuses to run twice: it would double every balance. Sized to stay well under
+  a ten-thousand-row free-tier database.
   """
 
   import Ecto.Query
@@ -59,21 +40,13 @@ defmodule EstoqueOS.DemoData do
 
   @guard_box "PR01"
 
-  # One password for every demo account, printed at the end. Twelve characters
-  # is the minimum the changeset accepts.
+  # Printed at the end; twelve characters is the changeset minimum.
   @demo_password "demonstracao2026"
 
-  # One account, and deliberately one. Creating the rest is the first thing an
-  # administrator does on a fresh install, and it is a flow worth walking rather
-  # than seeding around — the temporary password, the forced change on first
-  # login, the role that decides whether prices are visible at all. A seed that
-  # hands over four ready accounts quietly skips the screen that matters most on
-  # day one.
+  # Deliberately one account: creating the rest is the first admin flow
+  # (temporary password, forced change, roles) and is worth walking, not seeding.
   @accounts [{"admin@exemplo.org", "admin"}]
 
-  # The other stock: material the ONG sells rather than consumes. Same ledger,
-  # same boxes, same warehouse — a different segment, a different person looking
-  # after it, and a price on the way out.
   @marketing_items [
     {"Camiseta Operação Sorriso P", "UN", 40},
     {"Camiseta Operação Sorriso M", "UN", 60},
@@ -91,19 +64,15 @@ defmodule EstoqueOS.DemoData do
     {"Lápis preto", "UN", 50}
   ]
 
-  # Two closed and one under way. `{city, days_before_today, length, surgeries}`.
-  # A mission is usually a week; the short one is the weekend format the
-  # operation also runs, and consumption is scaled from the surgery count
-  # because that is how the operation compares one trip to another.
+  # `{city, days_before_today, length, surgeries}`; consumption scales with surgeries.
   @closed_missions [
     {"Tefé", -240, 7, 31},
     {"Carauari", -95, 3, 14}
   ]
   @open_mission {"Manacapuru", -6, 7, 28}
 
-  # How many of the supply boxes go out with the open mission. Named because
-  # two places depend on the same number: the load-out takes these, and the
-  # opening stock keeps the resolved kit's components out of them.
+  # Supply boxes that go out with the open mission; the opening stock keeps the
+  # kit's components out of them.
   @travelling_box_count 4
 
   @doc """
@@ -148,9 +117,7 @@ defmodule EstoqueOS.DemoData do
     users = accounts()
     admin = Map.fetch!(users, "admin")
 
-    # Every movement the scenario writes is the administrator's, because the
-    # administrator is the only account there is. Real movements carry the
-    # person who made them; a seed carries whoever ran the seed.
+    # The admin is the only account, so every seeded movement is theirs.
     logistics = admin
 
     warehouse = warehouse()
@@ -175,10 +142,8 @@ defmodule EstoqueOS.DemoData do
 
     invoices = invoices(admin, warehouse)
 
-    # Order matters. The kit is assembled while its components are clean, and
-    # one of them is expired straight after — so the demo holds both states at
-    # once: a kit in stock, and the refusal on screen the next time somebody
-    # tries to build another.
+    # Order matters: assemble while components are clean, then expire one, so
+    # the demo shows a kit in stock and the refusal to build another.
     assembled = assemble_kit(kit, logistics, warehouse, List.first(supply_boxes))
     expired_component = expire_one_kit_component(kit, logistics, warehouse, supply_boxes, today)
 
@@ -212,8 +177,6 @@ defmodule EstoqueOS.DemoData do
      }}
   end
 
-  ## Who
-
   defp accounts do
     Map.new(@accounts, fn {email, role} ->
       user =
@@ -230,20 +193,14 @@ defmodule EstoqueOS.DemoData do
     {:ok, {user, _password}} =
       Accounts.create_user_with_temporary_password(email, role, password: @demo_password)
 
-    # Cleared deliberately. Every real account starts with the forced password
-    # change, which is right; a demo account that demands a new password before
-    # it will show anything is not a demo account.
+    # Cleared: a demo account must not demand a password change before showing anything.
     user
     |> Ecto.Changeset.change(must_reset_password: false)
     |> Repo.update!()
   end
 
-  ## Where
-
-  # One warehouse, because that is what the scenario is about. The other
-  # locations `Seeds` ships are deactivated rather than deleted: transactions
-  # name the location they moved stock from, and `default_location/0` falls
-  # through to the first active warehouse, which is this one.
+  # The other locations `Seeds` ships are deactivated, not deleted (transactions
+  # name them); `default_location/0` then falls through to this warehouse.
   defp warehouse do
     {:ok, warehouse} =
       case Repo.get_by(Location, name: "Principal") do
@@ -269,9 +226,8 @@ defmodule EstoqueOS.DemoData do
     end
   end
 
-  # Ten, and the last one is the office box: the printer, the scanner and the
-  # stationery live in it and travel with every mission. Nothing in it is ever
-  # issued — it goes out and comes back, which is exactly why it must be a box.
+  # The last of the ten is the office box: it travels with every mission and
+  # nothing in it is ever issued.
   defp boxes(warehouse) do
     for n <- 1..10 do
       code = "PR#{String.pad_leading("#{n}", 2, "0")}"
@@ -280,14 +236,7 @@ defmodule EstoqueOS.DemoData do
     end
   end
 
-  ## What
-
-  # Office equipment and stationery are ordinary products, not a new concept.
-  # What separates them is `sector`, `expiry_expected` and `lot_expected` —
-  # paper does not expire and a scanner has no lot number, so neither blank is
-  # an alarm.
-  # Marketing material. The catalog fields are the same as any other product's;
-  # `segment` is the whole of what makes this a second stock.
+  # `segment` is all that makes this a second stock.
   defp marketing_stock do
     for {name, unit, quantity} <- @marketing_items do
       {:ok, product} =
@@ -310,6 +259,7 @@ defmodule EstoqueOS.DemoData do
     end
   end
 
+  # Paper does not expire and a scanner has no lot, so neither blank is an alarm.
   defp office_stock do
     for {name, unit, quantity} <- @office_items do
       {:ok, product} =
@@ -331,15 +281,8 @@ defmodule EstoqueOS.DemoData do
     end
   end
 
-  # The kit sheets name items in free text — "Compressa de gaze 7,5x7,5" — and
-  # most of those names are not in the standard supply table, so four of the
-  # five kits arrive with lines pointing at nothing. That is the real state of
-  # the data and the kit screen exists to work through it.
-  #
-  # One kit is walked all the way through here: every unresolved line gets a
-  # catalog product created for it and is pointed at it, which is what a
-  # coordinator would do. The other four are left as they came, so the "linhas
-  # não resolvidas" state is on screen too.
+  # Four of five kits arrive with lines naming items the catalog lacks. One is
+  # resolved fully here; the other four stay unresolved so that state is visible.
   defp resolve_one_kit do
     kit = smallest_resolvable_kit()
 
@@ -366,10 +309,8 @@ defmodule EstoqueOS.DemoData do
     |> Enum.min_by(fn kit -> Enum.count(kit.items, &is_nil(&1.product_id)) end)
   end
 
-  # Every product the resolved kit needs, so it can actually be assembled, plus
-  # enough of the rest of the catalog that the stock list is worth paging
-  # through. Expiry is spread on purpose: a few already past, a few inside the
-  # alert window, most comfortable.
+  # Every product the resolved kit needs, plus enough of the catalog to page
+  # through. Expiry is spread: a few past, a few in the alert window, most fine.
   defp supply_stock(today, kit) do
     needed = kit.items |> Enum.map(& &1.product_id) |> Enum.reject(&is_nil/1) |> Enum.uniq()
 
@@ -382,11 +323,8 @@ defmodule EstoqueOS.DemoData do
       |> select([p], p.id)
       |> Repo.all()
 
-    # Extras first, deliberately. `expiry_for/2` puts the expired and
-    # nearly-expired dates at the front of the list, and FEFO picks the oldest
-    # lot first — so with the kit's own components at the front, assembling the
-    # kit produced a kit lot that was already expired the moment it existed.
-    # True to the rules and useless to look at.
+    # Extras first: `expiry_for/2` front-loads expired dates and FEFO picks the
+    # oldest, so kit components first would assemble an already-expired kit lot.
     (extras ++ needed)
     |> Enum.with_index()
     |> Enum.map(fn {product_id, index} ->
@@ -410,24 +348,16 @@ defmodule EstoqueOS.DemoData do
 
   defp expiry_for(today, index) do
     cond do
-      # A few genuinely expired, which the dashboard must surface.
       index < 3 -> Date.add(today, -30 * (index + 1))
-      # A few inside the alert window.
       index < 8 -> Date.add(today, 20 * (index - 2))
-      # The rest comfortable.
       true -> Date.add(today, 200 + index * 30)
     end
   end
 
-  # Everything lands in a box. Loose stock is a real state — goods that arrived
-  # and nobody has conferred yet — but it cannot travel, so a scenario that
-  # opened with it would have nothing to send.
+  # Everything lands in a box: loose stock cannot travel.
   defp open_stock(user, warehouse, supply_boxes, office_box, supply, office, today) do
-    # A lot lives in exactly one box, so which box decides whether it travels.
-    # The open mission takes the first four; the kit's components are kept out
-    # of those, because a component that left with the mission is a component
-    # the warehouse has none of — and the dashboard then reports every kit as
-    # "0 possíveis", which is true and reads like the feature is broken.
+    # A lot lives in one box, which decides whether it travels. The kit's
+    # components stay out of the travelling boxes, or every kit reads "0 possíveis".
     staying = Enum.drop(supply_boxes, @travelling_box_count)
 
     supply_entries =
@@ -471,14 +401,7 @@ defmodule EstoqueOS.DemoData do
     Decimal.new("#{rem(index, 30) + 2}.#{cents}")
   end
 
-  ## The invoices
-  #
-  # Two, in the two states an invoice is actually found in. The first is
-  # conferred, resolved and posted, so its goods are in stock at a unit cost
-  # that came from a document rather than from this file. The second is
-  # imported and waiting — which is where most invoices sit, and what the
-  # "pendentes" count on the dashboard is counting.
-
+  # One posted invoice (unit cost from a document) and one imported and waiting.
   defp invoices(user, warehouse) do
     posted = import_and_post(user, warehouse)
     pending = import_only(user)
@@ -492,15 +415,12 @@ defmodule EstoqueOS.DemoData do
       |> Samples.read!()
       |> Invoices.import_document(user_id: user.id)
 
-    # The correction letter that came after it. Stored and attached; no
-    # field-level reprocessing, which is the documented MVP behaviour.
+    # The correction letter is stored and attached, with no field-level reprocessing.
     {:ok, _event} =
       Samples.correction_letter() |> Samples.read!() |> Invoices.attach_event()
 
-    # This invoice ships its lot numbers in the structured `rastro` group, so
-    # every line arrives with a lot already. What is missing is the catalog
-    # product and how many stock units the commercial unit holds — the two
-    # questions the receiving screen asks a person.
+    # Lots arrive in the `rastro` group; what is missing is the catalog product
+    # and the unit conversion, which the receiving screen asks a person.
     for item <- Invoices.get_invoice!(invoice.id).items do
       {:ok, product} = catalog_product_for(item)
 
@@ -527,9 +447,7 @@ defmodule EstoqueOS.DemoData do
     invoice
   end
 
-  # The invoice describes the item the supplier's way; the catalog may or may
-  # not already know it. Reuse an existing product when the description matches
-  # one, create it otherwise — the same two outcomes the import screen offers.
+  # Reuse a product whose name matches the description, else create one.
   defp catalog_product_for(item) do
     name = item.description |> String.trim() |> String.slice(0, 200)
 
@@ -550,8 +468,7 @@ defmodule EstoqueOS.DemoData do
     end
   end
 
-  # "1 PT = 50 UN". Invented per commercial unit rather than per line, which is
-  # how the question is actually asked: it is a property of the packaging.
+  # "1 PT = 50 UN": a property of the packaging, so per commercial unit.
   defp conversion_factor_for(item) do
     case item.commercial_unit do
       "PT" -> 50
@@ -562,11 +479,7 @@ defmodule EstoqueOS.DemoData do
     end
   end
 
-  ## The kits
-
-  # Assembled into a box, which converts component lots into a lot of the kit's
-  # own product. `allow_partial` because the components on hand are what they
-  # are: it builds as many whole kits as it can rather than refusing.
+  # `allow_partial` builds as many whole kits as the components allow.
   defp assemble_kit(kit, user, warehouse, box) do
     case Kits.assemble(kit, 10, %{
            location_id: warehouse.id,
@@ -579,10 +492,8 @@ defmodule EstoqueOS.DemoData do
     end
   end
 
-  # A lot of one component that expired last week, received before it did. The
-  # assembly screen refuses to build another kit until it is written off, which
-  # is the rule worth being able to see rather than read about — and the kit
-  # already in the box is untouched, because it was sealed before this arrived.
+  # A component lot that expired last week: the assembly screen refuses another
+  # kit until it is written off. The kit already assembled is untouched.
   defp expire_one_kit_component(kit, user, warehouse, supply_boxes, today) do
     component = kit.items |> Enum.reject(&is_nil(&1.product_id)) |> List.first()
 
@@ -615,15 +526,8 @@ defmodule EstoqueOS.DemoData do
     component.description
   end
 
-  ## The missions
-
-  # A closed mission, written straight to the ledger with its real dates: goods
-  # leave in boxes, some are used, some are handed to the hospital, the rest
-  # comes back. The office box always returns whole — that is the point of it.
-  #
-  # Constructed rather than run through the outbound flows because those stamp
-  # the clock, which is right for an operator standing in the warehouse and
-  # wrong for a seed writing history.
+  # Written straight to the ledger with historical dates, not through the
+  # outbound flows, which stamp the current time. The office box returns whole.
   defp close_mission(
          {city, offset, days, surgeries},
          user,
@@ -701,8 +605,7 @@ defmodule EstoqueOS.DemoData do
           end)
       })
 
-    # Handed to the hospital at the end. Not consumed — it still exists, which
-    # is why it is a donation and not a write-off.
+    # Handed to the hospital: still exists, so a donation, not a write-off.
     {:ok, _} =
       post(%{
         type: "manual_out",
@@ -754,9 +657,8 @@ defmodule EstoqueOS.DemoData do
     mission
   end
 
-  # This one goes through the real flows, so the live screens — load-out, the
-  # mission panel's warning line — have something honest to show. Deliberately
-  # left open: the goods are at the site, nothing has come back.
+  # Goes through the real flows and is left open, so the live screens have
+  # something honest to show.
   defp open_mission(user, warehouse, supply_boxes, office_box, today) do
     {city, offset, days, surgeries} = @open_mission
     site = mission_site("Missão #{city}")
@@ -767,7 +669,6 @@ defmodule EstoqueOS.DemoData do
         name: "#{city} #{left_on.year}/2",
         location_id: site.id,
         starts_on: left_on,
-        # Planned, not yet happened: the team is still there.
         ends_on: Date.add(left_on, days),
         tables: 4,
         notes: "#{surgeries} cirurgias"
@@ -784,7 +685,6 @@ defmodule EstoqueOS.DemoData do
         notes: "Derrubada para #{mission.name}"
       })
 
-    # Some of it already used on site, so the panel is not all zeroes.
     used =
       StockSnapshot
       |> where([s], s.location_id == ^site.id and s.quantity > 20)
@@ -820,16 +720,10 @@ defmodule EstoqueOS.DemoData do
     mission
   end
 
-  ## Something to be short of
-
-  # A shortage list that lists everything is a list nobody reads. Three
-  # products are written down below the minimum a mission is expected to carry;
-  # the rest stay comfortable.
+  # Three products are written below the mission minimum; a shortage list of
+  # everything would not be read.
   defp write_some_products_short(user, warehouse, _supply) do
-    # Chosen from what is actually on the shelf now rather than picked before
-    # the missions ran and spent by them — the first version of this drew down
-    # three lots that two closed missions had already emptied, and wrote one
-    # product short instead of three.
+    # Chosen from what is on the shelf after the missions ran, not before.
     StockSnapshot
     |> where([s], s.location_id == ^warehouse.id and s.quantity > 100 and not is_nil(s.box_id))
     |> order_by([s], asc: s.lot_id)
@@ -837,7 +731,6 @@ defmodule EstoqueOS.DemoData do
     |> select([s], %{lot_id: s.lot_id, box_id: s.box_id, quantity: s.quantity})
     |> Repo.all()
     |> Enum.map(fn row ->
-      # Down to a tenth, which is under any plausible minimum for a mission.
       keep = row.quantity |> Decimal.mult(Decimal.new("0.1")) |> Decimal.round(0)
 
       post(%{
@@ -858,18 +751,10 @@ defmodule EstoqueOS.DemoData do
     |> Enum.count(&match?({:ok, _}, &1))
   end
 
-  ## Counts
-
-  # Until a box has been counted, every position on the stock screen reads
-  # "presumido · nunca contada" — and a mark that is on every row is a mark
-  # that tells you nothing. The screen's claim is that it separates what was
-  # counted from what is inherited, and it cannot demonstrate that claim
-  # without both.
-  #
-  # Written straight to the column: `mark_box_verified/1` stamps *now*, and
-  # "counted 48 days ago" is the case that matters — it is what turns a
-  # verified balance back into a presumed one. The 30-day line is
-  # `StockLive.Index`'s own; these dates straddle it on purpose.
+  # Without some counted boxes every row reads "presumido · nunca contada" and
+  # the mark tells nothing. Written straight to the column because
+  # `mark_box_verified/1` stamps now; these dates straddle `StockLive.Index`'s
+  # 30-day line on purpose.
   #
   #   PR05 PR06 PR07  counted in the last fortnight   → verified, no mark
   #   PR08 PR09       counted before the last mission → "presumido desde ..."
@@ -885,8 +770,6 @@ defmodule EstoqueOS.DemoData do
     end
     |> length()
   end
-
-  ## Helpers
 
   defp post(attrs), do: Inventory.post_transaction(attrs)
 

@@ -1,24 +1,12 @@
 defmodule EstoqueOSWeb.TransitLive.Index do
   @moduledoc """
-  What is on the road right now, and who has it.
-
-  The question this exists for is one somebody asks on the phone: *quem está com
-  a carga?* Before the shipment was a record, the ledger could answer only that
-  some quantity sat at a location called Trânsito — one bucket, so two loads
-  travelling at once were indistinguishable, and nothing said with whom, since
-  when, or expected where.
-
-  Oldest first, deliberately. A load that left three weeks ago is the one worth a
-  call; sorting by newest would bury it under this morning's.
+  What is on the road right now, and who has it. Oldest first, deliberately: a
+  load out for three weeks is the one worth a call.
   """
 
   use EstoqueOSWeb, :live_view
 
-  @doc """
-  Events a viewer may send. Everything else on this screen is refused.
-
-  Reporting only.
-  """
+  # Events a viewer may send; everything else is refused. Reporting only.
   def viewer_events, do: ~w(filter)
 
   alias EstoqueOS.Catalog
@@ -91,9 +79,6 @@ defmodule EstoqueOSWeb.TransitLive.Index do
 
           <:col :let={row} label={gettext("Carrier")}>
             <span :if={row.shipment.carrier}>{Catalog.Carrier.name(row.shipment.carrier)}</span>
-            <!-- Said out loud rather than left blank: a load nobody was hired to
-                 carry is a normal thing here, and an empty cell reads as missing
-                 data. -->
             <span :if={is_nil(row.shipment.carrier)} class="text-base-content/70">
               {gettext("carried by the team")}
             </span>
@@ -109,10 +94,6 @@ defmodule EstoqueOSWeb.TransitLive.Index do
             </p>
           </:col>
 
-          <!-- Where the load is, which is not the same question as where it is
-               going. With a carrier it sits in transit until somebody at the
-               other end says it landed; driven by the team, leaving and being
-               there were one act and there is nothing to confirm. -->
           <:col :let={row} label={gettext("Where it is")}>
             <span :if={row.in_transit?} class="badge badge-warning badge-sm">
               {gettext("on the road")}
@@ -121,9 +102,7 @@ defmodule EstoqueOSWeb.TransitLive.Index do
               {gettext("delivered")}
             </span>
 
-            <!-- Always rendered, hidden when it does not apply: a button that
-                 appears on some rows changes their height, and a row that grows
-                 when it is confirmed sends the next tap to the wrong load. -->
+            <%!-- Always rendered, `invisible` when not applicable: a row that grows on confirm sends the next tap to the wrong load. --%>
             <div class={["mt-1", not row.in_transit? && "invisible"]}>
               <.write_gate may={@role_may_write?} allowed={@controls_enabled?}>
                 <.button
@@ -139,9 +118,6 @@ defmodule EstoqueOSWeb.TransitLive.Index do
             </div>
           </:col>
 
-          <!-- The paper the carrier asks for, from the load it is about. Always
-               rendered so the row keeps its height, and only a writer gets it:
-               filling one in is an act, not a reading. -->
           <:col :let={row} label={gettext("Declaration")}>
             <.write_gate may={@role_may_write?} allowed={@controls_enabled?}>
               <.button navigate={~p"/shipments/#{row.shipment.id}/declaracao"} class="btn-sm">
@@ -154,9 +130,7 @@ defmodule EstoqueOSWeb.TransitLive.Index do
             <span class={row.late? && "text-error font-medium"}>
               {date(row.shipment.expected_arrival)}
             </span>
-            <!-- Always rendered, hidden when it does not apply: a warning that
-                 appears on some rows changes their height, and this table is
-                 read down a column. -->
+            <%!-- Always rendered, `invisible` when not applicable, so rows keep their height. --%>
             <p class={["text-sm text-error", not row.late? && "invisible"]}>
               {gettext("overdue")}
             </p>
