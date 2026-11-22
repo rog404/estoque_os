@@ -79,7 +79,7 @@ defmodule EstoqueOS.MixProject do
       {:phoenix_live_reload, "~> 1.2", only: :dev},
       {:phoenix_live_view, "~> 1.2.0"},
       {:lazy_html, ">= 0.1.0", only: :test},
-      {:phoenix_live_dashboard, "~> 0.8.3"},
+      {:phoenix_live_dashboard, "~> 0.9"},
       {:esbuild, "~> 0.10", runtime: Mix.env() == :dev},
       {:tailwind, "~> 0.5", runtime: Mix.env() == :dev},
       {:heroicons,
@@ -105,7 +105,7 @@ defmodule EstoqueOS.MixProject do
       {:sweet_xml, "~> 0.7"},
       {:elixlsx, "~> 0.6"},
       {:xlsx_reader, "~> 0.8"},
-      {:dns_cluster, "~> 0.2.0"},
+      {:dns_cluster, "~> 0.3"},
       {:bandit, "~> 1.5"},
       # The ledger is UTC throughout — the one timezone with no ambiguity to
       # store. This is what turns it back into a wall clock in São Paulo when
