@@ -419,8 +419,23 @@ defmodule EstoqueOS.Reports do
     code = String.upcase(row.box)
 
     case Repo.one(from b in Box, where: fragment("upper(?)", b.code) == ^code) do
-      nil -> %Box{} |> Box.changeset(%{code: code, location_id: location.id}) |> Repo.insert()
-      box -> {:ok, box}
+      nil ->
+        %Box{} |> Box.changeset(%{code: code, location_id: location.id}) |> Repo.insert()
+
+      %Box{location_id: location_id} = box when location_id == location.id ->
+        {:ok, box}
+
+      # A box the ledger has somewhere else cannot take entries here: the same
+      # stock would then count twice, by box location there and by these
+      # entries here — the state inventory.ex calls unrecoverable by recount.
+      %Box{} = box ->
+        error(
+          row,
+          gettext("box \"%{code}\" is at %{location} — move it before counting it here",
+            code: code,
+            location: Repo.get!(Location, box.location_id).name
+          )
+        )
     end
   end
 
