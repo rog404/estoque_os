@@ -262,7 +262,16 @@ defmodule EstoqueOS.Inventory.Locations do
   def get_box!(id), do: Box |> Repo.get!(id) |> Repo.preload(:location)
 
   @doc "The box wearing this code, anywhere, or nil."
-  def get_box_by_code(code), do: Repo.get_by(Box, code: String.trim(to_string(code)))
+  def get_box_by_code(code) do
+    case normalize_code(code) do
+      "" -> nil
+      code -> Repo.get_by(Box, code: code)
+    end
+  end
+
+  # Box.changeset stores every code trimmed and upcased, so a lookup that keeps
+  # the operator's lowercase misses the box it then collides trying to create.
+  defp normalize_code(code), do: code |> to_string() |> String.trim() |> String.upcase()
 
   def create_box(attrs), do: %Box{} |> Box.changeset(attrs) |> Repo.insert()
 
@@ -297,7 +306,7 @@ defmodule EstoqueOS.Inventory.Locations do
   meant it. Calling again with the default `create: true` is the yes.
   """
   def resolve_box(code, location_id, opts \\ []) do
-    case String.trim(to_string(code)) do
+    case normalize_code(code) do
       "" ->
         {:ok, nil}
 

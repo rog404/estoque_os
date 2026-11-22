@@ -45,6 +45,22 @@ defmodule EstoqueOS.Inventory.BoxMovementTest do
     }
   end
 
+  # Codes are stored upcased; what the operator types on a phone is not.
+  describe "box lookup by code" do
+    test "resolve_box/3 finds the box whatever the case typed", %{
+      warehouse: warehouse,
+      box: box
+    } do
+      assert {:ok, found} = Locations.resolve_box("bm01", warehouse.id)
+      assert found.id == box.id
+    end
+
+    test "get_box_by_code/1 ignores case and padding", %{box: box} do
+      assert Locations.get_box_by_code("  bm01 ").id == box.id
+      assert Locations.get_box_by_code("") == nil
+    end
+  end
+
   describe "move_box/3" do
     test "moves the contents with the box", %{box: box, annex: annex, warehouse: warehouse} do
       assert {:ok, %{box: moved, transaction: transaction}} =
