@@ -1,16 +1,8 @@
 defmodule EstoqueOS.DatabaseSSLTest do
   @moduledoc """
-  What the production database connection demands of the certificate on the
-  other end.
-
-  `config/runtime.exs` is the only place in this repository that decides it, it
-  runs nowhere but a release boot, and getting it wrong fails in two directions
-  that both cost a deploy: too strict and the app cannot reach its database at
-  all, too loose and the connection is an encrypted conversation with whoever
-  answered.
-
-  So the file is read here, in each of its four modes, and asked what it
-  produced. Not a mock — `Config.Reader` evaluates the real file.
+  What the production database connection demands of the certificate.
+  `config/runtime.exs` only runs at release boot, so `Config.Reader` evaluates
+  the real file here in each of its four modes.
   """
 
   # Reads and writes real environment variables.
@@ -60,7 +52,6 @@ defmodule EstoqueOS.DatabaseSSLTest do
     assert ssl[:cacerts] != nil
     assert ssl[:server_name_indication] == ~c"db.example.com"
 
-    # The real check, not a stand-in that says yes.
     assert ssl[:customize_hostname_check][:match_fun] ==
              :public_key.pkix_verify_hostname_match_fun(:https)
   end
@@ -72,9 +63,8 @@ defmodule EstoqueOS.DatabaseSSLTest do
       assert ssl[:verify] == :verify_peer
       assert ssl[:cacerts] != nil
 
-      # This is the whole of verify-ca: any name the certificate carries is
-      # accepted, because Render's internal `dpg-…-a` endpoint answers with a
-      # certificate issued for `*.virginia-postgres.render.com`.
+      # Render's internal `dpg-…-a` endpoint answers with a certificate issued
+      # for `*.virginia-postgres.render.com`, so any name must be accepted.
       assert ssl[:customize_hostname_check][:match_fun].(:anything, :at_all)
     end
 
@@ -84,9 +74,7 @@ defmodule EstoqueOS.DatabaseSSLTest do
       assert out =~ "DATABASE_SSL_VERIFY=ca"
       assert out =~ "hostname is not"
 
-      # Nothing on stderr, which is where `IO.warn` writes — and `IO.warn`
-      # prints a stacktrace under the message, so in a deploy log it reads as an
-      # exception during boot. A setting somebody chose is not a fault.
+      # Not `IO.warn`: its stacktrace reads as a boot exception in the deploy log.
       assert err == ""
     end
 
@@ -107,10 +95,8 @@ defmodule EstoqueOS.DatabaseSSLTest do
 
     {_out, err} = say(%{"DATABASE_SSL_VERIFY" => "none"})
 
-    # On stderr every boot, because it is a warning. But one line and no
-    # stacktrace: `IO.warn` prints one, and this is the standing configuration
-    # on Render rather than a lapse somebody is about to correct — a line that
-    # reads as an exception on every boot is how a real crash goes unnoticed.
+    # A warning on stderr, but one line and no `IO.warn` stacktrace: this is the
+    # standing configuration on Render, and a fake exception every boot hides a real one.
     assert err =~ "not being checked at all"
     refute err =~ "erl_eval"
     assert length(String.split(String.trim(err), "\n")) == 1
@@ -123,22 +109,18 @@ defmodule EstoqueOS.DatabaseSSLTest do
     assert err =~ "in the clear"
   end
 
-  # The options belong in `:ssl`. `ssl: true` beside a separate `:ssl_opts` is
-  # the older spelling, and Postgrex logged a deprecation for it twice on every
-  # boot — two lines of noise in the log a real error has to be found in.
+  # Postgrex logs a deprecation on every boot for `ssl: true` beside `:ssl_opts`.
   test "never uses the deprecated :ssl_opts" do
     for env <- [%{}, %{"DATABASE_SSL_VERIFY" => "ca"}, %{"DATABASE_SSL_VERIFY" => "none"}] do
       refute Keyword.has_key?(quietly(env), :ssl_opts)
     end
   end
 
-  # The config, with whatever the file says on its way out swallowed.
   defp quietly(env) do
     {{config, _out}, _err} = with_io(:stderr, fn -> with_io(fn -> repo_config(env) end) end)
     config
   end
 
-  # The other half: what it said, on each device, and nothing about the config.
   defp say(env) do
     {{_config, out}, err} = with_io(:stderr, fn -> with_io(fn -> repo_config(env) end) end)
     {out, err}

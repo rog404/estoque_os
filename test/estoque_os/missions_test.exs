@@ -1,12 +1,10 @@
 defmodule EstoqueOS.MissionsTest do
   @moduledoc """
-  A mission is the unit the coordinator answers for, and the four questions asked
-  about it are different questions: what went out, what came back, what was used,
-  and what was handed to the hospital at the end. Donated is not consumed — the
-  goods still exist, they just belong to somebody else now.
+  A mission answers four questions: what went out, came back, was used, and was
+  handed to the hospital. Donated is not consumed: the goods still exist.
 
-  Movements are stamped when they happen rather than matched by date later. A
-  mission whose dates shift after the fact must not silently reassign history.
+  Movements are stamped when they happen, not matched by date later, so shifting
+  a mission's dates must not reassign history.
   """
 
   use EstoqueOS.DataCase, async: true
@@ -52,7 +50,6 @@ defmodule EstoqueOS.MissionsTest do
     %{warehouse: warehouse, site: site, mission: mission, gauze: gauze, lot: lot, box: box}
   end
 
-  # Only boxes travel, so the trip sends the box the stock sits in.
   defp send_out(%{warehouse: warehouse, site: site, box: box}) do
     {:ok, result} =
       Outbound.load_out(%{
@@ -113,8 +110,7 @@ defmodule EstoqueOS.MissionsTest do
     end
 
     test "dates do not gate it", %{site: site, mission: mission} do
-      # A load-out gets prepared before the team flies, and a box comes home a
-      # week after it was due. Both must land on this mission.
+      # A load-out is prepared before the flight and a box can come home late.
       {:ok, _} =
         Missions.update_mission(mission, %{
           starts_on: Date.add(Date.utc_today(), 30),
@@ -147,7 +143,6 @@ defmodule EstoqueOS.MissionsTest do
           ends_on: Date.add(Date.add(Date.utc_today(), -29), 7)
         })
 
-      # Trips at one place cannot overlap, so the open one is always the latest.
       assert Missions.for_location(site.id).id == open.id
     end
 
@@ -198,7 +193,6 @@ defmodule EstoqueOS.MissionsTest do
          %{mission: mission, site: site, warehouse: warehouse, lot: lot} = context do
       send_out(context)
 
-      # Used during the mission.
       {:ok, _} =
         Outbound.issue(context.gauze.id, 10, %{
           location_id: site.id,
@@ -206,7 +200,6 @@ defmodule EstoqueOS.MissionsTest do
           destination: "pacu"
         })
 
-      # Handed to the hospital at the end. Not consumed — it still exists.
       {:ok, _} =
         Outbound.issue(context.gauze.id, 5, %{
           location_id: site.id,
@@ -238,7 +231,6 @@ defmodule EstoqueOS.MissionsTest do
       assert Decimal.equal?(line.consumed, Decimal.new(10))
       assert Decimal.equal?(line.donated, Decimal.new(5))
 
-      # 100 out, 25 back, 10 used, 5 given away: 60 still sitting at the site.
       assert Decimal.equal?(line.unaccounted, Decimal.new(60))
       assert Decimal.equal?(panel.totals.sent, Decimal.new(100))
       assert Decimal.equal?(panel.still_there, Decimal.new(60))
@@ -256,7 +248,6 @@ defmodule EstoqueOS.MissionsTest do
 
       panel = Missions.panel(Missions.get_mission!(context.mission.id))
 
-      # 90 are still sitting at the mission site with nothing said about them.
       assert [line] = panel.lines
       assert Decimal.equal?(line.unaccounted, Decimal.new(90))
       assert Decimal.equal?(panel.still_there, Decimal.new(90))
@@ -307,8 +298,7 @@ defmodule EstoqueOS.MissionsTest do
 
       panel = Missions.panel(Missions.get_mission!(closed.id))
 
-      # The flight is when the flight is. A box landing three days after the trip
-      # closed must not read as never having come back.
+      # A box landing after the trip closed must not read as never returned.
       assert Decimal.equal?(panel.totals.returned, Decimal.new(60))
     end
 
@@ -349,7 +339,6 @@ defmodule EstoqueOS.MissionsTest do
           destination: "pacu"
         })
 
-      # Straight on to the next city without coming home.
       {:ok, _} =
         Outbound.load_out(%{
           source_location_id: site.id,
@@ -362,8 +351,7 @@ defmodule EstoqueOS.MissionsTest do
       first_panel = Missions.panel(Missions.get_mission!(first.id))
       second_panel = Missions.panel(Missions.get_mission!(second.id))
 
-      # 100 arrived, 10 used, 90 went on. Nothing is unaccounted for — the goods
-      # are not lost, they are at the next mission.
+      # The 90 that went on are at the next mission, not unaccounted for.
       assert Decimal.equal?(first_panel.totals.sent, Decimal.new(100))
       assert Decimal.equal?(first_panel.totals.consumed, Decimal.new(10))
       assert Decimal.equal?(first_panel.totals.handed_on, Decimal.new(90))
@@ -426,7 +414,7 @@ defmodule EstoqueOS.MissionsTest do
     end
 
     test "refuses a duplicate name", %{} do
-      # Somewhere else, so the name is the only thing that can be wrong.
+      # Elsewhere, so the name is the only thing that can be wrong.
       elsewhere = location_fixture(%{name: "Missão Outra", kind: "mission_site"})
 
       assert {:error, changeset} =
@@ -457,8 +445,6 @@ defmodule EstoqueOS.MissionsTest do
     test "allows the same dates somewhere else — even another country", %{warehouse: _w} do
       abroad = location_fixture(%{name: "Missão Cabo Delgado", kind: "mission_site"})
 
-      # Nothing about a mission is specific to one country: it is a place and a
-      # pair of dates, and the operation can be in two of them at once.
       assert {:ok, _} =
                Missions.create_mission(%{
                  name: "Cabo Delgado 2026/1",
@@ -485,8 +471,6 @@ defmodule EstoqueOS.MissionsTest do
     end
 
     test "a later trip at the same place is fine once the dates clear", %{site: site} do
-      # Every trip is bounded now, so a place is only blocked for the days it is
-      # actually occupied. A year later is free.
       assert {:ok, _} =
                Missions.create_mission(%{
                  name: "Tefé 2027/1",
@@ -501,8 +485,8 @@ defmodule EstoqueOS.MissionsTest do
     end
 
     test "the database refuses it even when two are created at once", %{site: site} do
-      # The Elixir check cannot see a concurrent insert; the exclusion constraint
-      # is the actual guarantee. Bypassing the changeset proves it is there.
+      # The Elixir check cannot see a concurrent insert; bypass the changeset to
+      # prove the exclusion constraint is the real guarantee.
       assert_raise Postgrex.Error, ~r/missions_must_not_overlap_at_a_place/, fn ->
         Repo.insert_all("missions", [
           %{
@@ -553,9 +537,8 @@ defmodule EstoqueOS.MissionsTest do
       assert lot_id == soon_lot.id
       assert Decimal.equal?(quantity, Decimal.new(40))
 
-      # The gauze travelled in the same box and is at the same place. It expires
-      # in 2028, so flying it home costs nothing — suggesting it would train the
-      # coordinator to ignore the panel.
+      # The gauze is at the site too but expires in 2028; suggesting it would
+      # train the coordinator to ignore the panel.
       refute Enum.any?(candidates, &(&1.product == "Gaze estéril"))
       assert site.id == mission.location_id
     end
@@ -580,16 +563,14 @@ defmodule EstoqueOS.MissionsTest do
           ]
         })
 
-      # No load-out: the box is still home, where the warehouse's own expiry
-      # alert already covers it. A mission cannot donate what it does not have.
+      # No load-out: the box is still home, covered by the warehouse expiry alert.
       assert Missions.donation_candidates(mission) == []
     end
 
     test "honours the per-product window", context do
       %{warehouse: warehouse, mission: mission, box: box} = context
 
-      # Default window is 90 days. This one is 150 days out, so it is only a
-      # candidate because the product asks for more warning than the rest.
+      # 150 days out is past the 90-day default window; only the override makes it a candidate.
       patient = product_fixture(%{name: "Insulina", expiry_alert_days_override: 200})
 
       patient_lot =

@@ -2,15 +2,11 @@ defmodule EstoqueOS.Receiving do
   @moduledoc """
   Checking what physically arrived against what the invoice promised.
 
-  Posting an invoice books the quantities the supplier says they sent. The
-  conference is what turns that promise into a fact: each line is counted, the
-  difference is posted as an adjustment with a reason, and the goods are put
-  into a box — which is when a balance stops being presumed and becomes
-  verified.
+  Posting books what the supplier says they sent; the conference turns that
+  into a fact: lines are counted, differences posted as adjustments with a
+  reason, and goods put in a box (a balance becomes verified, not presumed).
 
-  Counting is allowed to be partial. In a mission storage room a full audit is
-  fiction, so lines nobody counted stay untouched rather than being recorded
-  as zero.
+  Counting may be partial: uncounted lines stay untouched, not recorded as zero.
   """
 
   use Gettext, backend: EstoqueOSWeb.Gettext
@@ -28,9 +24,9 @@ defmodule EstoqueOS.Receiving do
   @doc """
   Opens a conference round for an invoice.
 
-  Only a posted invoice can be conferred: before that there is nothing in
-  stock to disagree with. A second round is allowed — the warehouse recounts
-  when a divergence smells like a miscount.
+  Only a posted invoice can be conferred (nothing in stock to disagree with
+  before that). A further round is allowed when a divergence smells like a
+  miscount.
   """
   def start_receipt(%Invoice{} = invoice, attrs) do
     invoice = Repo.preload(invoice, items: [:product])
@@ -75,8 +71,6 @@ defmodule EstoqueOS.Receiving do
     Repo.one(from r in Receipt, where: r.invoice_id == ^invoice.id and r.status == "draft")
   end
 
-  ## Reading
-
   def get_receipt!(id), do: Receipt |> Repo.get!(id) |> load_receipt()
 
   def get_open_receipt(%Invoice{} = invoice) do
@@ -89,17 +83,13 @@ defmodule EstoqueOS.Receiving do
   @doc """
   Deliveries still waiting to be checked, newest invoice first.
 
-  The list the operator starts their day from. Until this existed the only way
-  into a conference was the invoice screen, which sits behind the money gate —
-  so the person whose job this is could not reach it.
+  The operator's starting list, reachable without the invoice screen's money gate.
 
-  A row is either a round somebody has open, with how far it got, or a posted
-  invoice nobody has begun. An invoice whose conference is closed drops off:
-  a recount is a deliberate act, started from the invoice by someone who read
-  the divergence.
+  A row is an open round (with progress) or a posted invoice nobody has begun.
+  A closed conference drops off: a recount is deliberate, started from the invoice.
 
-  Deliberately carries no amounts. This is read by the role that must not see
-  them, and the safest number to hide is the one never sent.
+  Carries no amounts: the role reading this must not see them, and the safest
+  number to hide is the one never sent.
   """
   def list_pending do
     invoices =
@@ -161,9 +151,7 @@ defmodule EstoqueOS.Receiving do
     |> Enum.map(&load_receipt/1)
   end
 
-  # Lines come back in a fixed order. Without the `order_by` Postgres returns
-  # them however the plan happened to produce them, so recording one line could
-  # reshuffle the rest — the operator typed into row four and watched it move.
+  # Fixed line order: without `order_by` recording one line reshuffles the rest.
   defp load_receipt(receipt) do
     lines = from(l in ReceiptLine, order_by: [asc: l.id], preload: [:box, invoice_item: :product])
 
@@ -193,12 +181,9 @@ defmodule EstoqueOS.Receiving do
   @doc """
   Lines nobody has counted at all.
 
-  Deliberately not "lines with no count of record". A line whose first count
-  disagreed with the invoice has no count of record either, and lumping the two
-  together made a four-line invoice report "4 not counted" and "1 to count
-  again" side by side — five jobs on four lines. They are different jobs: one
-  has not been visited, the other has been visited and is waiting for somebody
-  to go back to the shelf. See `awaiting_recount_lines/1`.
+  Not "lines with no count of record": a line whose first count disagreed has
+  none either, but it is a different job (visited, waiting for a return to the
+  shelf). See `awaiting_recount_lines/1`.
   """
   def uncounted_lines(%Receipt{} = receipt) do
     Enum.filter(receipt.lines, &(is_nil(&1.counted_quantity) and ReceiptLine.attempts(&1) == 0))
@@ -209,27 +194,18 @@ defmodule EstoqueOS.Receiving do
     Enum.filter(receipt.lines, &ReceiptLine.awaiting_recount?/1)
   end
 
-  ## Counting
-
   @doc """
   How many times one line is counted before a number that disagrees with the
   invoice is believed.
 
-  Three, decided with Rogerio on 2026-08-20. The first disagreement is far more
-  often a miscount than a loss, and the cheapest moment to tell them apart is
-  while the operator is still holding the box. The second disagreement could
-  still be the same miscount repeated — the eye that read "27" once reads it
-  again. By the third the number is the number.
+  Three: the first disagreement is usually a miscount, best told apart while
+  the operator still holds the box; the second could repeat the same misreading;
+  by the third the number is the number.
   """
   def counts_required, do: 3
 
   @doc """
   Records one count of a line, and decides whether to believe it.
-
-  This is the rule the conference was missing. It used to take whatever was
-  typed and book it, so the logistics operator could record any quantity at all
-  against an invoice that said something else — the exact hole
-  `BoxLive.Count` was built to close for box counts, still open here.
 
   Returns:
 
@@ -239,12 +215,10 @@ defmodule EstoqueOS.Receiving do
       Nothing is booked; the trail is kept and the line goes back to asking.
     * `{:error, reason}`.
 
-  The box is written either way. The operator put the goods somewhere, and that
-  is true regardless of how the arithmetic turns out.
+  The box is written either way: the goods are where the operator put them.
 
-  Nothing here reaches the ledger — a conference writes when it closes — so a
-  count that is not believed costs an edit to a working document, not an
-  adjustment filed forever.
+  Nothing here reaches the ledger (a conference writes when it closes), so an
+  unbelieved count costs an edit, not a permanent adjustment.
   """
   def record_count(%ReceiptLine{} = line, attrs) do
     attrs = Map.new(attrs, fn {key, value} -> {to_string(key), value} end)
@@ -253,11 +227,9 @@ defmodule EstoqueOS.Receiving do
       nil ->
         {:error, :invalid_quantity}
 
-      # Checked here rather than left to the changeset. A negative count is not
-      # a divergence to be recounted, it is a typo, and storing it as an attempt
-      # would spend one of the three counts on a number that cannot be a count:
-      # `counted_quantity` is only written on the last attempt, so the column
-      # constraint that refuses it would not have been reached until then.
+      # Checked here, not in the changeset: a negative is a typo, and as an
+      # attempt it would spend one of the three counts (`counted_quantity` is
+      # only written on the last, so the constraint would not fire until then).
       counted when is_struct(counted, Decimal) ->
         if Decimal.negative?(counted) do
           {:error, :invalid_quantity}
@@ -297,18 +269,12 @@ defmodule EstoqueOS.Receiving do
   @doc """
   Puts one line back to not-counted, so it can be counted again.
 
-  A separate function and not `update_line(line, %{counted_quantity: nil})`,
-  because `normalize/1` drops a nil count on purpose: an empty field on a form
-  that saves four values at once means "I did not touch this", never "the count
-  I recorded is wrong". Clearing has to be asked for in as many words.
+  Not `update_line(line, %{counted_quantity: nil})`: `normalize/1` drops a nil
+  count on purpose, since an empty form field means "untouched", not "wrong".
 
-  Nothing has reached the ledger at this point — a conference writes when it
-  closes — so this is an edit to a working document and not an adjustment. The
-  box is kept: the operator mistyped a quantity, not the shelf they put it on.
-
-  The counts already made are dropped with it. Keeping them would let the next
-  single count land as the third attempt and be believed on the spot, which is
-  the rule in `record_count/2` deleting itself.
+  The box is kept (the quantity was mistyped, not the shelf). The earlier
+  attempts are dropped too, or the next single count would land as the third
+  and be believed on the spot.
   """
   def uncount_line(%ReceiptLine{} = line) do
     line
@@ -323,8 +289,6 @@ defmodule EstoqueOS.Receiving do
     |> Enum.reject(fn {key, value} -> key == "counted_quantity" and is_nil(value) end)
     |> Map.new()
   end
-
-  ## Completing
 
   @doc """
   Closes the conference and writes what it found into the ledger.
@@ -357,11 +321,9 @@ defmodule EstoqueOS.Receiving do
         reason_code: "count_correction",
         user_id: opts[:user_id],
         invoice_id: receipt.invoice_id,
-        # What raises this on the manager's overview. A line counted three times
-        # that still disagrees with the invoice is either goods that never
-        # arrived or an invoice that is wrong, and neither is the operator's to
-        # close alone. Same flag the box count uses, so there is one list of
-        # counts somebody has to look at rather than two.
+        # Raises this on the manager's overview: a thrice-counted disagreement is
+        # missing goods or a wrong invoice, not the operator's to close. Same flag
+        # as the box count, so there is one list.
         review_reason: review_reason(counted),
         notes:
           opts[:notes] ||
@@ -403,8 +365,7 @@ defmodule EstoqueOS.Receiving do
   Counted lines that were counted more than once and still disagree with the
   invoice.
 
-  Read by the conference screen, to say so on the line, and by the manager's
-  overview through the transaction flagged at the close.
+  Read by the conference screen and, via the flagged transaction, the manager's overview.
   """
   def diverged_after_recounts(%Receipt{} = receipt) do
     Enum.filter(receipt.lines, &ReceiptLine.diverged_after_recounts?/1)
@@ -418,14 +379,10 @@ defmodule EstoqueOS.Receiving do
     end)
   end
 
-  # Put away first, then correct: the correction has to land where the goods
-  # actually are, or a recount would fix the wrong position.
-  #
-  # Both passes reconcile per *lot*, never per line. Suppliers do split one
-  # item across two invoice lines (same product, same lot), and two lines
-  # reconciling independently each see the whole ledger balance — the boxing
-  # would move it twice and each correction would subtract the other line's
-  # goods from its own count.
+  # Put away first, then correct, so the correction lands where the goods are.
+  # Both passes reconcile per *lot*, never per line: suppliers split one item
+  # across two lines (same lot), and independent reconciliation would move the
+  # balance twice and subtract each line's goods from the other.
   defp boxing_entries(lines, receipt) do
     lines
     |> lot_groups()
@@ -450,11 +407,9 @@ defmodule EstoqueOS.Receiving do
     end)
   end
 
-  # The count is reconciled against what the ledger believes *right now*, not
-  # against the invoice. On a first round the two coincide; on a recount they
-  # do not, and only the ledger balance can be corrected into agreement with
-  # what the warehouse just counted. The invoice figure stays on the line as
-  # `expected_quantity` — that is what the divergence report tells the supplier.
+  # Reconcile against the ledger *now*, not the invoice: they differ on a
+  # recount, and only the ledger balance can be corrected. The invoice figure
+  # stays as `expected_quantity` for the divergence report to the supplier.
   defp correction_entries(lines, receipt) do
     lines
     |> lot_groups()
@@ -497,9 +452,8 @@ defmodule EstoqueOS.Receiving do
     |> Enum.reject(&is_nil/1)
   end
 
-  # One reconciliation unit: a lot, with the counted quantities summed per box
-  # (the nil box is what the lines say stays loose). Sorted so entries land in
-  # a stable order.
+  # One reconciliation unit: a lot, counts summed per box (nil box is loose).
+  # Sorted for a stable entry order.
   defp lot_groups(lines) do
     lines
     |> Enum.group_by(&lot_id/1)
@@ -515,10 +469,8 @@ defmodule EstoqueOS.Receiving do
     end)
   end
 
-  # How much of the loose balance goes into which box. What the lines counted
-  # loose stays loose; the rest is put away — each box's shortfall first, any
-  # remainder into the last box, so nothing an operator says they boxed is left
-  # on the floor of the ledger.
+  # What the lines counted loose stays loose; the rest is put away, each box's
+  # shortfall first and any remainder into the last box.
   defp boxing_moves(group, receipt) do
     boxes = group.counted_by_box |> Map.delete(nil) |> Map.keys() |> Enum.sort()
 

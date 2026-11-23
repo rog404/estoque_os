@@ -94,8 +94,7 @@ defmodule EstoqueOSWeb.UserLive.Index do
     """
   end
 
-  # The labels already spoken elsewhere (the "view as" menu) — reused rather
-  # than retranslated under a second msgid that could drift from this one.
+  # Reuses the "view as" labels, not a second msgid that could drift.
   defp role_label(role), do: EstoqueOSWeb.ViewAsController.label(role)
 
   @impl true

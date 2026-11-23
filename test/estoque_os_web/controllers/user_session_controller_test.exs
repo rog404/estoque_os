@@ -20,7 +20,6 @@ defmodule EstoqueOSWeb.UserSessionControllerTest do
       assert get_session(conn, :user_token)
       assert redirected_to(conn) == ~p"/"
 
-      # Now do a logged in request and assert on the menu
       conn = get(conn, ~p"/")
       response = html_response(conn, 200)
       assert response =~ user.email
@@ -96,8 +95,7 @@ defmodule EstoqueOSWeb.UserSessionControllerTest do
           })
         end)
 
-      # Checking the password first would leak, through timing, whether the guess
-      # was right. The wait is answered before anything is checked.
+      # Checking the password first would leak the guess through timing.
       conn =
         post(conn, ~p"/users/log-in", %{
           "user" => %{"email" => user.email, "password" => valid_user_password()}
@@ -120,7 +118,6 @@ defmodule EstoqueOSWeb.UserSessionControllerTest do
       assert get_session(conn, :user_token)
       assert redirected_to(conn) == ~p"/"
 
-      # Now do a logged in request and assert on the menu
       conn = get(conn, ~p"/")
       response = html_response(conn, 200)
       assert response =~ user.email
@@ -144,7 +141,6 @@ defmodule EstoqueOSWeb.UserSessionControllerTest do
 
       assert Accounts.get_user!(user.id).confirmed_at
 
-      # Now do a logged in request and assert on the menu
       conn = get(conn, ~p"/")
       response = html_response(conn, 200)
       assert response =~ user.email

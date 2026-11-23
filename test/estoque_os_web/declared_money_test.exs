@@ -1,11 +1,8 @@
 defmodule EstoqueOSWeb.DeclaredMoneyTest do
   @moduledoc """
-  Two rules that look contradictory and are not: the ledger says "no value
-  informed" by keeping NULL, and a document that must carry a figure for every
-  line declares the symbolic minimum.
-
-  The dash and the centavo answer different questions, and the point of these
-  tests is that the centavo never leaks into the answer the dash belongs to.
+  The ledger keeps NULL for "no value informed"; a document that needs a figure
+  per line declares the symbolic minimum. The centavo must never leak into the
+  reporting surfaces, which show a dash for unknown.
   """
 
   use ExUnit.Case, async: true
@@ -21,8 +18,6 @@ defmodule EstoqueOSWeb.DeclaredMoneyTest do
   end
 
   test "money/1 still refuses to invent a value" do
-    # The reporting surfaces keep saying "unknown", which is what makes stock
-    # value and average cost trustworthy.
     assert money(nil) == "—"
     assert unit_price(nil) == "—"
   end

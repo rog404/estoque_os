@@ -24,19 +24,14 @@ defmodule EstoqueOS.Inventory do
   @doc """
   Takes goods into stock that arrived without an invoice.
 
-  Donated toys, a box somebody handed over at the door: real stock, no document,
-  no price. It posts `donation_in` because that is what it is — and because the
-  reports already separate that from `purchase_in`, so what was given is never
-  counted as what was bought.
+  Real stock with no document and no price. Posts `donation_in` so reports keep
+  what was given apart from `purchase_in`.
 
-  `unit_cost` is left NULL, deliberately and always. Nobody can price a used
-  donated toy, and a symbolic centavo in the ledger would drag average cost and
-  stock value toward a number nobody paid. The screens that must show a figure
-  declare R$ 0,01 themselves.
+  A donation's `unit_cost` is always NULL: a symbolic centavo would drag average
+  cost and stock value toward a number nobody paid.
 
-  Quantity is in the product's own stock unit. There is no packaging conversion
-  here: an invoice states "2 boxes of 100" and needs a factor, while a person
-  holding the goods counts the things.
+  Quantity is in the product's own stock unit, with no packaging conversion
+  (a person holding the goods counts the things).
   """
   def enter_manually(attrs) do
     product_id = to_id(field(attrs, :product_id))
@@ -54,9 +49,8 @@ defmodule EstoqueOS.Inventory do
     end
   end
 
-  # A box is where it physically is. Writing an entry that puts goods at location
-  # A inside a box that sits at location B makes the same stock count twice — at
-  # A by location and at B by box — and no recount can tell which half is real.
+  # Goods at location A inside a box at location B would count twice (by
+  # location and by box), and no recount could tell which half is real.
   defp box_is_at?(nil, _location_id), do: true
 
   defp box_is_at?(box_id, location_id) do
@@ -93,16 +87,9 @@ defmodule EstoqueOS.Inventory do
     end
   end
 
-  # Where the goods came from, and therefore what they are worth.
-  #
-  # A donation has **no** cost — nil, never zero and never the symbolic cent the
-  # old spreadsheet used, because both poison an average and a stock value
-  # (SPEC §4.7). Reports say "valor não informado" and mean it.
-  #
-  # Goods bought without an invoice are a different animal with the same paperwork:
-  # somebody paid for them, and that price is real. It arrives as either a unit
-  # price or a total — whichever the receipt in the operator's hand happens to
-  # state — and the total is divided by what actually came in.
+  # A donation has **no** cost: nil, never zero or a symbolic cent, which
+  # poison averages and stock value (SPEC §4.7). Goods bought without an invoice
+  # have a real price, given as a unit price or a total (divided by quantity).
   defp origin(attrs, quantity) do
     case field(attrs, :origin) do
       "purchase" -> {"purchase_in", purchase_unit_cost(attrs, quantity)}
@@ -118,9 +105,8 @@ defmodule EstoqueOS.Inventory do
     end
   end
 
-  # A lot number that is already on record for this product is the same lot, not
-  # a second one: two rows for "L-4471" would split the balance and hide half of
-  # it from a recall.
+  # An existing lot number for the product is the same lot: two rows would split
+  # the balance and hide half of it from a recall.
   defp find_or_create_lot(product_id, attrs) do
     number =
       case field(attrs, :lot_number) do
@@ -151,11 +137,9 @@ defmodule EstoqueOS.Inventory do
     end
   end
 
-  # A missing lot number is two different facts, the same way a missing expiry
-  # date is. On gauze it means nobody read the pack; on a blanket a volunteer
-  # brought there is nothing to read, and flagging that fills the review list
-  # with items nobody can ever resolve — which is how the list stops being read.
-  # `products.lot_expected` is what tells them apart.
+  # A missing lot number means "nobody read the pack" for gauze but nothing to
+  # read for a donated blanket; `products.lot_expected` tells them apart so the
+  # review list is not filled with unresolvable items.
   defp lot_expected?(product_id) do
     case Repo.one(from p in Product, where: p.id == ^product_id, select: p.lot_expected) do
       nil -> true
@@ -163,11 +147,8 @@ defmodule EstoqueOS.Inventory do
     end
   end
 
-  # Joining a known lot, the operator may be reading an expiry date off the goods
-  # that the lot never had recorded — that fills a blank and is worth keeping. A
-  # date that disagrees with the one on record is a different matter: one of the
-  # two is wrong, and silently picking either would put the wrong batch in front
-  # of a recall.
+  # A new expiry fills a blank on a known lot; one that disagrees with the
+  # record is a conflict, as silently picking either risks the wrong batch in a recall.
   defp join_lot(%Lot{} = lot, nil), do: {:ok, lot}
   defp join_lot(%Lot{expires_on: same} = lot, same), do: {:ok, lot}
 
@@ -206,9 +187,8 @@ defmodule EstoqueOS.Inventory do
   @doc """
   What an issue took out, in the terms a certificate states.
 
-  `unpriced_lines` is counted rather than hidden: donated goods carry no cost,
-  and a certificate that showed their value as zero would be understating what
-  was handed over.
+  `unpriced_lines` is counted, not hidden: donated goods have no cost and a zero
+  would understate what was handed over.
   """
   def issue_totals(%Transaction{} = transaction) do
     {value, unpriced} =
@@ -234,9 +214,7 @@ defmodule EstoqueOS.Inventory do
   @doc """
   Balance per product at a location, for several products at once.
 
-  Products with nothing there are absent from the map rather than zero, so the
-  caller decides what "none" means; `Map.get(balances, id, Decimal.new(0))` is
-  usually it.
+  Products with nothing there are absent from the map, not zero.
   """
   def balances_by_product(product_ids, location_id) when is_list(product_ids) do
     TransactionEntry
@@ -251,14 +229,11 @@ defmodule EstoqueOS.Inventory do
   @doc """
   Expired stock per product at a location, for several products at once.
 
-  A separate question from `balances_by_product/2` and asked by a different
-  caller: assembling a kit is refused while any of its components has expired
-  stock here (see `EstoqueOS.Kits.assemble/3`), because a kit is sealed and
-  what is inside it stops being visible. Products with nothing expired are
-  absent from the map.
+  Kit assembly is refused while a component has expired stock here
+  (`EstoqueOS.Kits.assemble/3`): a kit is sealed and its contents stop being
+  visible. Products with nothing expired are absent.
 
-  `on_date` defaults to today. Passed in so a caller can ask the question of a
-  date other than now, and so the tests do not have to travel in time.
+  `on_date` defaults to today.
   """
   def expired_balances_by_product(product_ids, location_id, on_date \\ nil)
       when is_list(product_ids) do
@@ -282,15 +257,9 @@ defmodule EstoqueOS.Inventory do
   @doc """
   Everything that is actually at a location, product by product, in stock order.
 
-  The list a person standing in front of the shelf reads. It is deliberately
-  built from what is *there* rather than from the catalog: a product with
-  nothing at this location has no business being offered to somebody about to
-  take goods out of it, and a zero row is an invitation to a write-off that
-  cannot complete.
-
-  `> 0` and not `!= 0` on purpose. A negative balance is a bug or a pending
-  correction, and either way it is not something anyone can pick up and carry
-  away.
+  Built from what is *there*, not from the catalog: a zero row would invite a
+  write-off that cannot complete. `> 0`, not `!= 0`: a negative balance is a bug
+  or pending correction, nothing anyone can carry away.
   """
   def products_at(location_id, opts \\ []) do
     boxes = boxes_by_product_at(location_id)
@@ -314,20 +283,13 @@ defmodule EstoqueOS.Inventory do
     |> Enum.map(&Map.put(&1, :boxes, Map.get(boxes, &1.product_id, [])))
   end
 
-  # Where to physically reach for it. The list said what was at the location and
-  # not where it was, which on a shelf of forty boxes is most of the work.
-  #
-  # A second query rather than an aggregate on the first: the balance that
-  # decides whether a *box* still holds any of a product is a different grouping
-  # from the one that totals the product across the location, and doing both at
-  # once means one of them is wrong.
-  # Which stock the caller may see, passed down from the scope. A screen that
-  # lists "what is here" has to answer it per role, or the marketing person is
-  # offered a surgical product to write off.
+  # Which stock the caller is looking at, passed down from the scope.
   defp maybe_segment(query, nil), do: query
   defp maybe_segment(query, ""), do: query
   defp maybe_segment(query, segment), do: where(query, [_e, _l, p], p.segment == ^segment)
 
+  # Where to physically reach each product. A separate query from the product
+  # totals: whether a *box* still holds a product is a different grouping.
   defp boxes_by_product_at(location_id) do
     TransactionEntry
     |> join(:inner, [e], l in Lot, on: l.id == e.lot_id)
@@ -368,9 +330,7 @@ defmodule EstoqueOS.Inventory do
   What each lot actually cost, averaged over the entries that brought it in and
   weighted by quantity.
 
-  Entries with no cost — donations, where no value was ever informed — are left
-  out rather than counted as zero, which would drag the average toward a price
-  nobody paid.
+  Entries with no cost (donations) are left out, not counted as zero.
   """
   def average_unit_costs do
     TransactionEntry
@@ -385,27 +345,17 @@ defmodule EstoqueOS.Inventory do
   What one unit of a product is worth right now, and how much of the stock that
   figure actually covers.
 
-  The same gauze arrives on three invoices at three prices. This is the single
-  number to put beside it: a **weighted moving average** over the stock on hand,
-  each lot's own average cost weighted by how much of that lot is still here.
-  Not FIFO — the picking is FEFO, so a FIFO cost would describe goods that are
-  not the ones leaving.
+  A **weighted moving average** over stock on hand: each lot's average cost
+  weighted by the quantity still here. Not FIFO, since picking is FEFO and FIFO
+  would describe goods that are not the ones leaving.
 
-  Two things this is careful about, and they are the whole reason it returns a
-  map instead of a number:
+  Donated stock has **no** cost (SPEC §4.7): excluded from the average and
+  reported as `unpriced_quantity` so the caller can attach the caveat.
 
-  Donated stock has **no** cost — nil, never zero (SPEC §4.7). Counting it as
-  zero would drag the average down and quietly understate every value built on
-  it, so it is excluded from the average and reported separately as
-  `unpriced_quantity`. An average over 30% unpriced stock is a number that needs
-  its caveat attached, and the caller cannot attach it without being told.
+  A read-model, never written back to `transaction_entries`, which keep their
+  entry price as the auditor's trail.
 
-  And this is a **read-model**. It is derived on demand and never written back
-  into `transaction_entries`, which keep the price they actually entered at.
-  That is the auditor's trail, and it is the thing this must not touch.
-
-  `average` is nil when nothing on hand has a known cost — which is honest, and
-  different from zero.
+  `average` is nil when nothing on hand has a known cost; that is not zero.
   """
   def average_cost_by_product(product_ids \\ nil) do
     costs = average_unit_costs()
@@ -499,9 +449,8 @@ defmodule EstoqueOS.Inventory do
   Stock positions of a product at a location — lot *and* box — oldest expiry
   first, skipping empty ones.
 
-  Picking has to know the box: at a mission everything is inside boxes, and an
-  entry that forgets which box the goods came out of quietly makes that box's
-  balance wrong.
+  Picking must know the box: an entry that forgets which box the goods came out
+  of makes that box's balance wrong.
   """
   def position_balances(product_id, opts \\ []) do
     TransactionEntry
@@ -531,25 +480,21 @@ defmodule EstoqueOS.Inventory do
   defp maybe_loose_only(query, true), do: where(query, [e], is_nil(e.box_id))
   defp maybe_loose_only(query, _), do: query
 
-  # Lets a caller pin FEFO to one box rather than the whole location — the
-  # write-off screen's "take it from here specifically" override.
+  # Pins FEFO to one box (the write-off screen's override).
   defp maybe_at_box(query, nil), do: query
   defp maybe_at_box(query, id), do: where(query, [e], e.box_id == ^id)
 
-  # And to one lot. FEFO answers "which shirt goes first" with a shrug — a
-  # shirt has no expiry, so the order is by lot id and the person selling knows
-  # better than that: this print run, not the one from two campaigns ago.
+  # Pins to one lot: with no expiry (shirts) FEFO falls back to lot id and the
+  # seller knows better.
   defp maybe_lot(query, nil), do: query
   defp maybe_lot(query, id), do: where(query, [e], e.lot_id == ^id)
 
   @doc """
   How much of a product sits in each box at a location, loose stock last.
 
-  `position_balances/2` answers "from where do I pick" for FEFO; this answers
-  "where do I go stand" for a person conferring a list before they pick
-  anything — grouped by box rather than by lot. `expires_on` is the earliest
-  among whatever lots are in that box, so a caller can still say which one to
-  recommend without a second query.
+  Grouped by box rather than by lot, for conferring before picking
+  (`position_balances/2` is the FEFO pick source). `expires_on` is the earliest
+  among the box's lots.
   """
   def box_quantities(product_id, location_id) do
     TransactionEntry
@@ -574,10 +519,9 @@ defmodule EstoqueOS.Inventory do
 
   Returns `{:ok, picks}` or `{:insufficient_stock, picks, missing}`.
 
-  Deliberately not an `{:error, _}` tuple: this asks a question rather than
-  performing an action, and a short answer with what *is* available is a useful
-  answer. The commands that act on it (`Outbound.issue/3`, `Kits.assemble/3`)
-  translate it into the one error shape the callers handle:
+  Not an `{:error, _}`: this is a question, and a short answer with what *is*
+  available is useful. The commands that act on it (`Outbound.issue/3`,
+  `Kits.assemble/3`) translate it into
   `{:error, {:insufficient_stock, %{missing: missing, item: item_or_nil}}}`.
   """
   def suggest_fefo_positions(product_id, quantity, opts \\ []) do
@@ -718,8 +662,7 @@ defmodule EstoqueOS.Inventory do
   defp filter_entries(query, filters) do
     Enum.reduce(filters, query, fn
       {:lot_id, id}, query -> where(query, [e], e.lot_id == ^id)
-      # box_id: nil asks for the goods that are in no box yet — "= NULL" would
-      # silently match nothing instead.
+      # box_id: nil means in no box; "= NULL" would match nothing.
       {:box_id, nil}, query -> where(query, [e], is_nil(e.box_id))
       {:box_id, id}, query -> where(query, [e], e.box_id == ^id)
       {:location_id, id}, query -> where(query, [e], e.location_id == ^id)

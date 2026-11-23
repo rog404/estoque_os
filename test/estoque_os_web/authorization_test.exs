@@ -1,8 +1,6 @@
 defmodule EstoqueOSWeb.AuthorizationTest do
   @moduledoc """
-  The roles were declared and never enforced: `require_role` existed in
-  `user_auth.ex` and appeared in no route, so a viewer could send a mission's
-  supplies out of the warehouse. These tests are the enforcement.
+  Role enforcement: a viewer reads but never writes to the ledger.
   """
 
   use EstoqueOSWeb.ConnCase, async: true
@@ -26,8 +24,7 @@ defmodule EstoqueOSWeb.AuthorizationTest do
     end
 
     test "may not reach any screen that writes to the ledger", %{conn: conn} do
-      # The box count moved onto the box it counts, so its address carries an
-      # id and cannot sit in the list above.
+      # The box count's address carries an id, so it cannot sit in `@writes`.
       box = box_fixture(%{location_id: location_fixture().id})
 
       for path <- ["/boxes/#{box.id}/count" | @writes] do
@@ -46,11 +43,8 @@ defmodule EstoqueOSWeb.AuthorizationTest do
       assert Phoenix.Flash.get(conn.assigns.flash, :error) =~ "permissão"
     end
 
-    # The stock screen reports to everyone, so its own route cannot be the gate.
-    # It carried a spreadsheet import that posts adjustments, reachable by
-    # anyone who could read the page.
-    # The spreadsheet left the stock screen: it lives under Relatórios now, on
-    # a page of its own, behind the roles that plan. The stock list is a list.
+    # The stock screen is readable by everyone, so the spreadsheet import (which
+    # posts adjustments) lives under Relatórios, behind the planning roles.
     test "is not offered the spreadsheet anywhere", %{conn: conn} do
       {:ok, _view, html} = live(conn, ~p"/stock")
 
@@ -76,12 +70,10 @@ defmodule EstoqueOSWeb.AuthorizationTest do
       assert response_content_type(conn, :xlsx) =~ "spreadsheetml"
     end
 
-    # Pairs with the viewer's `refute`: without this, renaming the form would
-    # make that test pass while proving nothing.
+    # Pairs with the viewer's `refute`, which would pass on a renamed form.
     test "reaches the spreadsheet under Relatórios", %{conn: conn} do
       {:ok, _view, html} = live(conn, ~p"/stock")
 
-      # Not on the stock screen itself — one home, and it is a reporting one.
       refute html =~ "import-form"
       assert html =~ ~s(href="/reports/data")
 
@@ -92,8 +84,6 @@ defmodule EstoqueOSWeb.AuthorizationTest do
 
   describe "public surface" do
     test "there is no way to sign yourself up", %{conn: conn} do
-      # Registration was open, defaulted to a writing role, and confirmed
-      # itself by magic link: an account with write access for anyone.
       conn = get(conn, "/users/register")
       assert conn.status == 404
     end
@@ -133,8 +123,7 @@ defmodule EstoqueOSWeb.AuthorizationTest do
           entries: [%{lot_id: lot.id, location_id: warehouse.id, quantity: Decimal.new(10)}]
         })
 
-      # on_delete: :restrict — the alternative was nilify_all, which quietly
-      # erased who took the controlled substance out.
+      # on_delete: :restrict, since nilify_all would erase who moved the stock.
       assert_raise Ecto.ConstraintError, fn ->
         EstoqueOS.Repo.delete!(EstoqueOS.Repo.get!(EstoqueOS.Accounts.User, user_id))
       end

@@ -3,15 +3,11 @@ defmodule EstoqueOS.Outbound do
   Stock leaving a place: the load-out ("derrubada de carga") that sends a
   mission's supplies out of the warehouse.
 
-  Two things travel differently. Boxes travel whole — they are picked as
-  containers and their presumed contents go with them, no recount. Loose
-  stock, the goods that were never boxed, is picked by quantity, and there
-  FEFO decides which lot goes: the one expiring first, because what stays
-  behind is what will still be good next time.
+  Boxes travel whole, with presumed contents and no recount. Loose stock is
+  picked by quantity under FEFO (what stays behind will still be good next time).
 
-  Usually the entire stock leaves, so `plan/1` proposes exactly that and the
-  screen lets a human take things out of the load rather than add them one by
-  one.
+  Usually everything leaves, so `plan/1` proposes everything and a human
+  removes lines rather than adding them.
   """
 
   use Gettext, backend: EstoqueOSWeb.Gettext
@@ -54,26 +50,20 @@ defmodule EstoqueOS.Outbound do
   @doc """
   Stock at a location that is in no box, per lot, FEFO first.
 
-  One implementation, in `Locations`, because two screens ask it for opposite
-  reasons: the load-out to refuse it, and the box screen to put an end to it.
+  One implementation, in `Locations`: the load-out uses it to refuse, the box
+  screen to resolve it.
   """
   defdelegate loose_stock(location_id), to: EstoqueOS.Inventory.Locations
 
   @doc """
   Sends boxes and loose stock from one location to another.
 
-  Boxes change address and carry their contents. Only boxes travel: stock that is
-  not in one cannot be sent, because nothing identifies it at the other end and
-  nothing brings it back. A pallet of gauze that leaves loose is, in practice,
-  already written off — so the load-out refuses rather than pretending.
+  Boxes change address and carry their contents. Only boxes travel: loose stock
+  has nothing identifying it at the other end and nothing bringing it back, so
+  the load-out refuses it (the receiving conference is where it gets boxed).
 
-  Loose stock at the warehouse is a real and temporary state: goods have arrived
-  and nobody has boxed them yet. The receiving conference is where that is
-  resolved, and it is the step this refusal sends you back to.
-
-  Everything lands in a single `load_out` transaction so the whole shipment is
-  one auditable event, and the boxes' `last_verified_at` is left alone — a
-  load-out is not a count.
+  One `load_out` transaction makes the shipment a single auditable event;
+  `last_verified_at` is left alone, a load-out is not a count.
   """
   def load_out(attrs) do
     source_id = to_id(field(attrs, :source_location_id))
@@ -100,14 +90,9 @@ defmodule EstoqueOS.Outbound do
     boxes = Repo.all(from b in Box, where: b.id in ^box_ids)
     carrier_id = to_id(field(attrs, :carrier_id))
 
-    # Where the goods actually are the minute the truck pulls away. With a
-    # carrier that is transit, not the mission: the load is on the road for
-    # days, and a mission whose balance includes goods still on a highway is a
-    # mission that will pick against stock nobody there can touch. Driven by the
-    # ONG, leaving and arriving are one act and the goods go straight there.
-    #
-    # The address does not change either way — the shipment keeps saying where
-    # the load is headed, and the arrival is what moves it the last leg.
+    # With a carrier the goods rest in transit, not at the mission: otherwise
+    # the mission would pick against stock still on the highway. Driven by the
+    # ONG, they go straight there. The shipment keeps the destination either way.
     resting_id = resting_location(carrier_id, destination_id)
 
     entries = box_entries(boxes, source_id, resting_id)
@@ -147,10 +132,8 @@ defmodule EstoqueOS.Outbound do
           {:ok, count}
         end)
         |> Multi.run(:shipment, fn _repo, %{transaction: transaction} ->
-          # Every load that leaves is a shipment, whether or not anybody was
-          # hired to carry it. The alternative — a shipment only when a carrier
-          # is named — would leave the volunteer's car trips invisible on the
-          # one screen that exists to say what is out there.
+          # Every load is a shipment, carrier or not, so volunteer car trips
+          # show on the screen that says what is out there.
           %Shipment{}
           |> Shipment.changeset(%{
             from_location_id: source_id,
@@ -190,13 +173,8 @@ defmodule EstoqueOS.Outbound do
     end
   end
 
-  ## Shipments
-
   @doc """
-  Loads still out there, the ones that left longest ago first.
-
-  The order is the point: a load that left three weeks ago is the one worth a
-  phone call, and "quem está com a carga" is the question this answers.
+  Loads still out there, longest ago first: the oldest is the one worth a phone call.
   """
   def open_shipments(opts \\ []) do
     Shipment
@@ -211,8 +189,7 @@ defmodule EstoqueOS.Outbound do
   defp maybe_carrier(query, nil), do: query
   defp maybe_carrier(query, id), do: where(query, [s], s.carrier_id == ^id)
 
-  # How long it has been on the road, and whether it is late. Both derived: a
-  # stored "late" would be wrong by tomorrow.
+  # Derived, not stored: a stored "late" would be wrong by tomorrow.
   defp decorate_shipment(%Shipment{} = shipment) do
     today = Date.utc_today()
 
@@ -248,14 +225,12 @@ defmodule EstoqueOS.Outbound do
   @doc """
   The load landed: whatever is in transit for this shipment finishes the trip.
 
-  The last leg, and it is an ordinary transfer — every box the load-out put in
-  transit moves to the address the shipment has been carrying since it left.
-  Nothing is counted here: what arrived is what left, and the count happens
-  where somebody opens the boxes.
+  The last leg, an ordinary transfer of every box the load-out put in transit
+  to the shipment's destination. Nothing is counted; that happens when somebody
+  opens the boxes.
 
-  Refused for a load nobody is carrying, because that one never stopped at
-  transit, and for a load already stamped, because arriving twice would move the
-  same goods twice.
+  Refused for a load with no carrier (it never stopped at transit) and for one
+  already stamped (it would move the same goods twice).
   """
   def arrive_shipment(%Shipment{} = shipment, attrs \\ %{}) do
     if Shipment.in_transit?(shipment) do
@@ -318,8 +293,7 @@ defmodule EstoqueOS.Outbound do
     gettext("arrived at %{place}", place: shipment.to_location.name)
   end
 
-  # What this load still has sitting in transit. Boxes only: loose stock cannot
-  # travel, so nothing else can be there.
+  # Boxes only: loose stock cannot travel.
   defp transit_entries(shipment) do
     case Locations.transit_location() do
       nil ->
@@ -352,8 +326,7 @@ defmodule EstoqueOS.Outbound do
     end
   end
 
-  # The boxes this load took out, read from the movement that sent it — the
-  # shipment names the trip, and the trip's entries name the boxes.
+  # The boxes this load took out, read from the movement that sent it.
   defp shipment_box_ids(shipment) do
     TransactionEntry
     |> where([e], e.transaction_id == ^shipment.sent_transaction_id)
@@ -363,15 +336,12 @@ defmodule EstoqueOS.Outbound do
     |> Enum.uniq()
   end
 
-  ## Transport declaration
-
   @doc """
   What a load is carrying, as the declaration prints it.
 
-  Read from the movement that sent it, which is the only honest source: the
-  paper has to say what actually left, and the ledger is what knows. The
-  positive side of the load-out is the one that names the goods — the negative
-  side is the same goods leaving the warehouse.
+  Read from the movement that sent it: the paper must say what actually left.
+  The positive side of the load-out names the goods; the negative is the same
+  goods leaving the warehouse.
   """
   def shipment_contents(%Shipment{} = shipment) do
     costs = Inventory.average_unit_costs()
@@ -382,8 +352,7 @@ defmodule EstoqueOS.Outbound do
     |> join(:left, [e, l, p], b in Box, on: b.id == e.box_id)
     |> where([e], e.transaction_id == ^shipment.sent_transaction_id)
     |> where([e], e.quantity > 0)
-    # The order the paper is read in: by box, because the person checking the
-    # load is holding the boxes, and then by product inside each one.
+    # By box, then product: the checker is holding the boxes.
     |> order_by([e, l, p, b], asc: b.code, asc: p.name, asc: l.lot_number)
     |> select([e, l, p, b], %{
       product: p.name,
@@ -407,10 +376,8 @@ defmodule EstoqueOS.Outbound do
   @doc """
   What the load is worth, for the line the carrier's paperwork asks for.
 
-  Only the part whose cost is known. A donated lot carries no cost, and adding
-  it in as zero would declare a value that is not the goods' value — the screen
-  says how many lines are in that state so the number can be read for what it
-  is.
+  Only the part whose cost is known: a donated lot has none, and zero would
+  misdeclare the value. `unvalued` counts those lines.
   """
   def contents_total(rows) do
     %{
@@ -431,9 +398,7 @@ defmodule EstoqueOS.Outbound do
   @doc """
   Writes the declaration for a load, or rewrites the one already there.
 
-  One paper per load: reprinting fills the same one in again rather than
-  producing a second declaration for the same goods, which is the situation
-  where two documents disagree about what travelled.
+  One paper per load: a second declaration could disagree about what travelled.
   """
   def save_declaration(%Shipment{} = shipment, attrs) do
     (get_declaration(shipment) || %TransportDeclaration{})
@@ -451,8 +416,7 @@ defmodule EstoqueOS.Outbound do
     }
   end
 
-  # "2026/04" on the paper: the year and month the load left, which is what the
-  # ONG numbers these by.
+  # "2026/04": year and month the load left, how the ONG numbers these.
   defp reference_for(%Shipment{shipped_on: nil}), do: nil
 
   defp reference_for(%Shipment{shipped_on: date}) do
@@ -462,10 +426,8 @@ defmodule EstoqueOS.Outbound do
   @doc """
   Receives a shipment: the goods arrive, and the load stops being open.
 
-  The movement is the ordinary return — the same lines, the same boxes, the same
-  "what did not come back was used" — and this only brackets it. Refused if the
-  shipment is already closed, because a load received twice would post its
-  contents twice.
+  The movement is the ordinary return; this only brackets it. Refused if already
+  closed, as receiving twice would post the contents twice.
   """
   def receive_shipment(%Shipment{} = shipment, attrs) do
     if Shipment.open?(shipment) do
@@ -487,8 +449,7 @@ defmodule EstoqueOS.Outbound do
     transaction = result[:return] || result[:consumed]
 
     if is_nil(transaction) do
-      # Nothing came back and nothing was written off: the two together say the
-      # load evaporated, which is not something to record quietly.
+      # Nothing back and nothing written off means the load evaporated; not recorded quietly.
       {:error, :nothing_received}
     else
       do_close_shipment(shipment, transaction, result, attrs)
@@ -555,16 +516,11 @@ defmodule EstoqueOS.Outbound do
     |> Enum.reject(&(is_nil(&1.quantity) or Decimal.compare(&1.quantity, 0) != :gt))
   end
 
-  ## Manual issue
-
   @doc """
-  Issues stock by product and quantity, oldest expiry first.
-
-  This is the everyday "someone came and took 30 gauzes" — no invoice, no kit,
-  just goods leaving. Per-patient tracking is out of scope, so the destination
-  names a place or a purpose, not a person: `Transaction.destinations/0`. It is
-  a closed list rather than prose because "what did we donate" has to be a
-  query, and a donation carries who received it.
+  Issues stock by product and quantity, FEFO: the everyday "someone took 30
+  gauzes". Per-patient tracking is out of scope, so the destination names a
+  place or purpose (`Transaction.destinations/0`), a closed list so "what did we
+  donate" is a query; a donation carries who received it.
   """
   def issue(product_id, quantity, attrs) do
     issue_many([%{product_id: product_id, quantity: quantity}], attrs)
@@ -573,14 +529,12 @@ defmodule EstoqueOS.Outbound do
   @doc """
   Several products leaving together, as one movement.
 
-  Somebody came to the counter and took six things. That is one event, and
-  filing it as six makes the log unreadable and the paperwork six times over —
-  but more to the point, a basket can be corrected before it is written, and a
-  posted transaction cannot: nothing here is ever deleted, so a mistyped line
-  becomes a correcting adjustment on the record forever.
+  One event, not several: a basket can be corrected before posting, while a
+  posted transaction never can (a mistyped line would be a correcting
+  adjustment forever).
 
-  Every line is picked FEFO and the whole thing posts in one transaction, so a
-  shortfall on the last line leaves nothing behind from the first.
+  Every line is picked FEFO and all post in one transaction, so a shortfall on
+  the last line leaves nothing from the first.
   """
   def issue_many(lines, attrs) do
     location_id = to_id(field(attrs, :location_id))
@@ -594,16 +548,10 @@ defmodule EstoqueOS.Outbound do
     end
   end
 
-  # Where the goods went is the whole point of recording that they left, and a
-  # blank there is a hole nobody can fill afterwards — the goods are gone and
-  # the person who carried them has moved on. Refused here rather than only in
-  # the form, because a `required` attribute is presentation and this is a rule.
-  #
-  # A sale is the one destination that carries a number, and it is the number
-  # the whole record exists for: "quanto o marketing vendeu" cannot be answered
-  # afterwards from a line that never said. Refused rather than posted with a
-  # blank, because the goods are gone either way and the price is not
-  # recoverable once they are.
+  # A blank destination cannot be filled in afterwards, so it is refused here
+  # (a form `required` is presentation, this is a rule). A sale must carry its
+  # price for the same reason: "quanto o marketing vendeu" is unrecoverable once
+  # the goods are gone.
   defp sale_without_price?(lines, attrs) do
     field(attrs, :destination) == "sale" and
       Enum.any?(lines, &is_nil(to_decimal(field(&1, :sale_unit_price))))
@@ -655,11 +603,8 @@ defmodule EstoqueOS.Outbound do
     end
   end
 
-  # One basket line can become several entries — FEFO splits it across lots —
-  # and the price rides on each of them. Per entry rather than per line, because
-  # that is the grain the ledger stores and the grain a report has to read: a
-  # sale of ten shirts drawn from two lots is two rows, and both were sold at
-  # the same price.
+  # FEFO can split one line across lots; the price rides on each entry, the
+  # grain the ledger stores and reports read.
   defp entry_for(pick, sale_unit_price) do
     %{
       lot_id: pick.lot_id,
@@ -670,15 +615,10 @@ defmodule EstoqueOS.Outbound do
     }
   end
 
-  ## Returns
-
   @doc """
   What the ledger believes is still at a location, position by position, for
-  the return conference.
-
-  After a mission this list is a hypothesis, not a fact: things were consumed,
-  things moved between boxes, and nobody wrote it down. The screen exists to
-  turn it into a fact.
+  the return conference. After a mission it is a hypothesis the screen turns
+  into a fact.
   """
   def plan_return(location_id) do
     StockSnapshot
@@ -704,14 +644,12 @@ defmodule EstoqueOS.Outbound do
   @doc """
   Receives a return from a mission, counting what actually came back.
 
-  Each line says how much of a position returned and into which box at the
-  destination — after a mission things come back in different boxes than they
-  left in, so re-boxing is the normal case, not an exception.
+  Each line says how much of a position returned and into which destination
+  box; things come back in different boxes, so re-boxing is normal.
 
-  What did not come back is not silently forgotten. With
-  `consume_missing: true` the remainder is written off as `manual_out` at the
-  mission, which is what actually happened to it; otherwise it stays on the
-  mission's books for someone to explain.
+  What did not come back is not forgotten: with `consume_missing: true` the
+  remainder is written off as `manual_out` at the mission; otherwise it stays
+  on the mission's books for someone to explain.
   """
   def receive_return(attrs) do
     source_id = to_id(field(attrs, :source_location_id))
@@ -730,9 +668,7 @@ defmodule EstoqueOS.Outbound do
         {:error, :nothing_returned}
 
       Enum.all?(lines, &is_nil(&1.quantity)) ->
-        # Every line blank. Posting this would consume the mission's whole
-        # stock as "used" and call it a return, which is the shape of the
-        # accident the blank field made possible in the first place.
+        # All blank: posting would consume the mission's whole stock as "used".
         {:error, :nothing_counted}
 
       true ->
@@ -834,11 +770,9 @@ defmodule EstoqueOS.Outbound do
         lot_id: to_id(field(line, :lot_id)),
         from_box_id: to_id(field(line, :from_box_id)),
         to_box_id: to_id(field(line, :to_box_id)),
-        # nil and not zero. A blank field means *not counted*, and the two
-        # readings are opposites here: zero says the goods did not come back,
-        # which with "o que não voltou foi usado" ticked writes the whole line
-        # off as consumed. Not counted says nobody has looked yet, and a line
-        # nobody looked at must not move.
+        # nil, not zero: blank means *not counted* and must not move, while zero
+        # means "did not come back" and, with "o que não voltou foi usado"
+        # ticked, writes the line off as consumed.
         quantity: to_decimal(field(line, :quantity)),
         expected: to_decimal(field(line, :expected)) || Decimal.new(0)
       }
@@ -846,12 +780,8 @@ defmodule EstoqueOS.Outbound do
     |> Enum.reject(&is_nil(&1.lot_id))
   end
 
-  # A movement at a mission site belongs to whichever trip was under way there.
-  # Nobody is asked to pick: the location and the date already say it, and being
-  # asked to name the trip you are standing in is how a field gets left blank.
-  # Which trip a movement at this place belongs to. Derived from the location and
-  # nothing else — a mission's dates are for a person to read, not a gate the
-  # stock consults.
+  # Which trip a movement at this place belongs to, derived from the location
+  # alone so nobody is asked to name it.
   defp mission_at(location_id) do
     case Missions.for_location(location_id) do
       nil -> nil

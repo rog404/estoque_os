@@ -1,9 +1,5 @@
 defmodule EstoqueOSWeb.BoxLookupTest do
-  @moduledoc """
-  The public box lookup. No login on purpose (a field test), so these run with
-  a bare conn — no `register_and_log_in_*`. What it must do: answer a code
-  whatever its case, say plainly when nothing answers, and never require a role.
-  """
+  @moduledoc "The authenticated box lookup at `/boxes/lookup`."
 
   use EstoqueOSWeb.ConnCase, async: true
 
@@ -12,6 +8,8 @@ defmodule EstoqueOSWeb.BoxLookupTest do
   import EstoqueOS.InventoryFixtures
 
   alias EstoqueOS.Inventory
+
+  setup :register_and_log_in_operator
 
   setup do
     warehouse = location_fixture(%{name: "Estoque Principal", kind: "warehouse"})
@@ -31,14 +29,14 @@ defmodule EstoqueOSWeb.BoxLookupTest do
     %{warehouse: warehouse, box: box}
   end
 
-  test "opens without a login", %{conn: conn} do
-    assert {:ok, _lv, html} = live(conn, ~p"/caixa")
-    # Rendered in pt_BR, not the English msgid.
+  test "opens for an authorised user", %{conn: conn} do
+    assert {:ok, _lv, html} = live(conn, ~p"/boxes/lookup")
+    # pt_BR translation, not the English msgid.
     assert html =~ "O que tem nesta caixa"
   end
 
   test "a typed code shows what the box holds", %{conn: conn} do
-    {:ok, lv, _html} = live(conn, ~p"/caixa")
+    {:ok, lv, _html} = live(conn, ~p"/boxes/lookup")
 
     html = lv |> form("#lookup-form", %{code: "CX01"}) |> render_submit()
 
@@ -48,7 +46,7 @@ defmodule EstoqueOSWeb.BoxLookupTest do
   end
 
   test "the lookup ignores the typed case", %{conn: conn} do
-    {:ok, lv, _html} = live(conn, ~p"/caixa")
+    {:ok, lv, _html} = live(conn, ~p"/boxes/lookup")
 
     html = lv |> form("#lookup-form", %{code: "cx01"}) |> render_submit()
 
@@ -56,13 +54,13 @@ defmodule EstoqueOSWeb.BoxLookupTest do
   end
 
   test "a code opening the page directly answers on mount", %{conn: conn} do
-    {:ok, _lv, html} = live(conn, ~p"/caixa?code=CX01")
+    {:ok, _lv, html} = live(conn, ~p"/boxes/lookup?code=CX01")
 
     assert html =~ "Gaze estéril"
   end
 
   test "an unknown code says so instead of crashing", %{conn: conn} do
-    {:ok, lv, _html} = live(conn, ~p"/caixa")
+    {:ok, lv, _html} = live(conn, ~p"/boxes/lookup")
 
     html = lv |> form("#lookup-form", %{code: "NAO-EXISTE"}) |> render_submit()
 

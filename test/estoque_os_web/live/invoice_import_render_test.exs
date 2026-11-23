@@ -1,8 +1,7 @@
 defmodule EstoqueOSWeb.InvoiceImportRenderTest do
   @moduledoc """
-  The import screen shipped once with strings that were never extracted, so it
-  rendered in English for a Portuguese operator. These assertions are on the
-  translated text on purpose: they fail the same way that bug did.
+  Assertions are on the translated pt_BR text on purpose: an unextracted string
+  renders in English for a Portuguese operator.
   """
 
   use EstoqueOSWeb.ConnCase, async: true

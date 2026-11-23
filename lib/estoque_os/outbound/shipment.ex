@@ -2,29 +2,20 @@ defmodule EstoqueOS.Outbound.Shipment do
   @moduledoc """
   One load, on the road.
 
-  Sending a mission's supplies out and receiving them back are the same act in
-  opposite directions, and this is the thing both of them are about: sending
-  creates it, receiving closes it. Before it existed the two screens had nothing
-  between them — the ledger could say stock was in transit and not with whom,
-  since when, expected where, or which load, because "Trânsito" is one location
-  and two shipments travelling at once land in the same bucket.
+  Sending a mission's supplies and receiving them back are one act in opposite
+  directions; sending creates the shipment, receiving closes it. It records what
+  the single "Trânsito" location cannot: which load, with whom, since when.
 
-  The location still holds the balance. Every figure in this system is a quantity
-  somewhere, and goods on a truck have to be somewhere: leaving them at the
-  origin makes the origin's balance a lie, and "estoque em trânsito" is a number
-  the accountant asks for by name (SPEC §3.5). The place answers *how much*; the
-  shipment answers everything the place cannot know.
+  The location still holds the balance: goods on a truck must be somewhere, and
+  leaving them at the origin falsifies it ("estoque em trânsito", SPEC §3.5).
 
-  `received_at` being null is what "still out there" means. Derived rather than a
-  status column, for the same reason balances are derived: two places to write
-  "received" is one place for them to disagree.
+  `received_at` null means "still out there"; derived, not a status column, so
+  there is one place to write "received".
 
-  `arrived_at` is a different question, and only a hired carrier raises it. When
-  the ONG drives its own goods, leaving and being there is one act. When a
-  carrier takes them, the truck leaves on a Tuesday and lands on a Friday, and
-  in between the stock is in neither place — so it sits in transit until
-  somebody at the other end says it landed. Arrived is the load reaching the
-  mission; received is the mission handing back what it did not use.
+  `arrived_at` only applies to a hired carrier: stock is in neither place
+  between leaving and landing, so it stays in transit until somebody at the
+  other end says it landed. Arrived is the load reaching the mission; received
+  is the mission handing back what it did not use.
   """
 
   use Ecto.Schema
@@ -127,8 +118,7 @@ defmodule EstoqueOS.Outbound.Shipment do
     end
   end
 
-  # A load that arrives before it leaves is a typo, and the date is what the
-  # transit report sorts and counts days against.
+  # Arriving before leaving is a typo; the transit report counts days against it.
   defp validate_arrival_after_departure(changeset) do
     shipped = get_field(changeset, :shipped_on)
     expected = get_field(changeset, :expected_arrival)

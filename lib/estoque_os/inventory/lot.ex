@@ -18,8 +18,7 @@ defmodule EstoqueOS.Inventory.Lot do
     field :manufactured_on, :date
     field :expires_on, :date
     field :needs_review, :boolean, default: false
-    # Accepted as it is: this lot really has no number to read. `needs_review`
-    # stays true, because it is still a fact about the goods.
+    # Accepted as is; `needs_review` stays true, it is a fact about the goods.
     field :review_acknowledged_at, :utc_datetime
 
     belongs_to :product, Product

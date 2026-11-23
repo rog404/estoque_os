@@ -1,18 +1,11 @@
 defmodule EstoqueOSWeb.ViewerWriteGuardTest do
   @moduledoc """
-  Roles were enforced on the route and nowhere else.
+  Screens that report to everyone still carry buttons that write, so the route
+  cannot be the gate; the events must be guarded. A false `last_verified_at`
+  stamp is the worst case: it is worse than no stamp.
 
-  Screens that report to everyone still carry buttons that write — a box is moved
-  from the box screen, a kit is packed from the kit screen — so blocking the route
-  was never an option and the events went unguarded. A viewer could move a box
-  between locations, pack a kit into the ledger, deactivate the warehouse, and
-  mark a box as counted without opening it. That last one is the worst of them:
-  `last_verified_at` is what separates a presumed balance from a verified one, and
-  a false stamp is worse than no stamp.
-
-  Two kinds of test here. The behavioural ones send the events and demand refusal.
-  The structural one fails when somebody adds a `handle_event` and does not say
-  whether a viewer may send it, which is how the hole appeared the first time.
+  The behavioural tests send the events and demand refusal. The structural one
+  fails when a `handle_event` is added without saying whether a viewer may send it.
   """
 
   use EstoqueOSWeb.ConnCase, async: true
@@ -46,8 +39,6 @@ defmodule EstoqueOSWeb.ViewerWriteGuardTest do
 
       assert render_hook(view, "verify", %{}) =~ "permissão"
 
-      # A false verification is worse than none: it is the difference between a
-      # presumed balance and one somebody actually opened the box to count.
       assert is_nil(Locations.get_box!(box.id).last_verified_at)
     end
 
@@ -109,7 +100,6 @@ defmodule EstoqueOSWeb.ViewerWriteGuardTest do
     test "still reads and filters what reports to everyone", %{conn: conn} do
       {:ok, view, _html} = live(conn, ~p"/stock")
 
-      # The guard must not take the reporting away from the people it is for.
       refute render_hook(view, "filter", %{"query" => "avental"}) =~ "permissão"
       refute render_hook(view, "sort", %{"key" => "name"}) =~ "permissão"
 
@@ -122,8 +112,7 @@ defmodule EstoqueOSWeb.ViewerWriteGuardTest do
       {:ok, _view, one_box} = live(conn, ~p"/boxes/#{box.id}")
       {:ok, _view, locations} = live(conn, ~p"/locations")
 
-      # A button that always answers "sem permissão" teaches people to ignore
-      # the interface. The guard and the markup read the same `@writable?`.
+      # The guard and the markup read the same `@writable?`.
       refute boxes =~ ~s(id="new-box")
       refute one_box =~ ~s(id="move-form")
       refute one_box =~ ~s(phx-click="verify")
@@ -156,16 +145,11 @@ defmodule EstoqueOSWeb.ViewerWriteGuardTest do
 
   describe "every screen a viewer can reach" do
     # Each entry is the events on that screen a viewer must NOT be able to send.
-    # Adding a `handle_event` without classifying it fails this test, which is the
-    # point: the hole was one forgotten handler, not a wrong decision.
+    # Adding a `handle_event` without classifying it fails this test.
     @write_events %{
-      # The spreadsheet left this screen for `/reports/data`; what remains here
-      # reports, and `search` is a read like the rest of them.
       "stock_live/index" => ~w(),
-      # Reporting only, like the write-off log beside it.
       "entry_live/list" => ~w(),
-      # `search` narrows a list and is not here: it is declared as a viewer
-      # event on the screen itself.
+      # `search` is declared as a viewer event on the screen itself.
       "box_live/index" => ~w(create move),
       "box_live/show" => ~w(move verify rebox stow confirm_new_box cancel_new_box),
       "location_live/index" =>
@@ -174,28 +158,20 @@ defmodule EstoqueOSWeb.ViewerWriteGuardTest do
       "kit_live/show" =>
         ~w(assemble add_item update_item remove_item confirm_new_box cancel_new_box),
       "invoice_live/show" => ~w(resolve post start_receipt),
-      # `draft` writes nothing — it only remembers what has been typed so that
-      # recording one line stops blanking the others. It is still refused to a
-      # viewer: somebody who may not record a count has no count to keep.
+      # `draft` writes nothing, but a viewer who cannot record a count has none to keep.
       "receipt_live/show" => ~w(count complete draft confirm_new_box cancel_new_box count_again),
-      # Closing an alert is a planning decision — the same gate the minimum and
-      # the kit recipe sit behind — so a viewer may not send it. The `Alerts`
-      # context refuses it a second time, because the bell in the layout is a
-      # component and its events never pass this hook.
+      # Closing an alert is a planning decision; `Alerts` refuses it again because
+      # the layout's bell is a component whose events never pass this hook.
       "home_live/index" => ~w(acknowledge_count),
       "issue_live/list" => ~w(),
       "audit_report_live/index" => ~w(),
       "user_live/settings" => ~w(),
-      # Planning, not stock: a minimum is argued with the ONG team, and only
-      # admin and manager may set it. Refused to a viewer like any other write.
       "product_live/show" => ~w(deactivate reactivate set_minimum stow),
       "mission_live/index" => ~w(create),
       "mission_live/show" => ~w(reschedule donate)
     }
 
-    # The list above was hand-written, which meant a new screen was simply absent
-    # from it and checked by nothing — exactly the shape of the original hole,
-    # one level up. The screens now come from the router.
+    # The screens come from the router, so a new one cannot be silently absent.
     test "every screen in the signed-in session is classified here" do
       router = File.read!("lib/estoque_os_web/router.ex")
 
@@ -240,9 +216,7 @@ defmodule EstoqueOSWeb.ViewerWriteGuardTest do
           |> Enum.map(&List.last/1)
           |> Enum.uniq()
 
-        # `\s` and not a literal space: once the list is long enough the
-        # formatter puts `do:` on its own line, and a declaration this test
-        # cannot see reads here as a screen that declared nothing at all.
+        # `\s`, not a space: the formatter puts `do:` on its own line in long lists.
         declared =
           case Regex.run(~r/def viewer_events,\s*do:\s*~w\(([^)]*)\)/s, source) do
             [_, list] -> String.split(list, ~r/\s+/, trim: true)

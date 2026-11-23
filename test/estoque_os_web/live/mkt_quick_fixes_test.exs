@@ -1,8 +1,7 @@
 defmodule EstoqueOSWeb.MktQuickFixesTest do
   @moduledoc """
-  Three small things the marketing role tripped over: a total that sat under
-  the wrong column, a box list with no way to search it, and two questions on
-  the new-product form that a shirt can only ever answer one way.
+  Marketing quick fixes: the stock total's column, box list search, and the
+  new-product questions a shirt can only answer one way.
   """
 
   use EstoqueOSWeb.ConnCase, async: true
@@ -40,9 +39,8 @@ defmodule EstoqueOSWeb.MktQuickFixesTest do
       :ok
     end
 
-    # The footer spans the columns before the quantity — product, lot, expiry,
-    # flags, where. It spanned four, so every number under it sat one column to
-    # the left of the column it totals.
+    # The footer spans the five columns before the quantity (product, lot,
+    # expiry, flags, where), or its numbers sit one column left of what they total.
     test "spans every column before the numbers it totals", %{conn: conn} do
       {:ok, _view, html} = live(conn, ~p"/stock")
 
@@ -73,8 +71,7 @@ defmodule EstoqueOSWeb.MktQuickFixesTest do
       refute text(found) =~ "AN01"
     end
 
-    # Accents and case are what somebody standing in front of a shelf actually
-    # types, and "escritorio" must find "Escritório".
+    # "escritorio" must find "Escritório".
     test "narrows by where the box is standing, accents aside", %{conn: conn} do
       {:ok, view, _html} = live(conn, ~p"/boxes")
 
@@ -84,8 +81,6 @@ defmodule EstoqueOSWeb.MktQuickFixesTest do
       refute text(found) =~ "AN01"
     end
 
-    # An empty table says one thing; a search that matched nothing says
-    # another, and the first one used to say both.
     test "says nothing matched rather than nothing exists", %{conn: conn} do
       {:ok, view, _html} = live(conn, ~p"/boxes")
 
@@ -103,8 +98,7 @@ defmodule EstoqueOSWeb.MktQuickFixesTest do
       %{warehouse: location_fixture(%{name: "Estoque Principal"})}
     end
 
-    # The create form only appears once a search found nothing, which is the
-    # moment somebody is about to add a product.
+    # The create form only appears once a search found nothing.
     defp searching(view) do
       view |> form("#search-form", %{"query" => "Camiseta Operação Sorriso G"}) |> render_change()
       view
@@ -120,8 +114,7 @@ defmodule EstoqueOSWeb.MktQuickFixesTest do
       assert html =~ ~s{name="lot_expected"}
     end
 
-    # The tick is not rendered, so the answer cannot come from the form — and
-    # must not be believed when it arrives from a hand-made submission either.
+    # The tick is not rendered, so a hand-made submission must not be believed.
     test "refuses a hand-made controlled shirt", %{conn: conn} do
       {:ok, view, _html} = live(conn, ~p"/entry")
 

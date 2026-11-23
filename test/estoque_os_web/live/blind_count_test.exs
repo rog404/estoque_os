@@ -1,13 +1,7 @@
 defmodule EstoqueOSWeb.BlindCountTest do
   @moduledoc """
-  Shown the expected number, a person counting a hundred gauzes finds ninety-eight
-  and writes a hundred — not dishonestly, but because the eye stops when it
-  reaches the answer it was given. A count that confirms the ledger it was copied
-  from measures nothing.
-
-  So the expected quantity must be absent while counting and present afterwards,
-  and both halves are pinned here: a test that only checked the second half would
-  pass on the screen this replaced.
+  A counter shown the expected number writes it down. So the expected quantity
+  must be absent while counting and present afterwards; both halves are pinned.
   """
 
   use EstoqueOSWeb.ConnCase, async: true
@@ -38,32 +32,25 @@ defmodule EstoqueOSWeb.BlindCountTest do
     %{box: box, lot: lot}
   end
 
-  # `refute html =~ "..."` matches markup as happily as text, so everything this
-  # file asserts is *absent* reads the page with the tags gone.
+  # `refute html =~ ...` matches markup too, so absence checks strip the tags first.
   defp text(html), do: String.replace(html, ~r{<[^>]*>}s, " ")
 
   test "does not reveal the expected quantity while counting", %{conn: conn, box: box} do
     {:ok, view, _html} = live(conn, ~p"/boxes/#{box.id}/count")
 
-    # Scoped to the sheet itself: the page chrome is full of "100" in class names
-    # like bg-base-100, and a page-wide refute would fail on the nav. Scoping is
-    # not enough on its own — the sheet writes the lot id into `id="row-100"`
-    # and `name="counts[100]"`, so on the run where the database handed out id
-    # 100 this failed on markup that leaks nothing. Read as the counter reads
-    # it, with the tags gone.
+    # Scope to the sheet (the nav has `bg-base-100`) and strip tags (the lot id
+    # appears in `id="row-100"` and `name="counts[100]"`).
     sheet = text(view |> element("#count-form") |> render())
 
     assert sheet =~ "Gaze estéril"
     assert sheet =~ "L-777"
 
-    # It lists the lot to be counted and withholds the number.
     refute sheet =~ "100"
     refute sheet =~ "presume"
   end
 
-  # A count that disagrees is now counted a second time before anything is
-  # written — and the recount names the item without ever saying by how much it
-  # was off, or the second count would be as compromised as a sighted first one.
+  # The recount must not say by how much the first count was off, or it is as
+  # compromised as a sighted one.
   test "asks for a recount without saying how far off it was", %{
     conn: conn,
     box: box,
@@ -73,16 +60,13 @@ defmodule EstoqueOSWeb.BlindCountTest do
 
     render_submit(element(view, "#count-form"), %{"counts" => %{"#{lot.id}" => "98"}})
 
-    # Tags stripped for the same reason as above, and for "-2", which also
-    # lives inside the class `w-28`: a refute that matches markup passes on a
-    # screen that leaked and fails on one that did not.
+    # Tags stripped: "-2" also lives inside the class `w-28`.
     sheet = text(view |> element("#recount-form") |> render())
 
     assert sheet =~ "Gaze estéril"
     refute sheet =~ "100"
     refute sheet =~ "-2"
 
-    # And nothing has been written.
     assert Decimal.equal?(Inventory.balance(box_id: box.id), Decimal.new(100))
   end
 
@@ -96,7 +80,6 @@ defmodule EstoqueOSWeb.BlindCountTest do
     render_submit(element(view, "#count-form"), %{"counts" => %{"#{lot.id}" => "98"}})
     html = render_submit(element(view, "#recount-form"), %{"counts" => %{"#{lot.id}" => "98"}})
 
-    # The confirmation is where the numbers finally meet — before the write.
     assert html =~ "98"
     assert html =~ "100"
     assert html =~ "-2"
@@ -111,7 +94,6 @@ defmodule EstoqueOSWeb.BlindCountTest do
   test "says so plainly when the count matched", %{conn: conn, box: box, lot: lot} do
     {:ok, view, _html} = live(conn, ~p"/boxes/#{box.id}/count")
 
-    # Agreeing with the ledger skips the recount: there is nothing to settle.
     render_submit(element(view, "#count-form"), %{"counts" => %{"#{lot.id}" => "100"}})
     html = render_submit(element(view, "#commit-form"))
 
@@ -137,8 +119,6 @@ defmodule EstoqueOSWeb.BlindCountTest do
     assert notes =~ "contada duas vezes"
   end
 
-  # The second count agreeing with the ledger is the happy ending: the first
-  # count was simply wrong, and nobody needs telling.
   test "a recount that lands back on the ledger is not escalated", %{
     conn: conn,
     box: box,

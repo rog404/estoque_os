@@ -69,7 +69,6 @@ defmodule EstoqueOSWeb.HomeLiveTest do
 
     assert html =~ "Bupivacaína 0,5%"
     assert html =~ "20 dia(s)"
-    # Outside the 90-day window.
     refute html =~ "Gaze estéril"
   end
 
@@ -117,24 +116,16 @@ defmodule EstoqueOSWeb.HomeLiveTest do
 
     {:ok, _view, html} = live(conn, ~p"/")
 
-    # The same ledger type, a different act: this one came in by hand, and the
-    # log used to call it a posted invoice.
+    # Same ledger type as a posted invoice, but this one came in by hand.
     assert html =~ "Entrada manual"
     refute html =~ "Nota fiscal lançada"
     assert html =~ "1 linha(s)"
   end
 
-  # A warning that states a fact and stops there leaves the manager to find the
-  # rows by hand, which is the same as not being told at all.
   describe "warnings lead somewhere" do
-    # Overrides the auditor the outer setup signed in: this block is about the
-    # manager's dashboard.
+    # Overrides the outer auditor login: this block is about the manager's dashboard.
     setup :register_and_log_in_operator
 
-    # Signed in as the manager on purpose. The alert belongs to the two roles
-    # that decide what to do about a disputed count — chase the supplier, or
-    # accept the loss — and the operator who already counted it three times
-    # cannot act on being told again.
     test "a count that disagreed twice links to the box it was about", %{
       conn: conn,
       warehouse: warehouse
@@ -164,9 +155,7 @@ defmodule EstoqueOSWeb.HomeLiveTest do
       assert html =~ ~s(href="/boxes/#{box.id}")
     end
 
-    # The logistics operator counted it three times already. Telling them again
-    # on every visit is noise they cannot act on, and the decision it asks for
-    # — chase the supplier, or accept the loss — is not theirs to take.
+    # Chasing the supplier or accepting the loss is not the counting operator's decision.
     test "a disputed count is not on the operator's dashboard", %{
       conn: conn,
       warehouse: warehouse
@@ -207,7 +196,7 @@ defmodule EstoqueOSWeb.HomeLiveTest do
       assert html =~ "sem dados de lote"
       assert html =~ ~s(href="/stock?review=on")
 
-      # And the destination is filtered rather than being the whole stock list.
+      # The destination is filtered, not the whole stock list.
       other = product_fixture(%{name: "Seringa comprada"})
       receive_stock(lot_fixture(%{product_id: other.id}), warehouse, 5)
 
@@ -271,8 +260,7 @@ defmodule EstoqueOSWeb.HomeLiveTest do
       assert html =~ "Kit Travado"
       assert html =~ "Kit Simples"
 
-      # A warehouse can look full and still not complete one kit, because a
-      # single component ran out. The blocked kit is named first.
+      # A full warehouse can still lack one component; the blocked kit comes first.
       assert html =~ "limitado por: Cânula de Guedel"
       {travado, _} = :binary.match(html, "Kit Travado")
       {simples, _} = :binary.match(html, "Kit Simples")

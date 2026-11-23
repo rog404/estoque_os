@@ -27,16 +27,8 @@
           setTheme(localStorage.getItem("phx:theme") || "system");
         }
 
-        // Amounts start hidden, always. A default that reveals is a default that
-        // has already shown the figures to whoever was standing there; showing
-        // them is the deliberate act, not hiding them.
-        //
-        // Applied here rather than after mount so they never flash on and then
-        // vanish, which would defeat the whole point.
-        //
-        // Kept in sessionStorage, so revealing lasts while you work and a new
-        // browser starts covered again. localStorage would turn one click into
-        // a permanent decision, which is the default this replaces.
+        // Amounts start hidden, applied before mount so they never flash. Kept in
+        // sessionStorage so a new browser starts covered again.
         const setMoney = (mode) => {
           if (mode === "shown") {
             sessionStorage.setItem("phx:money", "shown");

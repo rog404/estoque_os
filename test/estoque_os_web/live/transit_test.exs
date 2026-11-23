@@ -1,12 +1,7 @@
 defmodule EstoqueOSWeb.TransitTest do
   @moduledoc """
-  The load as a record, and the question it exists to answer: *quem está com a
-  carga?*
-
-  Before the shipment existed, the ledger could say some quantity sat at a
-  location called Trânsito and nothing more. One bucket, so two loads travelling
-  at once were indistinguishable, and nothing said with whom, since when, or
-  expected where.
+  The load as a record, answering "quem está com a carga?": with whom, since
+  when, and expected where, even with two loads travelling at once.
   """
 
   use EstoqueOSWeb.ConnCase, async: true
@@ -74,15 +69,12 @@ defmodule EstoqueOSWeb.TransitTest do
       assert shipment.waybill == "CTE-99182"
       assert shipment.expected_arrival == Date.add(Date.utc_today(), 5)
       assert shipment.shipped_on == Date.utc_today()
-      # Open, which is what "still out there" means. No status column to
-      # disagree with itself.
+      # Open (no `received_at`) is what "still out there" means; there is no status column.
       assert is_nil(shipment.received_at)
       assert shipment.sent_transaction_id
     end
 
-    # "STRALOG" typed today and "Stralog" next month are one carrier, or nothing
-    # can be asked about either of them. Same naming chaos SPEC §3.13 blames for
-    # killing a previous system.
+    # "STRALOG" and "Stralog" must be one carrier, or nothing can be asked about either.
     test "the same carrier typed differently is the same carrier", %{
       conn: conn,
       box: box,
@@ -118,7 +110,6 @@ defmodule EstoqueOSWeb.TransitTest do
         "carrier" => ""
       })
 
-      # Refusing the trip because nobody was hired for it would lose the trip.
       assert [shipment] = Repo.all(Shipment)
       assert is_nil(shipment.carrier_id)
       assert Catalog.list_carriers() == []
@@ -147,9 +138,7 @@ defmodule EstoqueOSWeb.TransitTest do
       assert html =~ "STRALOG"
       assert html =~ "CTE-99182"
       assert html =~ "Estoque Principal"
-      # The address is where the load is going, not the shelf it is resting on:
-      # transit is a state the shipment is in, and the report says that in its
-      # own column.
+      # The address is the destination; transit is a state, shown in its own column.
       assert html =~ "Missão Tefé"
       assert html =~ "na estrada"
       assert html =~ "1 carga(s) ainda na estrada"
@@ -158,8 +147,7 @@ defmodule EstoqueOSWeb.TransitTest do
     test "shows nothing once the load is received", %{conn: conn, warehouse: warehouse} do
       [%{shipment: shipment}] = Outbound.open_shipments()
 
-      # A carried load stops at transit, so it has to land before the mission
-      # can hand anything back.
+      # A carried load stops at transit, so it must land before anything is handed back.
       {:ok, %{shipment: shipment}} =
         Outbound.arrive_shipment(shipment, user_id: actor_id())
 
@@ -214,8 +202,6 @@ defmodule EstoqueOSWeb.TransitTest do
           user_id: actor_id()
         })
 
-      # Posting its contents twice is exactly what the bracket exists to
-      # prevent.
       assert {:error, :already_received} =
                Outbound.receive_shipment(closed, %{
                  destination_location_id: warehouse.id,
@@ -243,14 +229,11 @@ defmodule EstoqueOSWeb.TransitTest do
         "carrier" => "STRALOG"
       })
 
-      # The goods are on a truck, so that is where the balance says they are.
-      # A mission holding stock still on a highway is a mission that will pick
-      # against goods nobody there can touch.
+      # The goods are on a truck, so the balance says transit, not the mission.
       assert Decimal.equal?(Inventory.balance(lot_id: lot.id, location_id: transit.id), 300)
       assert Decimal.equal?(Inventory.balance(lot_id: lot.id, location_id: mission.id), 0)
       assert Repo.reload!(box).location_id == transit.id
 
-      # And the shipment still says where it is going.
       assert [%Shipment{} = shipment] = Repo.all(Shipment)
       assert shipment.to_location_id == mission.id
       assert is_nil(shipment.arrived_at)
@@ -281,8 +264,6 @@ defmodule EstoqueOSWeb.TransitTest do
       refute Shipment.in_transit?(shipment)
     end
 
-    # Transit is not somewhere a load is sent; it is where a load is while
-    # somebody drives it.
     test "transit is not offered as a destination", %{conn: conn} do
       {:ok, view, _html} = live(conn, ~p"/load-out")
 
@@ -322,8 +303,7 @@ defmodule EstoqueOSWeb.TransitTest do
       [%Shipment{} = shipment] = Repo.all(Shipment)
       assert shipment.arrived_at
       assert shipment.arrival_transaction_id
-      # Arrived is not received: the mission still has to hand back what it did
-      # not use.
+      # Arrived is not received: the mission still has to hand back what it did not use.
       assert is_nil(shipment.received_at)
     end
 
@@ -351,8 +331,7 @@ defmodule EstoqueOSWeb.TransitTest do
 
   describe "receiving by load" do
     setup %{conn: conn, box: box, lot: lot, mission: mission, warehouse: warehouse} do
-      # A second box, so the warehouse still has something to send after the
-      # first load leaves, and somewhere for the return to land.
+      # A second box, as somewhere for the return to land.
       home = box_fixture(%{code: "TR09", location_id: warehouse.id})
 
       {:ok, _} =
@@ -385,8 +364,7 @@ defmodule EstoqueOSWeb.TransitTest do
       %{shipment: landed, home: home}
     end
 
-    # A load received as a loose return stays "still out there" for ever, and
-    # the transit report is only as honest as its closing.
+    # A load received as a loose return would stay "still out there" forever.
     test "choosing the load fills the route and closes the shipment", %{
       conn: conn,
       lot: lot,
@@ -445,8 +423,6 @@ defmodule EstoqueOSWeb.TransitTest do
 
       {:ok, view, _html} = live(conn, ~p"/returns")
 
-      # Receiving a load that is still on a highway is receiving goods nobody
-      # has in their hands.
       assert has_element?(view, ~s{select[name="shipment_id"] option[value="#{landed.id}"]})
       refute has_element?(view, ~s{select[name="shipment_id"] option[value="#{rolling.id}"]})
     end

@@ -1,10 +1,7 @@
 defmodule EstoqueOSWeb.MovementTest do
   @moduledoc """
-  "A load-out, yes — but from where to where?" The type names the kind of event
-  and says nothing about the event, which is what made the recent-activity list
-  hard to audit from.
-
-  What is worth adding differs per type, so each type is pinned separately here.
+  The type names the kind of event but not the event, so `Movement.detail/1`
+  adds what is worth saying per type, each pinned separately.
   """
 
   use ExUnit.Case, async: true
@@ -44,7 +41,7 @@ defmodule EstoqueOSWeb.MovementTest do
 
     assert detail =~ "PACU"
     assert detail =~ "Gaze"
-    # Two products, listed as one plus a count rather than a wall of names.
+    # Two products: one plus a count, not a wall of names.
     assert detail =~ "+1"
   end
 
@@ -90,8 +87,7 @@ defmodule EstoqueOSWeb.MovementTest do
   end
 
   describe "tone/1" do
-    # Four colours and not ten. What the eye scans a ledger for is direction,
-    # and ten colours is a legend nobody memorises.
+    # Four colours, by direction, not one per type.
     test "groups the types by what the goods did" do
       arriving = ~w(purchase_in donation_in return_in)
       leaving = ~w(load_out manual_out kit_consumption)
@@ -104,8 +100,7 @@ defmodule EstoqueOSWeb.MovementTest do
       assert Enum.all?(neither, &(Movement.tone(&1) == "badge-ghost"))
     end
 
-    # A type with a label and no colour would render an unstyled badge, which
-    # reads as a fifth meaning rather than as a gap.
+    # An unstyled badge would read as a fifth meaning rather than a gap.
     test "every type the ledger can write has a colour" do
       for type <- EstoqueOS.Inventory.Transaction.types() do
         assert Movement.tone(type) in ~w(badge-success badge-warning badge-info badge-ghost),

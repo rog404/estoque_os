@@ -1,10 +1,6 @@
 defmodule EstoqueOSWeb.IssueLive.Index do
   @moduledoc """
-  Manual issue: someone came and took things.
-
-  Search is by name across the catalog, because the person at the counter
-  knows what the thing is called, not which lot it came from — the lot is our
-  problem, and FEFO answers it.
+  Manual issue: someone came and took things. Search is by name; FEFO picks the lot.
   """
 
   use EstoqueOSWeb, :live_view
@@ -16,18 +12,10 @@ defmodule EstoqueOSWeb.IssueLive.Index do
   alias EstoqueOS.Inventory.Locations
   alias EstoqueOS.Inventory.Transaction
 
-  # One copy of these, in `EstoqueOSWeb.Movement`. This screen and the list of
-  # write-offs each had their own, which is how a new destination gets a label
-  # on one screen and its raw key on the other.
   import EstoqueOSWeb.Movement, only: [destination_label: 1]
 
-  @doc """
-  Events a viewer may send. Everything else on this screen is refused.
-
-  The basket lives in the socket until `issue` posts it, so filling it and
-  emptying it move nothing. Searching, scanning and previewing the FEFO pick
-  are reads.
-  """
+  # Events a viewer may send; everything else is refused. The basket lives in
+  # the socket until `issue` posts it.
   def viewer_events, do: ~w(search scan pick destination preview add drop clear_product)
 
   @impl true
@@ -57,13 +45,8 @@ defmodule EstoqueOSWeb.IssueLive.Index do
      |> load_here()}
   end
 
-  # Arrived from a product page, which knows which product and nothing else.
-  # The product comes out picked, with the quantity field focused: the person
-  # who pressed "Dar baixa" over there was already looking at this product and
-  # has no reason to type its name into a search box here.
-  #
-  # An id that does not resolve is not worth a page about an error — the screen
-  # is perfectly usable without it, so it opens as it always does.
+  # From a product page: opens with the product picked. An unresolvable id just
+  # opens the screen as usual.
   @impl true
   def handle_params(%{"product" => product_id} = params, _uri, socket) do
     socket = assign_segment(socket, params)
@@ -80,15 +63,9 @@ defmodule EstoqueOSWeb.IssueLive.Index do
     end
   end
 
-  # Arrived from the end of a mission, which knows exactly which lots it wants
-  # gone: the coordinator ticked them on the mission screen and pressed "donate".
-  # The basket comes filled, the destination is already a donation, and the
-  # place is the mission site rather than the warehouse this screen defaults to.
-  #
-  # The lines are rebuilt here from the ledger rather than trusted from the
-  # address bar. A stale link — the same lot written off from the phone in the
-  # meantime — then fills a shorter basket instead of posting a quantity that is
-  # no longer there.
+  # From the end of a mission: basket pre-filled as a donation at the mission
+  # site. Lines are rebuilt from the ledger, not trusted from the address, so a
+  # stale link fills a shorter basket instead of posting a vanished quantity.
   def handle_params(%{"donate" => lots, "location" => location_id} = params, _uri, socket) do
     socket = assign_segment(socket, params)
 
@@ -119,10 +96,7 @@ defmodule EstoqueOSWeb.IssueLive.Index do
     end)
   end
 
-  # Whole positions, not partial ones: the point of the suggestion is that this
-  # lot is not worth flying home, so the quantity is however much of it is here.
-  # An operator who wants to donate half of it drops the line and adds it by
-  # hand, which is the flow that asks for a quantity.
+  # Whole positions: the lot is not worth flying home. Partial donations go by hand.
   defp donation_lines(location_id, wanted) do
     [limit: nil, location_id: location_id]
     |> Reports.expiring_soon()
@@ -141,11 +115,8 @@ defmodule EstoqueOSWeb.IssueLive.Index do
     end)
   end
 
-  # Which stock this screen is about. The marketing menu asks for one in the
-  # address; the marketing role has one whatever the address says. Everything
-  # that lists a product here — the search, the scanner, "what is here" — passes
-  # it down, so the narrowing is a `where` in a query rather than a template
-  # that renders fewer rows.
+  # The role wins over the address. Every product listing passes the segment
+  # down, so narrowing is a query `where`, not a template that renders fewer rows.
   defp assign_segment(socket, params) do
     segment = Scope.segment(socket.assigns.current_scope, params["segment"])
 
@@ -166,9 +137,7 @@ defmodule EstoqueOSWeb.IssueLive.Index do
     end
   end
 
-  # The basket keeps the name so the list reads without a lookup, and the id so
-  # the ledger has something to post against. `box_code` is display only —
-  # `box_id` is what actually pins the pick when it is set.
+  # `box_code` is display only; `box_id` pins the pick when set.
   defp basket_line(product, quantity, box_id, box_code, opts) do
     %{
       product_id: product.id,
@@ -182,29 +151,18 @@ defmodule EstoqueOSWeb.IssueLive.Index do
     }
   end
 
-  # A price belongs to a sale, whoever is making it and whatever is being sold.
-  # It used to belong to the marketing *product*, which meant an admin selling a
-  # marketing item got the field and the same admin selling anything else did
-  # not — and the destination said "venda" on a movement that recorded no price.
+  # A price belongs to a sale, not to the product's segment.
   defp sellable?(destination), do: destination == "sale"
 
-  # What this stock can leave for. Marketing material is sold or given away;
-  # there is no operating room in it, and a list of seven destinations where two
-  # apply is a list somebody picks wrong from in a hurry.
+  # Marketing material is only sold or given away.
   defp destinations_for("marketing"), do: ~w(sale donation)
   defp destinations_for(_segment), do: Transaction.destinations()
 
-  # Nothing to choose between when the product is all in one place — showing a
-  # single-option picker would be a decision with no second option.
   defp box_choice?(box_options), do: length(box_options) > 1
 
-  # The box holding whatever expires first, the same lot FEFO would reach for
-  # on its own. Undated stock sorts last: an unknown expiry is not "soonest".
-  #
-  # `Date` structs compare wrong under the default `<=` sorter — it walks
-  # struct fields in key order (`day` before `month` before `year`), not
-  # calendar order. ISO 8601 strings sort lexicographically exactly the way
-  # dates sort chronologically, so that is the key, not the date itself.
+  # The box FEFO would reach for; undated stock sorts last. Keyed on the ISO 8601
+  # string because `Date` structs compare field by field (day first), not by
+  # calendar.
   defp recommended_box(box_options) do
     Enum.min_by(box_options, fn box ->
       {is_nil(box.expires_on), box.expires_on && Date.to_iso8601(box.expires_on)}
@@ -226,10 +184,7 @@ defmodule EstoqueOSWeb.IssueLive.Index do
     )
   end
 
-  # Just enough to name the recommendation inside the default option — the
-  # quantity and expiry are already spelled out on that same box's own line
-  # in the list below, and repeating them here is what pushed the option's
-  # text past what a native `<select>` shows before cutting it off.
+  # Short on purpose: a longer default option is cut off by a native `<select>`.
   defp short_box_label(%{box_code: nil}), do: gettext("loose")
   defp short_box_label(%{box_code: code}), do: code
 
@@ -246,10 +201,7 @@ defmodule EstoqueOSWeb.IssueLive.Index do
     |> assign(:sale_unit_price, "")
   end
 
-  # The lots of this product standing at this place, each with what is left.
-  # FEFO still answers on its own; this is the way to say "that print run, not
-  # the other one" — which is a real question for a shirt, where the expiry
-  # FEFO sorts by does not exist and the campaign the batch belongs to does.
+  # Lets the operator override FEFO, e.g. for shirts, which have no expiry to sort by.
   defp lot_options(product, location_id) do
     product.id
     |> Inventory.lot_balances(location_id: location_id)
@@ -334,18 +286,12 @@ defmodule EstoqueOSWeb.IssueLive.Index do
         </:subtitle>
       </.header>
 
-      <!-- Decided before anything is picked, not after. Where the goods go is
-           what the price field depends on and what the whole movement is
-           recorded for, and asking for it under the basket meant a line was
-           already in the basket, priceless, by the time anyone said "venda". -->
+      <%!-- Decided before anything is picked: the price field depends on the destination. --%>
       <form id="destination-form" phx-change="destination" class="panel mt-4">
         <div class="panel-body field-row">
           <label class="fieldset">
             <span class="label">{gettext("Where to")}</span>
-            <!-- Required, and no "não informado" to fall back on. Where the
-                 goods went is the whole point of recording that they left: a
-                 blank there is a hole nobody can fill afterwards, because the
-                 goods are gone and the person who carried them has moved on. -->
+            <%!-- Required, no "not stated" fallback: a blank destination cannot be filled in afterwards. --%>
             <select name="destination" class="select select-bordered" required>
               <option value="" disabled selected={is_nil(@destination)}>
                 {gettext("choose one")}
@@ -449,10 +395,7 @@ defmodule EstoqueOSWeb.IssueLive.Index do
         </li>
       </ul>
 
-      <!-- The basket. Nothing here has been written, which is the whole point:
-           a line added by mistake is removed rather than corrected by an
-           adjustment filed forever. And six things taken at one counter are one
-           movement, not six. -->
+      <%!-- Basket: nothing is written yet, so a mistaken line is removed, not corrected by an adjustment; items taken together are one movement. --%>
       <form
         :if={@basket != []}
         id="basket-form"
@@ -482,11 +425,7 @@ defmodule EstoqueOSWeb.IssueLive.Index do
               group
             >
               <div class="flex justify-end">
-                <!-- An icon, because this repeats on every line and the word
-                     took a column's worth of width from the numbers. Named for
-                     the screen reader and on hover, both saying *which* line —
-                     an icon-only destructive action with a bare "Remove" is a
-                     guess, and this list is how much leaves the shelf. -->
+                <%!-- Icon-only, but named with the product for screen readers and hover. --%>
                 <button
                   type="button"
                   phx-click="drop"
@@ -542,10 +481,6 @@ defmodule EstoqueOSWeb.IssueLive.Index do
             )}
           </p>
 
-          <!-- FEFO already reaches for the box that expires first on its own —
-               this is a way to say "somewhere else instead", not a step
-               anyone has to take. Left blank, nothing here changes. -->
-          <!-- Left blank, FEFO decides as it always did. -->
           <label :if={lot_choice?(@lot_options)} class="fieldset">
             <span class="label">{gettext("Which lot")}</span>
             <select name="lot_id" class="select select-bordered w-full">
@@ -571,18 +506,7 @@ defmodule EstoqueOSWeb.IssueLive.Index do
           <div class="field-row">
             <label class="fieldset">
               <span class="label">{gettext("Quantity")}</span>
-              <!-- The value comes from the server, and it has to.
-                   `phx-change` repaints this form on every keystroke, and an
-                   input rendered without a value is repainted *empty*: the
-                   operator typed "30", the FEFO preview appeared, and the field
-                   they were still typing into went blank under them. Reported as
-                   a bug, and read as one — it looks exactly like the app
-                   throwing the number away.
-
-                   The conference screen learned this first and calls it a draft;
-                   here one field is enough. Empty string rather than nil, so
-                   the field always carries a `value` — nil renders no attribute
-                   at all, and a reader cannot tell that from an oversight. -->
+              <%!-- value must come from the server: `phx-change` repaints this form on every keystroke and a value-less input is emptied under the typist. Empty string, not nil, so the attribute is always rendered. --%>
               <input
                 type="text"
                 name="quantity"
@@ -595,15 +519,7 @@ defmodule EstoqueOSWeb.IssueLive.Index do
                 phx-mounted={JS.focus()}
               />
             </label>
-            <!-- Only for the stock that is sold. It sits beside the quantity
-                 because a price belongs to the line, not to the write-off: two
-                 shirts at 18,50 and a mug at 12,90 leave on one movement, and a
-                 single price at the bottom could not describe it.
-
-                 `value` from the server for the same reason the quantity has
-                 one — `phx-change` repaints this form on every keystroke, and a
-                 field rendered without a value comes back empty under the
-                 person typing into it. -->
+            <%!-- Price is per line (items sold at different prices share one movement). Server-rendered value, as for the quantity. --%>
             <label :if={sellable?(@destination)} class="fieldset">
               <span class="label">{gettext("Sale price (unit)")}</span>
               <input
@@ -623,11 +539,7 @@ defmodule EstoqueOSWeb.IssueLive.Index do
             </.button>
           </div>
 
-          <!-- Below the field, never above it. It appears while somebody is
-               typing, and anything that appears above the input pushes the
-               input — and the button beside it — down mid-keystroke. Same rule
-               the conference rows are built on: what shows up on its own does
-               not get to move what the thumb is already aimed at. -->
+          <%!-- Below the field, never above: it appears mid-keystroke and would push the input down. --%>
           <div :if={@picks} class="text-sm">
             <p class="font-medium">{gettext("Will come out of:")}</p>
             <ul class="list-disc list-inside opacity-80">
@@ -641,13 +553,7 @@ defmodule EstoqueOSWeb.IssueLive.Index do
         </div>
       </form>
 
-      <!-- What is on the shelf, for the person standing in front of it. The
-           search is for whoever knows the catalog name; this is for whoever
-           knows the thing. Only what is actually here: offering a product with
-           no stock is a write-off that fails at the last step.
-
-           Hidden while a search is open, so the screen never shows two
-           competing lists of products at once. -->
+      <%!-- Only what is actually here, since an out-of-stock write-off fails at the last step. Hidden while a search is open. --%>
       <.panel
         :if={@query == "" and is_nil(@product)}
         title={gettext("Here right now")}
@@ -665,9 +571,6 @@ defmodule EstoqueOSWeb.IssueLive.Index do
           <:col :let={row} label={gettext("Product")} emphasis={:identity}>
             {row.product}
             <.status :if={row.controlled} kind={:controlled} />
-            <!-- Where to reach for it. The list said what was at the location
-                 and not where it was, which on a shelf of forty boxes is most
-                 of the work. -->
             <p :if={row.boxes != []} class="text-xs opacity-60">
               {gettext("in %{boxes}", boxes: Enum.join(row.boxes, ", "))}
             </p>
@@ -681,11 +584,7 @@ defmodule EstoqueOSWeb.IssueLive.Index do
 
           <:col :let={row} label={gettext("Actions")} hide_label_on_card={true} field={:inline} group>
             <div class="flex justify-end">
-              <!-- "Separar", not "Adicionar". This screen takes goods *out* of
-                   stock, and a row whose action reads "add" says the opposite of
-                   what the screen does — reported as reading like an antithesis.
-                   Picking is the warehouse's own word for gathering what is
-                   about to leave, and it is what this click actually starts. -->
+              <%!-- "Pick", not "Add": this screen takes goods out of stock. --%>
               <.button
                 phx-click="pick"
                 phx-value-product={row.product_id}
@@ -755,11 +654,7 @@ defmodule EstoqueOSWeb.IssueLive.Index do
     end
   end
 
-  # Only to reveal the CNPJ field when the destination is a donation; the rest of
-  # the form keeps its own values in the DOM.
-  # The whole "where to" block, which is one form of its own now: the price
-  # field on a line depends on this answer, so it has to exist before a line is
-  # added rather than under the basket that already holds it.
+  # The whole "where to" block: reveals the CNPJ field for a donation and keeps its values.
   def handle_event("destination", params, socket) do
     {:noreply,
      socket
@@ -769,9 +664,7 @@ defmodule EstoqueOSWeb.IssueLive.Index do
      |> assign(:notes, params["notes"] || "")}
   end
 
-  # Recomputes the FEFO preview whenever the quantity or the chosen box
-  # changes — this is what finally answers "will come out of", rather than
-  # asking the operator to trust a pick they cannot see.
+  # Recomputes the FEFO preview when the quantity or chosen box changes.
   def handle_event("preview", params, socket) do
     {:noreply,
      socket
@@ -780,9 +673,7 @@ defmodule EstoqueOSWeb.IssueLive.Index do
      |> assign(:picks, compute_picks(socket, params))}
   end
 
-  # Adds to the basket. Nothing is written until the whole thing is confirmed,
-  # which is what makes a mistyped line removable — once posted it could only be
-  # undone by a correcting adjustment filed forever.
+  # Adds to the basket; nothing is written until confirmed.
   def handle_event("add", %{"quantity" => quantity} = params, socket) do
     product = socket.assigns.product
 
@@ -868,16 +759,12 @@ defmodule EstoqueOSWeb.IssueLive.Index do
          |> assign(:recipient_tax_id, "")
          |> assign(:notes, "")
          |> assign(:query, "")
-         # The shelf just changed, and this screen is now showing it.
          |> load_here()}
 
       {:error, :nothing_to_issue} ->
         {:noreply, put_flash(socket, :error, gettext("Add something to the list first."))}
 
-      # Both of these were already refused by the context, with the reason
-      # named, and both landed in the catch-all below: the operator got "não foi
-      # possível registrar a baixa" and no idea that the destination select was
-      # the thing standing in the way.
+      # Named, or the catch-all hides which field blocks the operator.
       {:error, :missing_destination} ->
         {:noreply, put_flash(socket, :error, gettext("Say where the goods are going first."))}
 

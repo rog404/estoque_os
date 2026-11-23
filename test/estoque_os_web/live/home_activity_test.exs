@@ -1,12 +1,9 @@
 defmodule EstoqueOSWeb.HomeActivityTest do
   @moduledoc """
-  The recent-activity list said "Load-out" and stopped there. It now says where
-  the load went and what a manual issue took, which is the difference between a
-  list you can audit from and a list you have to leave to go check.
+  The recent-activity list says where a load went and what a manual issue took.
 
-  These render against real records on purpose: `route/1` reads the location
-  associations, and an unloaded association is truthy, so a missing preload would
-  raise here rather than on somebody's screen.
+  Rendered against real records: `route/1` reads location associations, and an
+  unloaded association is truthy, so a missing preload raises here.
   """
 
   use EstoqueOSWeb.ConnCase, async: true

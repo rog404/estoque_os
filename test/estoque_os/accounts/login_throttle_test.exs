@@ -1,11 +1,7 @@
 defmodule EstoqueOS.Accounts.LoginThrottleTest do
   @moduledoc """
-  Sign-up is closed and roles are granted by hand, so the login form is the whole
-  attack surface. It used to answer as fast as the network allowed, forever.
-
-  The delay grows rather than locking the account. Locking is what an attacker
-  wants when the goal is keeping the coordinator out on the morning a mission
-  ships.
+  Sign-up is closed, so the login form is the whole attack surface. The delay
+  grows rather than locking the account, because locking is what an attacker wants.
   """
 
   use ExUnit.Case, async: false
@@ -24,7 +20,6 @@ defmodule EstoqueOS.Accounts.LoginThrottleTest do
     LoginThrottle.record_failure(keys)
     LoginThrottle.record_failure(keys)
 
-    # People mistype their own password. Two goes is not an attack.
     assert LoginThrottle.check(keys) == :ok
   end
 
@@ -58,9 +53,8 @@ defmodule EstoqueOS.Accounts.LoginThrottleTest do
     address = {:address, "203.0.113.#{System.unique_integer([:positive])}"}
     on_exit(fn -> LoginThrottle.clear([address]) end)
 
-    # A guesser walking down a list of emails never trips the email counter, so
-    # the address counts too — but loosely: it is a whole office, and a strict
-    # one means whoever mistypes first locks out everybody else.
+    # A guesser walking a list of emails never trips the email counter, so the
+    # address counts too, loosely: it is a whole office.
     Enum.each(1..30, fn _ -> LoginThrottle.record_failure([address]) end)
 
     assert {:error, _} = LoginThrottle.check([email_key, address])

@@ -20,17 +20,11 @@ defmodule EstoqueOSWeb.LocationLive.Index do
      |> load_locations()}
   end
 
-  @doc """
-  Events a viewer may send. Everything else on this screen is refused.
-
-  Searching narrows a list and writes nothing.
-  """
+  # Events a viewer may send; everything else is refused.
   def viewer_events, do: ~w(search)
 
-  # One list, retired places included and marked. Two tables said the same thing
-  # twice and put the same location's history in two places on the page — a
-  # retired mission site is still a mission site, and the row that says so is
-  # the row that brings it back.
+  # One list, retired places included and marked: the row that says so is the
+  # row that brings it back.
   defp load_locations(socket) do
     socket
     |> assign(
@@ -41,9 +35,7 @@ defmodule EstoqueOSWeb.LocationLive.Index do
     |> assign(:editing, nil)
   end
 
-  # By name or by kind, because "depósito" and "missão" are how somebody asks
-  # for a group of them, and a warehouse with thirty mission sites is a list
-  # nobody scrolls.
+  # By name or by kind: people ask for a group ("depósito", "missão").
   defp matches?(_location, ""), do: true
 
   defp matches?(location, search) do
@@ -77,8 +69,8 @@ defmodule EstoqueOSWeb.LocationLive.Index do
     counts.boxes == 0 and Decimal.compare(counts.loose, 0) != :gt
   end
 
-  # And the reason says which of the two it is, because the fix is different:
-  # boxes are moved, loose stock is written off or entered into a box.
+  # Says which blocks it, since the fix differs: boxes are moved, loose stock is
+  # written off or boxed.
   defp retirement_block(assigns, location) do
     counts = overview(assigns, location)
 
@@ -144,8 +136,6 @@ defmodule EstoqueOSWeb.LocationLive.Index do
       <.panel title={gettext("Locations")} flush>
         <.data_table rows={@locations} row_id={&"location-#{&1.id}"}>
           <:empty>
-            <!-- Two different facts: a search that matched nothing is not an
-                 operation without places to keep stock. -->
             <.empty
               :if={@search != ""}
               title={gettext("No location matches that.")}
@@ -180,19 +170,12 @@ defmodule EstoqueOSWeb.LocationLive.Index do
               </.button>
             </form>
             <span :if={@editing != location.id}>{location.name}</span>
-            <!-- Said on the row rather than by living in a second table: a
-                 retired place is the same place, and what somebody looks for
-                 when they come here is the name. -->
             <.status :if={not location.active} kind={:deactivated} class="ml-2" />
           </:col>
 
           <:col :let={location} label={gettext("Kind")}>{kind_label(location.kind)}</:col>
 
-          <!-- Which stock arrives here by default. Surgical supplies come into
-               the warehouse and marketing material into the office, and every
-               screen that preselects a place reads this — so setting it once
-               here is what stops one of the two coordinators correcting the
-               location on every single entry. -->
+          <%!-- Every screen that preselects a place reads this default. --%>
           <:col :let={location} label={gettext("Entry point for")}>
             <.write_gate may={@role_may_write?} allowed={@controls_enabled?}>
               <form id={"default-#{location.id}"} phx-change="set_default">
@@ -240,15 +223,7 @@ defmodule EstoqueOSWeb.LocationLive.Index do
                   <.icon name="hero-pencil-square" class="size-4" />
                 </button>
 
-                <!-- Disabled, never absent — and the reason is the sentence that
-                   says what to do about it. A location with boxes in it used to
-                   swap the button for the words "holds boxes", which reads as a
-                   fact about the row rather than as the thing standing between
-                   you and deactivating it. -->
-                <!-- One slot, one control: a working place can be retired, a
-                     retired one can come back, and no row ever shows both. The
-                     slot has a width so the two buttons occupy the same space
-                     and the column does not shift as the list is filtered. -->
+                <%!-- Disabled, never absent, with the reason on hover. One fixed-width slot holds either button so the column does not shift. --%>
                 <div class="w-28 shrink-0">
                   <.commit_action
                     :if={location.active}
@@ -269,11 +244,6 @@ defmodule EstoqueOSWeb.LocationLive.Index do
                     </:consequence>
                   </.commit_action>
 
-                  <!-- A mission that ran last year runs again, and the name is
-                       unique — so the way back is this row rather than a second
-                       location typed in with the same name, which the database
-                       refuses and which would split the history in two if it
-                       did not. -->
                   <.button
                     :if={not location.active}
                     type="button"
@@ -325,8 +295,7 @@ defmodule EstoqueOSWeb.LocationLive.Index do
     {:noreply, socket |> assign(:search, params["search"] || "") |> load_locations()}
   end
 
-  # One place per stock, so this both sets the new one and clears whoever held
-  # it — decided in the context, where the uniqueness lives.
+  # The context clears whoever held the default, since uniqueness lives there.
   def handle_event("set_default", %{"location_id" => id, "segment" => segment}, socket) do
     location = Locations.get_location!(id)
 
@@ -380,10 +349,8 @@ defmodule EstoqueOSWeb.LocationLive.Index do
     end
   end
 
-  # Guarded here too, not only in the markup: hiding the trigger is presentation,
-  # and the boxes could have arrived between render and click. The context
-  # answers, so the screen and a hand-made event get the same answer — and the
-  # answer now covers stock lying loose at the place, not only its boxes.
+  # Guarded here too, not only in the markup: boxes may arrive between render and
+  # click, and the context gives a hand-made event the same answer.
   def handle_event("deactivate", %{"id" => id}, socket) do
     location = Locations.get_location!(id)
 

@@ -1,11 +1,7 @@
 defmodule EstoqueOSWeb.InvoiceSegmentTest do
   @moduledoc """
-  Which stock a delivery is for, decided when it is imported.
-
-  This is the rule that used to be inferred from where the lines landed, and it
-  cost the marketing role its first minute: a freshly imported invoice has no
-  product on any line yet, so "does this invoice have a marketing item" answered
-  no and the screen refused the person who had just uploaded the file.
+  Which stock a delivery is for, decided when it is imported. It cannot be
+  inferred from the lines: a freshly imported invoice has no product on any line.
   """
 
   # Not async: these suites import the same real invoice, so they would race
@@ -47,8 +43,6 @@ defmodule EstoqueOSWeb.InvoiceSegmentTest do
       assert invoice.segment == "marketing"
       assert to == "/invoices/#{invoice.id}"
 
-      # The screen that used to say "você não tem permissão" the second after
-      # the upload finished.
       {:ok, _view, html} = live(conn, to)
       assert text(html) =~ invoice.number
     end
@@ -62,9 +56,7 @@ defmodule EstoqueOSWeb.InvoiceSegmentTest do
       assert text(html) =~ Invoices.get_invoice_by_access_key(@access_key).number
     end
 
-    # The lines have no product yet, so they belong to whoever the delivery was
-    # imported for. Filtering them out left an empty invoice nobody could
-    # resolve.
+    # Lines with no product yet belong to whoever the delivery was imported for.
     test "sees the lines it still has to resolve", %{conn: conn} do
       {:ok, view, _html} = live(conn, ~p"/invoices/import")
       upload_invoice(view)
@@ -75,9 +67,6 @@ defmodule EstoqueOSWeb.InvoiceSegmentTest do
       assert length(shown.items) == length(Invoices.get_invoice!(invoice.id).items)
     end
 
-    # The toggle is for the coordinator who receives the other side's delivery,
-    # and either coordinator may be that person: the stock is a filter, and
-    # this is the moment somebody states which one a document belongs to.
     test "can import into the surgical stock when the delivery is that", %{conn: conn} do
       {:ok, view, _html} = live(conn, ~p"/invoices/import")
 
@@ -119,8 +108,7 @@ defmodule EstoqueOSWeb.InvoiceSegmentTest do
       %{invoice: Invoices.get_invoice_by_access_key(@access_key)}
     end
 
-    # A coordinator confirming a marketing delivery must not create shirts in
-    # the surgical catalog because that is where their own default points.
+    # Must not create shirts in the surgical catalog just because that is the user's default.
     test "files a product created from it under its own stock", %{
       conn: conn,
       invoice: invoice

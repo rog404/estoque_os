@@ -1,11 +1,7 @@
 defmodule EstoqueOSWeb.ConferenceLiveTest do
   @moduledoc """
-  The way in.
-
-  A conference used to be reachable only from the invoice screen, which sits
-  behind the money gate — so the logistics operator, whose job this is, had no
-  way to find the work. This screen is the door, and it has to stay free of
-  amounts or it cannot live in Operação at all.
+  The conference list, the logistics operator's way in. It must stay free of
+  amounts, or it cannot live in Operação.
   """
 
   # Not async: imports the same real invoice as the other invoice suites.
@@ -84,7 +80,6 @@ defmodule EstoqueOSWeb.ConferenceLiveTest do
       assert html =~ "Continuar contagem"
     end
 
-    # The whole reason this screen can sit in Operação.
     test "no amount reaches the page", %{conn: conn} do
       {:ok, _view, html} = live(conn, ~p"/conferences")
 

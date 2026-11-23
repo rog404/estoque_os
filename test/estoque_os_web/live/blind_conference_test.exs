@@ -1,13 +1,7 @@
 defmodule EstoqueOSWeb.BlindConferenceTest do
   @moduledoc """
-  A conference is a count, and a count that is shown its own answer measures
-  nothing.
-
-  `AuditLive.Count` was built on that rule and says so in its moduledoc. The
-  receiving conference contradicted it for a while: it rendered "A nota diz"
-  and a signed difference to whoever opened the screen, including the operator
-  standing in front of the pallet. These tests hold the two halves apart — the
-  operator counts, the manager reads what the count found.
+  A count shown its own answer measures nothing: the operator counts blind, and
+  the manager reads what the count found.
   """
 
   # Not async: imports the same real invoice as the other invoice suites.
@@ -23,10 +17,8 @@ defmodule EstoqueOSWeb.BlindConferenceTest do
   @atlantica "35260455666777000181550040019851671590327796-nfe.xml"
 
   setup %{conn: conn} do
-    # Posting the invoice needs a role that may see money. The conn it hands
-    # back is thrown away on purpose: each `describe` signs in as the role it is
-    # about, and inheriting a manager session here would hide exactly the leak
-    # these tests exist to catch.
+    # Posting needs a role that may see money. The returned conn is discarded so
+    # each `describe` signs in as its own role; a manager session would hide the leak.
     _manager = register_and_log_in_as(%{conn: conn}, "manager")
 
     warehouse = location_fixture(%{name: "Estoque Principal", kind: "warehouse"})
@@ -56,17 +48,14 @@ defmodule EstoqueOSWeb.BlindConferenceTest do
     %{warehouse: warehouse, box: box, invoice: posted, receipt: receipt}
   end
 
-  # The page with the markup taken off: what a person standing at the pallet
-  # actually reads. `<script>` goes too — the theme bootstrap in the root layout
-  # is a wall of text nobody sees.
+  # Visible text only; `<script>` goes too (the theme bootstrap is invisible text).
   defp visible_text(html) do
     html
     |> String.replace(~r{<script.*?</script>}s, " ")
     |> String.replace(~r{<[^>]*>}s, " ")
   end
 
-  # A count that disagrees with the invoice is not believed until it has been
-  # made `Receiving.counts_required/0` times — see `Receiving.record_count/2`.
+  # A disagreeing count is not believed until made `Receiving.counts_required/0` times.
   defp count_line(view, line, quantity, box_code) do
     Enum.reduce(1..Receiving.counts_required(), nil, fn _attempt, _acc ->
       view
@@ -81,23 +70,16 @@ defmodule EstoqueOSWeb.BlindConferenceTest do
     test "is never told what the invoice claimed", %{conn: conn, receipt: receipt} do
       {:ok, view, html} = live(conn, ~p"/receipts/#{receipt}")
 
-      # The line is there to be counted...
       assert html =~ "ELETRODO ECG ADULTO PT/50 POLYMED"
       assert html =~ "Contado"
 
-      # ...but nothing on the page says how many the supplier promised.
       refute html =~ "A nota diz"
       refute html =~ "Divergências em relação à nota"
 
-      # Scoped to the lines panel, not the whole page: the topbar shows the
-      # logged-in operator's email, which is `"user#{System.unique_integer()}"`
-      # in tests and occasionally contains "300" by chance, which made this
-      # assertion flaky on a substring it never meant to check.
+      # Scope to the lines panel: the topbar's test email can contain "300" by
+      # chance. Strip tags too: "300" lives in `border-base-300`.
       lines_html = view |> element("#receipt-lines") |> render()
 
-      # Read as the operator reads it, with the markup gone: "300" lives in
-      # `border-base-300` on half the elements on the page and matching that
-      # would pass this test forever.
       refute visible_text(lines_html) =~ "300"
     end
 
@@ -113,15 +95,11 @@ defmodule EstoqueOSWeb.BlindConferenceTest do
 
       refute html =~ "Divergências em relação à nota"
 
-      # Visible text only. A row carries `id="line-13"` whenever the line's id
-      # happens to be 13, and matching that made this test pass on luck.
+      # Visible text only: a row can carry `id="line-13"`.
       refute visible_text(html) =~ "-13"
     end
 
-    # The rule Rogerio asked for reveals one thing by design — that this line
-    # disagrees — and must reveal nothing else. "A nota diz 300" next to "conte
-    # de novo" would hand the operator the number to write down, which is the
-    # whole failure the blind sheet exists to prevent.
+    # Reveals only that this line disagrees; the number to reach would defeat the blind sheet.
     test "is asked to count again without being told the number to reach", %{
       conn: conn,
       receipt: receipt,
@@ -140,7 +118,6 @@ defmodule EstoqueOSWeb.BlindConferenceTest do
       assert text =~ "Conte este item de novo"
       assert text =~ "contagem 2 de 3"
 
-      # Neither the invoice's number nor the distance to it.
       refute text =~ "300"
       refute text =~ "-13"
     end

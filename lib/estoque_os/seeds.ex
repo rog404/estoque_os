@@ -3,18 +3,12 @@ defmodule EstoqueOS.Seeds do
   Loads the starting data: the locations the operation uses, the OSI standard
   supply table as the product catalog, and the mission kits.
 
-  The source spreadsheets are real and messy — missing NCMs, a unit column
-  reading "OK", a sector typed both "CRASHBOX" and "CRASHBIX", four repeated
-  descriptions, and one description with a spreadsheet range reference pasted
-  into the middle of a word. We normalize what is safe to normalize (whitespace,
-  casing, NCM digits, that range reference) and keep the rest as written: a seed
-  is not the place to quietly rewrite what the coordinator typed. The line
-  between the two is whether a person typed it — `CRASHBIX` is a typo and stays,
-  `+A1:P376` is the tool and goes.
+  The source spreadsheets are messy. We normalize only what is mechanical
+  (whitespace, casing, NCM digits, a pasted range reference) and keep what a
+  person typed, typos included: `CRASHBIX` stays, `+A1:P376` goes.
 
-  Suppliers are deliberately not seeded. The standard table lists them by name
-  only, and a supplier without its CNPJ is not identifiable — they are created
-  with the real CNPJ the first time one of their invoices is imported.
+  Suppliers are not seeded: the table has names without CNPJs, so they are
+  created with the real CNPJ on first invoice import.
   """
 
   import Ecto.Query
@@ -47,16 +41,10 @@ defmodule EstoqueOS.Seeds do
     }
   end
 
-  # The four accounts a from-zero test deployment needs, one per role that has a
-  # screen worth seeing. All on a throwaway domain, all sharing one password,
-  # and all cleared of the forced first-login reset — a demo account that
-  # demands a new password before it shows anything is a demo that does not
-  # open. Real accounts the admin creates still carry the reset.
-  #
-  # The password is read from BOOTSTRAP_PASSWORD, never committed: this repo is
-  # public, so a real credential cannot live in the source. The fallback is an
-  # obvious placeholder for local dev that a deployment overrides through the
-  # environment.
+  # Role accounts for a from-zero test deployment: throwaway domain, shared
+  # password, no forced first-login reset (real admin-created accounts keep it).
+  # The password comes from BOOTSTRAP_PASSWORD: the repo is public, so only a
+  # placeholder lives in source.
   @bootstrap_password_placeholder "trocar-em-producao"
   @bootstrap_users [
     %{email: "admin@estoque.local", role: "admin"},
@@ -65,10 +53,7 @@ defmodule EstoqueOS.Seeds do
     %{email: "marketing@estoque.local", role: "marketing"}
   ]
 
-  # The patient kit as the mission describes it by hand (the WhatsApp list). The
-  # other kits are created by name only — their contents are raised later, in
-  # the app. Lines carry a description and a quantity; the product is matched
-  # when a catalog exists and stays unresolved until then.
+  # Only the patient kit has items; the others are created by name and filled in the app.
   @patient_kit_items [
     {"Fixador de acesso venoso", 1},
     {"Gaze Ray Tec", 1},
@@ -114,10 +99,8 @@ defmodule EstoqueOS.Seeds do
   ]
 
   @doc """
-  The starting data for a from-zero deployment that will receive its real stock
-  by import: the locations, the mission kits, and the role accounts. No catalog
-  and no stock — the catalog is built by importing the adjusted control, and the
-  stock rides in on the same import.
+  The starting data for a from-zero deployment: locations, mission kits and
+  role accounts. No catalog and no stock; both arrive by import.
 
   Safe to run twice: existing rows and accounts are left alone.
   """
@@ -216,8 +199,7 @@ defmodule EstoqueOS.Seeds do
         %{
           name: name,
           ncm: ncm,
-          # Stock is always counted in individual units; the spreadsheet's
-          # column is the *purchase* packaging, kept as a note.
+          # The spreadsheet's unit is the *purchase* packaging, kept as a note.
           stock_unit: "UN",
           min_stock_override: positive_decimal(quantity),
           classification: text(classification),
@@ -230,9 +212,8 @@ defmodule EstoqueOS.Seeds do
 
   defp catalog_attrs(_row), do: nil
 
-  # Three rows carry an NCM that is not an NCM: two 11-digit codes and one the
-  # spreadsheet turned into a date. We refuse to store them as a classification
-  # code, but we keep what was typed so a human can fix it.
+  # Some rows carry an invalid NCM (11 digits, or turned into a date): not stored
+  # as a code, but kept in the notes so a human can fix it.
   defp ncm(value) do
     case value do
       nil ->
@@ -267,8 +248,8 @@ defmodule EstoqueOS.Seeds do
   defp purchase_unit_note("OK"), do: nil
   defp purchase_unit_note(unit), do: "Unidade de compra na tabela padrão: #{unit}"
 
-  # Portaria 344 items ride in this stock too; the standard table only marks
-  # them as medication, so this is a starting point a human refines later.
+  # Portaria 344 items ride in this stock; the table only marks "medicamento",
+  # so this is a starting point for a human to refine.
   defp controlled?(classification, _name) do
     case text(classification) do
       nil -> false
@@ -293,9 +274,8 @@ defmodule EstoqueOS.Seeds do
   @doc """
   Seeds the mission kits, one per sheet.
 
-  Kit sheets name items in free text that rarely matches the catalog exactly,
-  so lines keep their description and get a product only when the name matches
-  outright. The rest stay visible as unresolved components.
+  Lines get a product only on an exact name match; the rest stay visible as
+  unresolved components.
   """
   def seed_kits(path) do
     path
@@ -315,12 +295,8 @@ defmodule EstoqueOS.Seeds do
 
     case Repo.one(from k in Kit, where: fragment("lower(?)", k.name) == ^String.downcase(title)) do
       nil ->
-        # Through the context, not `Repo.insert!/1`. A kit is a product —
-        # assembling one converts components into a lot of the kit's own
-        # product, and `Kits.create_kit/1` is what creates the pair. Inserting
-        # the kit on its own seeded five kits that could never be assembled,
-        # and the failure surfaced two contexts away, as a nil `kit.product`
-        # inside the conversion.
+        # Via the context: `Kits.create_kit/1` creates the kit and its product,
+        # which assembly needs.
         {:ok, kit} = Kits.create_kit(%{name: title, items: items})
         kit
 
@@ -351,8 +327,6 @@ defmodule EstoqueOS.Seeds do
     end
   end
 
-  ## Spreadsheet plumbing
-
   defp rows(path, sheet_name) do
     {:ok, package} = XlsxReader.open(path)
     {:ok, rows} = XlsxReader.sheet(package, sheet_name, number_type: Decimal, blank_value: nil)
@@ -371,19 +345,12 @@ defmodule EstoqueOS.Seeds do
   @doc """
   Removes a spreadsheet range reference pasted into the middle of a word.
 
-  Row 11 of the standard table reads `SOLUÇÃ+A1:P376O INJETÁVEL`: somebody had
-  the range `A1:P376` on the clipboard and dropped it inside "SOLUÇÃO", which
-  is why the catalog carried a product nobody could search for. Row 219 spells
-  the same family correctly, so the intended text is not in doubt.
+  Row 11 of the standard table reads `SOLUÇÃ+A1:P376O INJETÁVEL`: a clipboard
+  range dropped inside "SOLUÇÃO", leaving an unsearchable product. Nobody typed
+  it; it is a tool artefact, so removing it restores the text.
 
-  This is not the module rewriting what the coordinator typed — nobody typed
-  `+A1:P376`. It is a mechanical artefact of the tool, in the same class as the
-  double spaces already normalized above it, and taking it out restores what
-  was written rather than editing it.
-
-  Narrow on purpose: it wants letters on both sides of the colon, so a
-  concentration like `1:200,000` — which several real anaesthetics carry — is
-  left alone.
+  Narrow on purpose: it needs letters on both sides of the colon so a
+  concentration like `1:200,000` is left alone.
 
       iex> strip_spreadsheet_artifact("SOLUÇÃ+A1:P376O INJETÁVEL")
       "SOLUÇÃO INJETÁVEL"

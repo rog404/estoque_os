@@ -12,12 +12,7 @@ defmodule EstoqueOSWeb.InvoiceLive.Import do
 
   @max_upload_size 8_000_000
 
-  @doc """
-  Events a viewer may send. Everything else on this screen is refused.
-
-  Validating an upload parses a file and writes nothing; `import` posts the
-  invoice and its stock.
-  """
+  # Events a viewer may send; everything else is refused. `import` posts stock.
   def viewer_events, do: ~w(validate cancel segment)
 
   @impl true
@@ -26,10 +21,8 @@ defmodule EstoqueOSWeb.InvoiceLive.Import do
      socket
      |> assign(:page_title, gettext("Import invoice"))
      |> assign(:error, nil)
-     # Which stock this delivery is for. It starts on the one the person works
-     # in — marketing imports marketing — and stays a choice, because a
-     # coordinator does receive the other side's delivery now and then and
-     # re-importing under the right stock is not a thing anybody can do twice.
+     # Defaults to the stock the person works in, but stays a choice: re-importing
+     # under the right stock is not possible.
      |> assign(:segment, Scope.default_segment(socket.assigns.current_scope) || "medical")
      |> assign(:max_upload_size, @max_upload_size)
      |> allow_upload(:xml,
@@ -51,9 +44,6 @@ defmodule EstoqueOSWeb.InvoiceLive.Import do
           </:subtitle>
         </.header>
 
-        <!-- Reading the XML is the first of three moves, and the one that
-             changes nothing on its own. Saying so here is what keeps an
-             operator from walking away believing the stock went up. -->
         <ol class="flex items-center gap-3 text-sm">
           <li class="flex items-center gap-2 font-medium">
             <span class="badge badge-primary badge-sm">1</span>
@@ -71,11 +61,7 @@ defmodule EstoqueOSWeb.InvoiceLive.Import do
           </li>
         </ol>
 
-        <!-- Decided here rather than inferred from the lines afterwards. It is
-             what a product created from this invoice is filed under, and it is
-             what makes the invoice belong to the person who just uploaded it —
-             at this moment not one line has a product yet, so "which stock is
-             this" has no other answer to read. -->
+        <%!-- Decided here, not inferred later: no line has a product yet, so nothing else says which stock this is. --%>
         <fieldset class="rounded-box border border-base-300 p-4">
           <legend class="px-2 text-sm font-medium">{gettext("Stock")}</legend>
 
@@ -223,15 +209,11 @@ defmodule EstoqueOSWeb.InvoiceLive.Import do
 
   defp error_message(_other), do: gettext("The invoice could not be imported.")
 
-  # Nothing to send until a file is attached and the browser is happy with it.
-  # Letting the button be pressed only to answer "pick a file first" is an
-  # error the screen could have prevented.
   defp ready?(upload) do
     upload.entries != [] and Enum.all?(upload.entries, & &1.valid?)
   end
 
-  # The role still wins: a marketing user asking for the surgical stock gets
-  # their own back, the same rule every other screen applies.
+  # The role still wins: a marketing user asking for surgical gets their own stock.
   defp segment(socket, asked) do
     Scope.segment(socket.assigns.current_scope, asked) || "medical"
   end

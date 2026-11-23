@@ -11,8 +11,7 @@ defmodule EstoqueOSWeb.NavigationTest do
   setup :register_and_log_in_user
 
   test "groups the destinations instead of listing ten links", %{conn: conn} do
-    # As the admin, who may reach all of them. What each *other* role sees is
-    # `nav_roles_test.exs`.
+    # As the admin, who may reach all of them; other roles are in `nav_roles_test.exs`.
     %{conn: conn} = register_and_log_in_admin(%{conn: conn})
     {:ok, _view, html} = live(conn, ~p"/")
 
@@ -20,7 +19,6 @@ defmodule EstoqueOSWeb.NavigationTest do
       assert html =~ group
     end
 
-    # Every destination is still reachable, one level down.
     for path <- ~w(/invoices /stock /boxes /locations /kits
                    /load-out /issue /returns /reports/audit /issues) do
       assert html =~ "href=\"#{path}\""
@@ -44,10 +42,7 @@ defmodule EstoqueOSWeb.NavigationTest do
   test "importing is a step inside invoices, not a destination in the menu", %{conn: conn} do
     {:ok, _view, home} = live(conn, ~p"/")
 
-    # It once sat in three places at once: the bar as a primary button, the
-    # dashboard header, and the Entradas group. The menu names where you can
-    # *be*; importing is something you do once you are already in invoices, and
-    # that screen offers it twice — in its header and in its empty state.
+    # The menu names where you can be; importing is done from inside invoices.
     refute home =~ "/invoices/import"
 
     {:ok, _view, invoices} = live(conn, ~p"/invoices")
@@ -61,40 +56,33 @@ defmodule EstoqueOSWeb.NavigationTest do
     assert html =~ "phx:set-theme"
   end
 
-  # A `navigate` across a `live_session` cannot be a live navigation: LiveView
-  # notices, logs "you are redirecting across live_sessions", and reloads the
-  # page. The reload was always going to happen; asking the socket first spends a
-  # round trip to be told so.
+  # A `navigate` across a `live_session` reloads the page anyway, after a wasted
+  # round trip, so such links must be plain hrefs.
   describe "links that cross a live_session" do
     setup %{conn: conn}, do: register_and_log_in_admin(%{conn: conn})
 
     test "are plain hrefs, and links inside one stay live", %{conn: conn} do
       {:ok, _view, html} = live(conn, ~p"/")
 
-      # `/` and `/stock` are both `:signed_in` — that one stays live.
+      # `/` and `/stock` are both `:signed_in`; `/issue` is `:money` and
+      # `/conferences` is `:operational`.
       assert nav_link(html, "/stock") =~ ~s(data-phx-link="redirect")
 
-      # `/issue` is `:money` and `/conferences` is `:operational`: from here,
-      # both are full page loads.
       refute nav_link(html, "/issue") =~ "data-phx-link"
       refute nav_link(html, "/conferences") =~ "data-phx-link"
     end
 
     test "the brand link too, since it is on every page", %{conn: conn} do
-      # From a `:money` screen, going home crosses sessions.
       {:ok, _view, html} = live(conn, ~p"/issue")
       refute nav_link(html, "/") =~ "data-phx-link"
 
-      # From a screen in the same session, it stays live. `/stock` is
-      # `:signed_in`, like `/` — the boxes moved to `:warehouse_read` when the
-      # marketing role arrived, precisely because that role may not open them.
+      # `/stock` is `:signed_in` like `/`, so this one stays live.
       {:ok, _view, html} = live(conn, ~p"/stock")
       assert nav_link(html, "/") =~ ~s(data-phx-link="redirect")
     end
   end
 
-  # The first anchor for a path, markup only — two of everything is rendered
-  # (the bar and the phone menu) and they agree by construction.
+  # The first anchor for a path; the bar and the phone menu both render and agree.
   defp nav_link(html, path) do
     case Regex.run(~r{<a[^>]*href="#{Regex.escape(path)}"[^>]*>}, html) do
       [anchor] -> anchor
@@ -106,7 +94,7 @@ defmodule EstoqueOSWeb.NavigationTest do
     conn = get(build_conn(), ~p"/users/log-in")
     html = html_response(conn, 200)
 
-    # "Operação" alone would match the brand name; check a menu destination.
+    # "Operação" alone matches the brand name.
     refute html =~ "Entradas"
     refute html =~ "Contagem de caixas"
     refute html =~ "/invoices"

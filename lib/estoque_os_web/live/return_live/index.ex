@@ -1,11 +1,8 @@
 defmodule EstoqueOSWeb.ReturnLive.Index do
   @moduledoc """
-  Receiving a mission back.
-
-  The list starts from what the ledger believes is still out there, which
-  after a mission is a hypothesis. Each line asks two questions: how much
-  actually came back, and into which box here — because things return in
-  different boxes than they left in, and that is normal.
+  Receiving a mission back. The list starts from what the ledger believes is
+  still out there, which after a mission is a hypothesis. Each line asks how
+  much came back and into which box; goods often return in different boxes.
   """
 
   use EstoqueOSWeb, :live_view
@@ -17,12 +14,8 @@ defmodule EstoqueOSWeb.ReturnLive.Index do
 
   alias EstoqueOS.Inventory.Locations
 
-  @doc """
-  Events a viewer may send. Everything else on this screen is refused.
-
-  Choosing the route reloads the list of what is still out there. `receive`
-  is the movement, and `confirm_new_box` creates a box.
-  """
+  # Events a viewer may send; everything else is refused. `receive` is the
+  # movement and `confirm_new_box` creates a box.
   def viewer_events, do: ~w(route cancel_new_box reveal draft)
 
   @impl true
@@ -41,16 +34,13 @@ defmodule EstoqueOSWeb.ReturnLive.Index do
      |> assign(:shipments, landed_shipments())
      |> assign(:new_boxes, nil)
      |> assign(:revealed?, false)
-     # What has been typed, held here rather than left to the browser: this form
-     # repaints when the route changes or a box code is questioned, and a field
-     # rendered without a value comes back empty under the person typing.
+     # Typed values held server-side: this form repaints on route changes and
+     # box-code questions, and a value-less field comes back empty.
      |> assign(:draft, %{})
      |> load_plan()}
   end
 
-  # The loads this screen can close: still open, and no longer on a truck. A
-  # load that has not landed has nothing to hand back, and offering it here
-  # would ask somebody to receive goods that are still on the road.
+  # Open loads no longer on a truck: a load still on the road has nothing to hand back.
   defp landed_shipments do
     Enum.reject(Outbound.open_shipments(), & &1.in_transit?)
   end
@@ -70,9 +60,7 @@ defmodule EstoqueOSWeb.ReturnLive.Index do
     |> assign(:suggestions, suggestions_for(lines, socket.assigns.destination_id))
   end
 
-  # Computed once for the whole return rather than per line as it renders: a
-  # mission comes home as dozens of lines and the warehouse's contents do not
-  # change between two of them.
+  # Computed once for the whole return, not per line as it renders.
   defp suggestions_for(_lines, nil), do: %{}
 
   defp suggestions_for(lines, destination_id) do
@@ -82,21 +70,15 @@ defmodule EstoqueOSWeb.ReturnLive.Index do
     |> Map.new(&{&1, Locations.suggest_boxes(&1, destination_id, limit: 1)})
   end
 
-  # Every line used to land on "sem caixa", so somebody re-picked a box for each
-  # of forty rows after every mission. Two things can answer it without being
-  # asked: the box the goods left in, when that box is already home, and the box
-  # at the warehouse that holds this product anyway.
-  #
-  # A suggestion, never a decision — things do come back in different boxes than
-  # they left in, which is the premise of this screen.
-  # The same rule the box count applies: only a role that plans may ask for the
-  # expected figure, because it is theirs to answer for.
+  # Same rule as the box count: only a role that plans may reveal the expected figure.
   defp may_reveal?(assigns) do
     Scope.effective_role(assigns.current_scope) in User.roles_that_plan()
   end
 
   defp draft(assigns, index), do: assigns.draft[to_string(index)]
 
+  # A suggestion, never a decision: the box the goods left in if already home,
+  # else the box holding this product.
   defp default_box_code(line, boxes, suggestions) do
     if came_home?(line, boxes) do
       line.box_code
@@ -116,8 +98,6 @@ defmodule EstoqueOSWeb.ReturnLive.Index do
     end
   end
 
-  # The box the goods left in, already back at the destination — either it
-  # travelled home ahead of them or it never left.
   defp came_home?(%{box_id: nil}, _boxes), do: false
   defp came_home?(line, boxes), do: Enum.any?(boxes, &(&1.id == line.box_id))
 
@@ -154,12 +134,7 @@ defmodule EstoqueOSWeb.ReturnLive.Index do
       </.header>
 
       <form id="route-form" phx-change="route" class="field-row mt-4">
-        <!-- The load, when there is one. A mission return is normally the far
-             end of a load that left here, and picking it fills the route in and
-             lets this screen close the shipment instead of leaving it open for
-             ever. A return with no load behind it is still normal — goods come
-             back from places nothing was sent to — so "no load" stays an
-             answer rather than a missing one. -->
+        <%!-- Picking a load fills the route in and lets this screen close the shipment. "No load" is a valid answer: goods come back from places nothing was sent to. --%>
         <label :if={@shipments != []} class="fieldset">
           <span class="label">{gettext("Load")}</span>
           <select name="shipment_id" class="select select-bordered">
@@ -231,11 +206,7 @@ defmodule EstoqueOSWeb.ReturnLive.Index do
             <:col :let={{line, _index}} label={gettext("Left in")}>
               <.box_code code={line.box_code} />
             </:col>
-            <!-- Only when a manager asked for it. This column used to be here
-                 always, with the number *also* typed into the field beside it —
-                 on the one screen where the ledger is least worth trusting,
-                 because after a mission it is a hypothesis. Counting with the
-                 answer written in the box measures nothing. -->
+            <%!-- Only when a manager asked: the ledger is least trustworthy after a mission, and counting with the answer in view measures nothing. --%>
             <:col
               :let={{line, _index}}
               :if={@revealed?}
@@ -313,9 +284,8 @@ defmodule EstoqueOSWeb.ReturnLive.Index do
   end
 
   @impl true
-  # The manager's exception, and only theirs. Taking it is remembered for as
-  # long as the screen lasts and written into the movement's notes, so a count
-  # made with the answer in view is never later read as a blind one.
+  # The manager's exception; taking it is written into the movement's notes so
+  # the count never reads as blind.
   def handle_event("reveal", _params, socket) do
     if may_reveal?(socket.assigns) do
       {:noreply, assign(socket, :revealed?, true)}
@@ -324,7 +294,6 @@ defmodule EstoqueOSWeb.ReturnLive.Index do
     end
   end
 
-  # Keeps what has been typed across a repaint. Writes nothing.
   def handle_event("draft", %{"lines" => lines}, socket) do
     typed =
       Map.new(lines, fn {index, fields} -> {index, fields["quantity"]} end)
@@ -345,8 +314,7 @@ defmodule EstoqueOSWeb.ReturnLive.Index do
     do_receive(socket, params, create: false)
   end
 
-  # The yes. Nothing was written while the question was open, so this replays
-  # the same submission with permission to create.
+  # Replays the held submission with permission to create.
   def handle_event("confirm_new_box", _params, socket) do
     %{params: params} = socket.assigns.new_boxes
 
@@ -359,10 +327,8 @@ defmodule EstoqueOSWeb.ReturnLive.Index do
     {:noreply, assign(socket, :new_boxes, nil)}
   end
 
-  # Picking a load answers both halves of the route: it came from where the load
-  # was addressed and it arrives back where the load left from. Choosing a place
-  # by hand afterwards is still allowed — a mission that moved on sends its
-  # goods home from somewhere else.
+  # Picking a load sets both ends of the route; choosing a place by hand after
+  # is still allowed, since a mission that moved on sends goods from elsewhere.
   defp route(socket, %{"shipment_id" => id} = params) when id != "" do
     shipment_id = to_id(id)
 
@@ -472,9 +438,8 @@ defmodule EstoqueOSWeb.ReturnLive.Index do
     end
   end
 
-  # Same movement either way; naming the load is what also closes it. Receiving
-  # through the shipment is what keeps the transit report honest — a load
-  # received as a loose return stays "still out there" for ever.
+  # Receiving through the shipment closes it, which keeps the transit report
+  # honest; a loose return leaves the load "still out there".
   defp receive_load(nil, attrs), do: Outbound.receive_return(attrs)
 
   defp receive_load(shipment_id, attrs) do
@@ -483,10 +448,8 @@ defmodule EstoqueOSWeb.ReturnLive.Index do
     |> Outbound.receive_shipment(attrs)
   end
 
-  # Forty lines can name the same new box, and can name several. Each code is
-  # resolved once, and every box the return brought into existence is said out
-  # loud — a typo in a code is a box nobody meant to create, and the only cheap
-  # moment to notice is now.
+  # Each code is resolved once, and every box the return creates is said aloud:
+  # a typo is a box nobody meant to create.
   defp resolve_line_boxes(lines, destination_id, opts) do
     {resolved, {created, unknown}} =
       Enum.map_reduce(lines, {[], []}, fn {index, line}, {created, unknown} ->
@@ -497,9 +460,7 @@ defmodule EstoqueOSWeb.ReturnLive.Index do
           {:created, box} ->
             {{index, box_id(line, box)}, {[box.code | created], unknown}}
 
-          # Held, not written. Every code the form invented is collected so the
-          # operator is asked about all of them at once — asking three times in
-          # a row is how the third one gets waved through.
+          # Held, not written; all invented codes are asked about at once, or the third gets waved through.
           {:unknown, code} ->
             {{index, Map.put(line, "to_box_id", nil)}, {created, [code | unknown]}}
 

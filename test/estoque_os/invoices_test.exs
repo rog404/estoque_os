@@ -84,7 +84,7 @@ defmodule EstoqueOS.InvoicesTest do
       eletrodo = item(invoice, 1)
 
       assert eletrodo.product_id == product.id
-      # "ELETRODO ECG ADULTO PT/50 POLYMED" — the pack size read off the line.
+      # Pack size read off "ELETRODO ECG ADULTO PT/50 POLYMED".
       assert Decimal.equal?(eletrodo.conversion_factor, Decimal.new(50))
       assert Decimal.equal?(Decimal.round(eletrodo.unit_cost, 4), Decimal.new("0.2695"))
       refute eletrodo.needs_review
@@ -180,7 +180,6 @@ defmodule EstoqueOS.InvoicesTest do
       product = product_fixture()
       {:ok, _} = Invoices.resolve_item(item, %{product_id: product.id, conversion_factor: "50"})
 
-      # Same supplier, same items, a later invoice: nothing left to resolve.
       reimported =
         sample(@atlantica)
         |> String.replace("19851671590327796", "19851671590327797")
@@ -216,7 +215,6 @@ defmodule EstoqueOS.InvoicesTest do
       warehouse = location_fixture(%{name: "Estoque Principal", kind: "warehouse"})
       invoice = import!(@atlantica)
 
-      # Resolve every line the way a human would on the confirmation screen.
       invoice =
         Enum.reduce(invoice.items, invoice, fn item, _acc ->
           product = product_fixture(%{name: "Produto #{item.item_number} #{item.description}"})
@@ -244,7 +242,7 @@ defmodule EstoqueOS.InvoicesTest do
       assert length(transaction.entries) == 4
 
       eletrodo = item(Invoices.get_invoice!(invoice.id), 1)
-      # 6 packs of 50 electrodes = 300 units in stock.
+
       assert Decimal.equal?(
                Inventory.balance(product_id: eletrodo.product_id),
                Decimal.new(300)
@@ -292,9 +290,8 @@ defmodule EstoqueOS.InvoicesTest do
                Invoices.post_invoice(posted, %{location_id: warehouse.id, user_id: actor_id()})
     end
 
-    # Two tabs, or a double submit racing the button's disable: both read the
-    # invoice as "parsed" before either commits. The in-database status guard,
-    # not the read, is what keeps the stock from doubling.
+    # Both read the invoice as "parsed" before either commits; the in-database
+    # status guard is what keeps the stock from doubling.
     test "two simultaneous posts book the stock once", %{invoice: invoice, warehouse: warehouse} do
       results =
         1..2
@@ -374,7 +371,6 @@ defmodule EstoqueOS.InvoicesTest do
       product = product_fixture(%{name: "Eletrodo ECG adulto"})
       lot = lot_fixture(%{product_id: product.id})
 
-      # History says this item costs cents per unit.
       {:ok, _} =
         Inventory.post_transaction(%{
           type: "purchase_in",

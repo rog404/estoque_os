@@ -19,7 +19,6 @@ defmodule EstoqueOS.ReceivingTest do
     {:ok, invoice} =
       @samples |> Path.join(@atlantica) |> File.read!() |> Invoices.import_document()
 
-    # Resolve every line the way the confirmation screen would.
     Enum.each(invoice.items, fn item ->
       product = product_fixture(%{name: "Produto #{item.item_number}"})
 
@@ -60,7 +59,6 @@ defmodule EstoqueOS.ReceivingTest do
       assert receipt.status == "draft"
       assert length(receipt.lines) == 4
 
-      # 6 packs of 50 electrodes is 300 units expected.
       assert Decimal.equal?(line_for(receipt, 1).expected_quantity, Decimal.new(300))
       assert Enum.all?(receipt.lines, &is_nil(&1.counted_quantity))
     end
@@ -125,10 +123,6 @@ defmodule EstoqueOS.ReceivingTest do
     end
   end
 
-  # The rule the conference was missing. Whatever was typed used to be booked,
-  # so the logistics operator could record any quantity at all against an
-  # invoice that said something else — the hole `Auditing` had already closed
-  # for box counts.
   describe "record_count/2" do
     setup %{invoice: invoice, warehouse: warehouse} do
       posted = post!(invoice, warehouse)
@@ -159,14 +153,12 @@ defmodule EstoqueOS.ReceivingTest do
       assert {:recount, first} =
                Receiving.record_count(line, %{counted_quantity: "287", box_id: box.id})
 
-      # Nothing is believed yet, and nothing has reached the ledger — a
-      # conference writes when it closes.
+      # Nothing reaches the ledger until the conference closes.
       assert is_nil(first.counted_quantity)
       assert ReceiptLine.awaiting_recount?(first)
       assert ReceiptLine.attempts(first) == 1
 
-      # The box is recorded anyway. The operator put the goods on a shelf, and
-      # that is true whichever way the arithmetic ends up.
+      # The box is recorded anyway: the goods are on that shelf either way.
       assert first.box_id == box.id
 
       assert {:recount, second} =
@@ -188,8 +180,6 @@ defmodule EstoqueOS.ReceivingTest do
       assert Decimal.equal?(counted.counted_quantity, Decimal.new(287))
       assert ReceiptLine.attempts(counted) == Receiving.counts_required()
 
-      # Counted three times and still short. Not a miscount, and not the
-      # operator's to close alone.
       assert ReceiptLine.diverged_after_recounts?(counted)
     end
 
@@ -204,7 +194,6 @@ defmodule EstoqueOS.ReceivingTest do
       assert {:recorded, counted} =
                Receiving.record_count(line, %{counted_quantity: "300", box_id: box.id})
 
-      # The first count was a miscount, which is what asking twice is for.
       refute ReceiptLine.diverged_after_recounts?(counted)
       assert Enum.map(counted.count_attempts, &Decimal.to_string/1) == ~w(287 300)
     end
@@ -220,8 +209,7 @@ defmodule EstoqueOS.ReceivingTest do
           end
         end)
 
-      # Nothing arrived, three times over. That is a fact about the delivery,
-      # and it is not the same as a line nobody counted.
+      # Zero counted three times is a fact about the delivery, not an uncounted line.
       assert Decimal.equal?(counted.counted_quantity, Decimal.new(0))
       assert ReceiptLine.diverged_after_recounts?(counted)
     end
@@ -235,8 +223,6 @@ defmodule EstoqueOS.ReceivingTest do
       assert {:error, :invalid_quantity} =
                Receiving.record_count(line, %{counted_quantity: "abc", box_id: box.id})
 
-      # A typo is not a divergence to be recounted, and it must not cost one of
-      # the three counts.
       assert Repo.reload!(line).count_attempts == []
     end
 
@@ -258,8 +244,7 @@ defmodule EstoqueOS.ReceivingTest do
       assert reopened.count_attempts == []
       assert is_nil(reopened.counted_quantity)
 
-      # Keeping the trail would let this single count land as the third attempt
-      # and be believed on the spot, which is the rule deleting itself.
+      # A kept trail would make this single count the third attempt, believed at once.
       assert {:recount, _line} =
                Receiving.record_count(reopened, %{counted_quantity: "287", box_id: box.id})
     end
@@ -283,8 +268,7 @@ defmodule EstoqueOS.ReceivingTest do
       assert {:ok, %{corrections: correction}} =
                Receiving.complete_receipt(receipt, user_id: actor_id())
 
-      # What raises it on the manager's overview, alongside the box counts that
-      # disagreed twice — one list of counts somebody has to look at.
+      # The review reason is what raises it on the manager's overview.
       assert correction.review_reason == "count_diverged_after_recounts"
       assert correction.invoice_id == receipt.invoice_id
     end
@@ -299,8 +283,7 @@ defmodule EstoqueOS.ReceivingTest do
       assert {:ok, %{corrections: correction}} =
                Receiving.complete_receipt(receipt, user_id: actor_id())
 
-      # A count that agreed corrects nothing, so there is nothing to flag — and
-      # a warning that fires on a clean conference teaches people to ignore it.
+      # A warning on a clean conference teaches people to ignore it.
       assert is_nil(correction)
     end
   end
@@ -351,7 +334,6 @@ defmodule EstoqueOS.ReceivingTest do
 
       assert Decimal.equal?(Inventory.balance(box_id: box.id), Decimal.new(300))
 
-      # The balance is now verified rather than presumed.
       assert Repo.reload!(box).last_verified_at
     end
 
@@ -369,7 +351,7 @@ defmodule EstoqueOS.ReceivingTest do
       product_id = line.invoice_item.product_id
 
       assert Decimal.equal?(Inventory.balance(box_id: box.id), Decimal.new(287))
-      # Nothing left floating outside a box for this line.
+
       assert Decimal.equal?(
                Inventory.balance(
                  product_id: product_id,
@@ -392,7 +374,6 @@ defmodule EstoqueOS.ReceivingTest do
       untouched = line_for(completed, 3)
       assert untouched.counted_quantity == nil
 
-      # Item 3 is 100 nebulizers the invoice promised and nobody counted.
       assert Decimal.equal?(
                Inventory.balance(
                  product_id: untouched.invoice_item.product_id,
@@ -437,8 +418,7 @@ defmodule EstoqueOS.ReceivingTest do
       assert {:ok, second} = Receiving.start_receipt(posted, %{location_id: warehouse.id})
       assert second.round == 2
 
-      # The second round measures against the invoice, not against the
-      # corrected balance: the conference is always about the promise.
+      # Measured against the invoice, not the corrected balance.
       assert Decimal.equal?(line_for(second, 1).expected_quantity, Decimal.new(300))
 
       {:ok, _} = Receiving.update_line(line_for(second, 1), %{counted_quantity: "300"})
@@ -450,10 +430,8 @@ defmodule EstoqueOS.ReceivingTest do
     end
   end
 
-  # Suppliers do split one product and lot across two invoice lines. The close
-  # must reconcile them as one physical thing: two lines each reconciling
-  # against the whole ledger balance would box the goods twice and subtract
-  # each other's quantities as phantom corrections.
+  # Suppliers split one product and lot across two invoice lines; the close must
+  # reconcile them as one thing, or the goods are boxed twice with phantom corrections.
   describe "complete_receipt/2 when one lot is split across invoice lines" do
     setup %{invoice: invoice, warehouse: warehouse} do
       [first, second | _] = Enum.sort_by(invoice.items, & &1.item_number)
@@ -506,7 +484,6 @@ defmodule EstoqueOS.ReceivingTest do
       assert {:ok, result} =
                Receiving.complete_receipt(Receiving.get_receipt!(receipt.id), user_id: actor_id())
 
-      # Exact agreement: everything in the box, nothing to correct.
       assert result.corrections == nil
       assert Decimal.equal?(Inventory.balance(box_id: box.id), total)
 

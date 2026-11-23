@@ -1,11 +1,8 @@
 defmodule EstoqueOSWeb.ManualEntryLogTest do
   @moduledoc """
-  Goods taken in by hand have a log of their own.
-
-  The ledger files them under the same types as an invoice — `purchase_in` for
-  something bought without a nota, `donation_in` for something given — so every
-  screen called them "Nota fiscal lançada", and whoever went looking for a
-  manual entry ended up in the invoice list with nothing to find.
+  Goods taken in by hand have a log of their own. The ledger files them under the
+  same types as an invoice (`purchase_in`, `donation_in`), so screens must not
+  call them "Nota fiscal lançada".
   """
 
   use EstoqueOSWeb.ConnCase, async: true
@@ -70,8 +67,6 @@ defmodule EstoqueOSWeb.ManualEntryLogTest do
     refute page =~ "Nota fiscal lançada"
   end
 
-  # The overview reads the same movements, and it was the screen that reported
-  # the wrong word first.
   test "the overview says the same thing", %{conn: conn, warehouse: warehouse, gauze: gauze} do
     enter(gauze, warehouse, origin: "purchase")
 
@@ -81,20 +76,16 @@ defmodule EstoqueOSWeb.ManualEntryLogTest do
     refute text(html) =~ "Nota fiscal lançada"
   end
 
-  # A delivery that *does* have a nota keeps the invoice's name, which is the
-  # distinction the whole screen rests on.
   test "an invoice is still an invoice", %{conn: conn} do
     post_invoice()
 
     {:ok, _view, entries} = live(conn, ~p"/entries")
 
-    # It is not in this log at all: the log is what came in without a document.
     refute text(entries) =~ "Nota fiscal lançada"
   end
 
-  # Asserted by row and not by name: a product with no lot number also shows up
-  # in the alert panel at the top, so a page-wide refute would be reading the
-  # bell rather than the list.
+  # Asserted by row: a product with no lot number also shows in the alert panel,
+  # so a page-wide refute would read the bell, not the list.
   test "bought and donated can be told apart", %{
     conn: conn,
     warehouse: warehouse,

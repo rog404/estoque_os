@@ -1,13 +1,7 @@
 defmodule EstoqueOS.KitPartialAssemblyTest do
   @moduledoc """
-  Supply turns up in instalments. A kit of two components with only enough of
-  one of them bought is worth building now, for as many whole kits as the
-  stock on hand covers — the shelf gets tidy, and the rest is what a delivery
-  still owes.
-
-  A kit is never partially built: there is no such thing as three quarters of
-  a kit lot, so what changes with the delivery is how many whole kits come
-  out, never how complete one of them is.
+  Supply turns up in instalments, so a kit can be built for as many whole kits
+  as the stock covers. A kit is never partially built.
   """
 
   use EstoqueOS.DataCase, async: true
@@ -51,7 +45,6 @@ defmodule EstoqueOS.KitPartialAssemblyTest do
         })
     end
 
-    # Enough gowns for 5 kits; only 1 cannula, enough for 1.
     stock.(gown, 10)
     stock.(cannula, 1)
 
@@ -86,8 +79,7 @@ defmodule EstoqueOS.KitPartialAssemblyTest do
   test "the components that went into the whole kit really left stock", context do
     {:ok, _} = build(context, 2, allow_partial: true)
 
-    # 1 kit built: 2 gowns and 1 cannula gone; the box holds 1 kit now, and
-    # the 8 gowns nobody drew from are still sitting there, untouched.
+    # 1 kit built: 2 gowns and 1 cannula gone; the 8 other gowns stay in the box.
     assert Decimal.equal?(
              Inventory.balance(box_id: context.box.id, product_id: context.kit.product.id),
              Decimal.new(1)
@@ -109,8 +101,6 @@ defmodule EstoqueOS.KitPartialAssemblyTest do
     empty = location_fixture(%{name: "Vazio", kind: "warehouse"})
     other_box = box_fixture(%{code: "PK99", location_id: empty.id})
 
-    # A box with nothing in it is not a kit that is waiting — it is an empty
-    # box with a label on it.
     assert {:error, :nothing_available} =
              Kits.assemble(context.kit, 1, %{
                location_id: empty.id,

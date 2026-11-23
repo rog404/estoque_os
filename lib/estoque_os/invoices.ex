@@ -2,10 +2,9 @@ defmodule EstoqueOS.Invoices do
   @moduledoc """
   Importing supplier invoices and turning them into stock.
 
-  The flow is deliberately in two steps. `import_document/2` parses and stores
-  the invoice with whatever it could match on its own; `post_invoice/2` is what
-  actually touches the ledger, and it refuses to run while any line is still
-  unresolved. Between the two sits a human confirming products and pack sizes.
+  Two steps: `import_document/2` parses and stores with whatever matched on its
+  own; `post_invoice/2` touches the ledger and refuses while any line is
+  unresolved. A human confirms products and pack sizes in between.
   """
 
   import Ecto.Query
@@ -72,8 +71,6 @@ defmodule EstoqueOS.Invoices do
     end
   end
 
-  # Matching happens per line at import time so the human only sees what is
-  # genuinely ambiguous.
   defp line_attrs(line, supplier_id) do
     {product_id, factor} =
       case Catalog.match(line, supplier_id) do
@@ -81,8 +78,7 @@ defmodule EstoqueOS.Invoices do
           {product.id, confirmed_or_suggested_factor(product, line)}
 
         {:unmatched, _suggestions} ->
-          # The product is still unknown, but the pack size we read off the
-          # description is kept so the resolve screen can prefill it.
+          # Keep the pack size read from the description to prefill the resolve screen.
           {nil, line.suggested_conversion_factor}
       end
 
@@ -119,14 +115,11 @@ defmodule EstoqueOS.Invoices do
   end
 
   @doc """
-  The unit price: the commercial-unit value divided by how many stock units
-  come in it. Public so a screen can preview it as the factor is typed,
-  without a second copy of the division that decides what a mission's goods
-  actually cost.
+  The commercial-unit value divided by stock units per commercial unit. Public
+  so a screen can preview it as the factor is typed.
 
-  A zero commercial value — the supplier's bonus line — is a donation in ledger
-  terms: the cost is nil, never zero, which is the project-wide rule for goods
-  that cost nothing.
+  A zero commercial value (the supplier's bonus line) is nil, never zero: the
+  project-wide rule for goods that cost nothing.
   """
   def unit_cost(_value, nil), do: nil
   def unit_cost(nil, _factor), do: nil
@@ -159,17 +152,12 @@ defmodule EstoqueOS.Invoices do
     end
   end
 
-  ## Reading
-
   def get_invoice_by_access_key(access_key), do: Repo.get_by(Invoice, access_key: access_key)
 
   def get_invoice!(id), do: Invoice |> Repo.get!(id) |> load_invoice()
 
-  # Items come back in the order the NF-e lists them, always. Without the
-  # `order_by` Postgres returns them however the plan produced them, and an
-  # updated row moves — so confirming line 1 sent it to the bottom of the screen
-  # and the operator lost their place in a forty-line invoice. It also has to
-  # match the paper: somebody is reading the DANFE beside this.
+  # Items stay in NF-e line order: without `order_by` an updated row moves, and
+  # the screen must match the DANFE the operator is reading.
   defp load_invoice(invoice) do
     items = from(i in InvoiceItem, order_by: [asc: i.item_number, asc: i.id], preload: :product)
 
@@ -188,15 +176,9 @@ defmodule EstoqueOS.Invoices do
   @doc """
   Whether a scope confined to one stock may open this invoice at all.
 
-  Two ways in, because a delivery belongs to a stock in two different senses.
-  The invoice *was imported for* a stock — that is the answer while its lines
-  are still unresolved, and it is the one that was missing: a marketing user
-  uploaded an XML, no line had a product yet, and the screen told them the
-  document they had just created was not theirs.
-
-  And a delivery *landed in* a stock, which is what makes a mixed one readable
-  by both. A box of shirts on an otherwise surgical invoice is marketing's line
-  to confirm, and hiding the whole document would send them back to typing it.
+  Two ways in: the invoice *was imported for* the stock (the only answer while
+  its lines are unresolved), or a line *landed in* it, which makes a mixed
+  delivery readable by both (shirts on a surgical invoice are marketing's to confirm).
   """
   def visible?(%Invoice{} = invoice, nil), do: is_struct(invoice, Invoice)
 
@@ -211,17 +193,12 @@ defmodule EstoqueOS.Invoices do
     )
   end
 
-  # An invoice belongs to the segments its lines landed in. A mixed delivery is
-  # therefore visible to both, and each of them sees their own lines on it —
-  # which is the only reading that does not make somebody re-key a document the
-  # system already parsed.
   defp maybe_segment(query, nil), do: query
   defp maybe_segment(query, ""), do: query
 
   defp maybe_segment(query, segment) do
-    # Imported for this stock, or holding a line that landed in it. The first
-    # half is what shows a marketing user the invoice they uploaded five
-    # seconds ago; the second is what keeps a mixed delivery on both lists.
+    # Imported for this stock, or holding a line that landed in it: the first
+    # shows a fresh upload, the second keeps a mixed delivery on both lists.
     of_segment =
       from i in InvoiceItem,
         join: p in Product,
@@ -235,8 +212,7 @@ defmodule EstoqueOS.Invoices do
   @doc """
   One invoice, with only the lines this scope may see.
 
-  The document is the same document; what differs is which of its lines are
-  about your stock.
+  The document is the same; only the lines about the segment's stock differ.
   """
   def get_invoice!(id, segment) when is_binary(segment) do
     invoice = get_invoice!(id)
@@ -246,10 +222,8 @@ defmodule EstoqueOS.Invoices do
 
   def get_invoice!(id, nil), do: get_invoice!(id)
 
-  # A resolved line belongs to its product's stock. An unresolved one belongs to
-  # nobody yet, so it belongs to whoever the delivery was imported for — which
-  # is what makes the marketing coordinator able to resolve the lines on the
-  # invoice they just uploaded.
+  # A resolved line belongs to its product's stock; an unresolved one to whoever
+  # the delivery was imported for, so they can resolve it.
   defp item_of_segment?(%InvoiceItem{product: %Product{segment: segment}}, _invoice, segment),
     do: true
 
@@ -264,8 +238,6 @@ defmodule EstoqueOS.Invoices do
   defp unresolved?(item) do
     is_nil(item.product_id) or is_nil(item.conversion_factor) or is_nil(item.lot_number)
   end
-
-  ## Resolving
 
   @doc """
   Applies a human decision to one line: which product it is, how many stock
@@ -343,8 +315,6 @@ defmodule EstoqueOS.Invoices do
     end
   end
 
-  ## Sanity check
-
   @doc """
   Unit costs that are wildly off this product's history, for the confirmation
   screen to block on.
@@ -359,8 +329,6 @@ defmodule EstoqueOS.Invoices do
     end)
     |> Enum.reject(&is_nil/1)
   end
-
-  ## Posting
 
   @doc """
   Posts the invoice into the ledger as a `purchase_in` transaction.
@@ -387,10 +355,9 @@ defmodule EstoqueOS.Invoices do
   defp do_post(invoice, location_id, opts) do
     now = DateTime.utc_now(:second)
 
-    # The status check in `post_invoice/2` reads outside this transaction, so
-    # two concurrent posts can both pass it. The conditional update is the real
-    # gate: the second post blocks on the row lock, re-evaluates the `where`
-    # against the winner's commit, updates nothing and rolls everything back.
+    # The status check in `post_invoice/2` is outside this transaction, so two
+    # concurrent posts can both pass it; the conditional update is the real gate
+    # (the loser blocks on the row lock, updates nothing and rolls back).
     Multi.new()
     |> Multi.update_all(
       :mark_posted,
@@ -454,7 +421,6 @@ defmodule EstoqueOS.Invoices do
         |> Repo.insert()
 
       lot ->
-        # A lot we already know may gain the expiry date this invoice carries.
         lot
         |> Lot.changeset(%{
           manufactured_on: lot.manufactured_on || item.manufactured_on,

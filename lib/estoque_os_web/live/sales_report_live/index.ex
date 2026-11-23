@@ -1,26 +1,15 @@
 defmodule EstoqueOSWeb.SalesReportLive.Index do
   @moduledoc """
-  What was sold in a period, and what it left behind.
+  What was sold in a period, and what it left behind. A sale is a `manual_out`
+  to the `sale` destination in the same ledger; there is no second book.
 
-  The marketing stock is the one that goes out with a price on it, so this is
-  the report that belongs to whoever looks after it — and it reads the same
-  ledger as everything else. A sale is a `manual_out` to the `sale` destination;
-  there is no second book.
-
-  Three numbers, in the order they are asked: what came in, what it had cost,
-  and the difference. The fourth — how many lines had no cost at all — is what
-  says whether the third can be believed, because stock that arrived as a
-  donation carries no cost and reporting it as pure margin would be a lie the
-  size of the donation.
+  Revenue, cost and margin, plus how many lines had no cost: donated stock
+  carries none, so without that count margin would overstate by the donation.
   """
 
   use EstoqueOSWeb, :live_view
 
-  @doc """
-  Events a viewer may send. Everything else on this screen is refused.
-
-  Reporting only.
-  """
+  # Events a viewer may send; everything else is refused. Reporting only.
   def viewer_events, do: ~w(period filter)
 
   import EstoqueOS.Coercion, only: [blank_to_nil: 1, parse_date: 2]
@@ -41,9 +30,8 @@ defmodule EstoqueOSWeb.SalesReportLive.Index do
      |> load_report()}
   end
 
-  # Marketing is the default view because marketing is the stock that is sold —
-  # and a surgical item that was sold is exactly the thing a report should not
-  # hide, so either stock is a filter away for anybody.
+  # Marketing is the default view, but a sold surgical item must not be hidden:
+  # either stock is a filter away.
   defp segment(_socket, asked), do: asked
 
   defp load_report(socket) do
@@ -77,8 +65,6 @@ defmodule EstoqueOSWeb.SalesReportLive.Index do
           <span class="label">{gettext("To")}</span>
           <input type="date" name="to" value={@to} class="input input-bordered" />
         </label>
-        <!-- Absent for a role with one stock, like every other segment picker:
-             a question with one answer is not a question. -->
         <label class="fieldset">
           <span class="label">{gettext("Stock")}</span>
           <select name="segment" class="select select-bordered">
@@ -113,10 +99,7 @@ defmodule EstoqueOSWeb.SalesReportLive.Index do
 
       <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-6">
         <.stat label={gettext("Units sold")} value={quantity(@totals.quantity)} />
-        <!-- `money` on all three, so they follow the eye in the bar like every
-             other amount. Without it the headline figures stayed on screen
-             while the table below them was masked, which is the leak that
-             hiding amounts exists to prevent. -->
+        <%!-- `money` on all three, or the headline figures stay visible while the table is masked. --%>
         <.stat label={gettext("Revenue")} value={money(@totals.revenue)} money />
         <.stat
           label={gettext("Cost of what was sold")}
@@ -136,11 +119,7 @@ defmodule EstoqueOSWeb.SalesReportLive.Index do
         />
       </div>
 
-      <!-- Where it was sold, which for the marketing stock is *when and at
-           which event*: a mission site, a fair, the office counter. The place
-           comes from the entry rather than from the movement — a sale does not
-           travel, so it has no source location; it left the shelf it was
-           standing on. -->
+      <%!-- The place comes from the entry, not the movement: a sale does not travel, so it has no source location. --%>
       <.panel :if={@places != []} title={gettext("By place")} flush class="mb-6">
         <.data_table rows={@places} row_id={&"place-#{&1.location_id}"}>
           <:col :let={row} label={gettext("Place")} emphasis={:identity}>
@@ -162,7 +141,7 @@ defmodule EstoqueOSWeb.SalesReportLive.Index do
 
           <:col :let={row} label={gettext("Margin")} align={:right}>
             <.amount value={money(row.margin)} />
-            <!-- Always rendered, `invisible` when there is nothing to say. -->
+            <%!-- Always rendered, `invisible` when empty, so rows keep their height. --%>
             <p class={["text-xs text-warning", row.unpriced == 0 && "invisible"]}>
               {gettext("%{count} without cost", count: row.unpriced)}
             </p>
@@ -204,9 +183,7 @@ defmodule EstoqueOSWeb.SalesReportLive.Index do
 
           <:col :let={row} label={gettext("Margin")} align={:right}>
             <.amount value={money(Decimal.sub(row.revenue, row.cost))} />
-            <!-- Always rendered, `invisible` when there is nothing to say: a
-                 note that appears only on some rows changes their height, and
-                 this table is read down a column. -->
+            <%!-- Always rendered, `invisible` when empty, so rows keep their height. --%>
             <p class={["text-xs text-warning", row.unpriced == 0 && "invisible"]}>
               {gettext("%{count} without cost", count: row.unpriced)}
             </p>
@@ -222,9 +199,7 @@ defmodule EstoqueOSWeb.SalesReportLive.Index do
     """
   end
 
-  # The kinds a sale can leave from, in the words the operation uses. A mission
-  # site is where the ONG spent a week; "outro" is the office counter and the
-  # fair stand, which is why it is not called "other" here.
+  # "Other" covers the office counter and fair stand, hence "elsewhere".
   defp place_kind("mission_site"), do: gettext("mission or event")
   defp place_kind("warehouse"), do: gettext("warehouse")
   defp place_kind("transit"), do: gettext("in transit")

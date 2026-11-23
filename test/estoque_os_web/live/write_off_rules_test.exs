@@ -1,13 +1,8 @@
 defmodule EstoqueOSWeb.WriteOffRulesTest do
   @moduledoc """
   Where the goods went, which lot they came out of, and who may put a price on
-  them.
-
-  "Não informado" used to be an option on the destination, which made the one
-  question a write-off exists to answer optional. The lot used to be FEFO's
-  business alone, which is the right answer for gauze and a shrug for a shirt.
-  And the price field belonged to the marketing *product*, so an admin selling
-  anything else recorded a sale with no price at all.
+  them. The destination is mandatory, the lot can be pinned (FEFO is a shrug for
+  a shirt), and the price field follows the destination, not the product.
   """
 
   use EstoqueOSWeb.ConnCase, async: true
@@ -71,8 +66,7 @@ defmodule EstoqueOSWeb.WriteOffRulesTest do
       assert html =~ "required"
     end
 
-    # A `required` attribute is presentation. The rule lives in the context, so
-    # an event that never passed through the form gets the same answer.
+    # `required` is presentation; the rule lives in the context.
     test "is refused by the context when it is missing", %{
       warehouse: warehouse,
       gauze: gauze
@@ -93,9 +87,6 @@ defmodule EstoqueOSWeb.WriteOffRulesTest do
   describe "the marketing stock" do
     setup %{conn: conn}, do: register_and_log_in_as(%{conn: conn}, "marketing")
 
-    # Marketing material is sold or given away. There is no operating room in
-    # it, and seven destinations where two apply is a list somebody picks wrong
-    # from in a hurry.
     test "is offered only the two places its goods go", %{conn: conn} do
       {:ok, _view, html} = live(conn, ~p"/issue")
 
@@ -108,8 +99,7 @@ defmodule EstoqueOSWeb.WriteOffRulesTest do
       refute page =~ "Triagem"
     end
 
-    # A shirt has no expiry, so FEFO sorts by lot id and the person selling
-    # knows better: this print run, not the one from two campaigns ago.
+    # A shirt has no expiry, so FEFO sorts by lot id and the seller knows better.
     test "chooses which lot leaves", %{conn: conn, shirt: shirt, new: new, old: old} do
       {:ok, view, _html} = live(conn, ~p"/issue")
 
@@ -133,8 +123,6 @@ defmodule EstoqueOSWeb.WriteOffRulesTest do
       assert Decimal.equal?(Inventory.balance(lot_id: old.id), Decimal.new(40))
     end
 
-    # Left alone, nothing changes: FEFO still reaches for whatever expires
-    # first, which on a dateless lot is the oldest one on record.
     test "leaves the choice to FEFO when it is not made", %{conn: conn, shirt: shirt, old: old} do
       {:ok, view, _html} = live(conn, ~p"/issue")
 
@@ -154,8 +142,6 @@ defmodule EstoqueOSWeb.WriteOffRulesTest do
   describe "an admin" do
     setup :register_and_log_in_admin
 
-    # The price used to belong to the marketing product, so an admin selling
-    # anything else got a movement that said "venda" and recorded no price.
     test "can sell, and the price is asked for and kept", %{conn: conn, gauze: gauze} do
       {:ok, view, _html} = live(conn, ~p"/issue")
 
@@ -181,8 +167,7 @@ defmodule EstoqueOSWeb.WriteOffRulesTest do
       assert Decimal.equal?(entry.quantity, Decimal.new(-10))
     end
 
-    # The field follows the destination, not the goods: nothing else asks for a
-    # price, and a price on a donation would be a number nobody paid.
+    # A price on a donation would be a number nobody paid.
     test "is not asked for a price on anything else", %{conn: conn, gauze: gauze} do
       {:ok, view, _html} = live(conn, ~p"/issue")
 
@@ -206,8 +191,7 @@ defmodule EstoqueOSWeb.WriteOffRulesTest do
   describe "the movement" do
     setup :register_and_log_in_operator
 
-    # The screen opens on the stock this role works in — surgical — so a
-    # marketing line is written off from the marketing filter.
+    # The screen opens on surgical, so a marketing line needs the marketing filter.
     test "records the lot the operator pinned", %{conn: conn, shirt: shirt, new: new} do
       {:ok, view, _html} = live(conn, ~p"/issue?segment=marketing")
 

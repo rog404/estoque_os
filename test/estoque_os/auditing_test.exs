@@ -193,8 +193,7 @@ defmodule EstoqueOS.AuditingTest do
                Decimal.new(5)
              )
 
-      # The other box still holds its own; a count states what is here, not
-      # what is missing elsewhere.
+      # A count states what is here, not what is missing elsewhere.
       assert Decimal.equal?(
                Inventory.balance(lot_id: surprise.id, box_id: other_box.id),
                Decimal.new(5)

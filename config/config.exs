@@ -1,10 +1,3 @@
-# This file is responsible for configuring your application
-# and its dependencies with the aid of the Config module.
-#
-# This configuration file is loaded before any dependency and
-# is restricted to this project.
-
-# General application configuration
 import Config
 
 config :estoque_os, :scopes,
@@ -53,7 +46,6 @@ config :estoque_os, EstoqueOSWeb.Gettext,
   default_locale: "pt_BR",
   locales: ~w(pt_BR)
 
-# Configure the endpoint
 config :estoque_os, EstoqueOSWeb.Endpoint,
   url: [host: "localhost"],
   adapter: Bandit.PhoenixAdapter,
@@ -64,18 +56,10 @@ config :estoque_os, EstoqueOSWeb.Endpoint,
   pubsub_server: EstoqueOS.PubSub,
   live_view: [signing_salt: "GZQOPeuC"]
 
-# Configure LiveView
 config :phoenix_live_view,
-  # the attribute set on all root tags. Used for Phoenix.LiveView.ColocatedCSS.
+  # Attribute set on all root tags. Used for Phoenix.LiveView.ColocatedCSS.
   root_tag_attribute: "phx-r"
 
-# Configure the mailer
-#
-# By default it uses the "Local" adapter which stores the emails
-# locally. You can see the emails in your browser, at "/dev/mailbox".
-#
-# For production it's recommended to configure a different adapter
-# at the `config/runtime.exs`.
 config :estoque_os, EstoqueOS.Mailer, adapter: Swoosh.Adapters.Local
 
 # Off by default, and prod leaves it off: accounts are handed out by an
@@ -84,7 +68,6 @@ config :estoque_os, EstoqueOS.Mailer, adapter: Swoosh.Adapters.Local
 # `EstoqueOS.Accounts.email_enabled?/0`.
 config :estoque_os, :email_enabled, false
 
-# Configure esbuild (the version is required)
 config :esbuild,
   version: "0.25.4",
   estoque_os: [
@@ -94,7 +77,6 @@ config :esbuild,
     env: %{"NODE_PATH" => [Path.expand("../deps", __DIR__), Mix.Project.build_path()]}
   ]
 
-# Configure tailwind (the version is required)
 config :tailwind,
   version: "4.3.0",
   estoque_os: [
@@ -106,12 +88,10 @@ config :tailwind,
     env: %{"NODE_PATH" => [Path.expand("../deps", __DIR__), Mix.Project.build_path()]}
   ]
 
-# Configure Elixir's Logger
 config :logger, :default_formatter,
   format: "$time $metadata[$level] $message\n",
   metadata: [:request_id]
 
-# Use Jason for JSON parsing in Phoenix
 config :phoenix, :json_library, Jason
 
 # The ledger is UTC throughout; screens render it in São Paulo time.

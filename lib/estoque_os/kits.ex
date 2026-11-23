@@ -2,22 +2,14 @@ defmodule EstoqueOS.Kits do
   @moduledoc """
   Kits: the bills of materials a mission works in.
 
-  A kit is a product like any other, `kits.ex`'s own `products.kit_id` says
-  so — it can be searched, issued, reported on, with no screen anywhere
-  needing to know a kit is involved. What makes it a kit is `assemble/3`:
-  the one operation that converts a recipe's worth of components into a new
-  lot of that product. From the moment a lot exists, writing it off, moving
-  it, counting it, is exactly what happens to a box of gauze.
+  A kit is a product like any other (`products.kit_id`): searchable, issuable,
+  reportable. `assemble/3` is the one operation that converts a recipe's
+  components into a new lot of it; after that it is handled like a box of gauze.
 
-  What that conversion would otherwise cost — knowing which component lots
-  built a given kit lot, for a recall — is what `KitLotProvenance` buys back:
-  a plain many-to-many between a kit's lot and the component lots consumed to
-  build it.
+  `KitLotProvenance` records which component lots built a kit lot, for recalls.
 
-  A kit line whose product nobody has resolved yet blocks assembly, loudly.
-  The spreadsheets name components in free text, and silently skipping a line
-  the system does not recognize is how a kit ships without its guedel
-  cannula.
+  A kit line with no resolved product blocks assembly loudly: silently skipping
+  an unrecognized line is how a kit ships without its guedel cannula.
   """
 
   use Gettext, backend: EstoqueOSWeb.Gettext
@@ -32,8 +24,6 @@ defmodule EstoqueOS.Kits do
   alias EstoqueOS.Kits.{Kit, KitItem, KitLotProvenance}
   alias EstoqueOS.Repo
 
-  ## Reading
-
   def get_kit!(id), do: Kit |> Repo.get!(id) |> load_kit()
 
   def list_kits do
@@ -44,11 +34,9 @@ defmodule EstoqueOS.Kits do
     |> Enum.map(&load_kit/1)
   end
 
-  # The order here is the order the components are read, packed and reported in,
-  # so it cannot be left to the query plan: an unordered preload puts an updated
-  # line wherever Postgres happened to produce it, and `assemble/3` names the
-  # *first* component that is short. `KitItem` has no position of its own, so
-  # insertion order is the spreadsheet's order — which is the order on paper.
+  # Order is the order components are read, packed and reported in, and
+  # `assemble/3` names the *first* short one. `KitItem` has no position, so id
+  # order is the spreadsheet's order.
   defp load_kit(kit) do
     Repo.preload(kit, [:product, items: {from(i in KitItem, order_by: [asc: i.id]), :product}],
       force: true
@@ -56,9 +44,8 @@ defmodule EstoqueOS.Kits do
   end
 
   @doc """
-  Creates a kit and, in the same breath, the product that represents it in
-  the catalog — a kit is never without one, the same way a `KitItem` is never
-  without a description.
+  Creates a kit and the catalog product that represents it; a kit is never
+  without one.
   """
   def create_kit(attrs) do
     Multi.new()
@@ -88,9 +75,8 @@ defmodule EstoqueOS.Kits do
   end
 
   @doc """
-  Renames a kit and its product together — they are one name told twice, and
-  a rename that only reached one of them would leave the write-off screen
-  showing whatever the kit used to be called.
+  Renames a kit and its product together; otherwise the write-off screen would
+  show the old name.
   """
   def update_kit(%Kit{} = kit, attrs) do
     Multi.new()
@@ -115,14 +101,9 @@ defmodule EstoqueOS.Kits do
   def add_kit_item(%Kit{} = kit, attrs) do
     attrs = Map.new(attrs, fn {key, value} -> {to_string(key), value} end)
 
-    # A line somebody adds by hand must name a catalog product. A recipe made of
-    # free text cannot say how many kits the stock covers, cannot be packed and
-    # cannot be consumed — it is a shopping list with a kit's name on it.
-    #
-    # The rule lives here and not in the changeset because the importer needs
-    # the other behaviour: seeding from `Kits.xlsx` records what the spreadsheet
-    # said and flags the line unresolved, which is how those recipes reach the
-    # screen where a person can link them.
+    # A hand-added line must name a catalog product: free text cannot be
+    # counted, packed or consumed. Enforced here, not in the changeset, because
+    # the importer records spreadsheet lines unresolved.
     cond do
       blank?(attrs["product_id"]) ->
         {:error,
@@ -130,11 +111,8 @@ defmodule EstoqueOS.Kits do
          |> KitItem.changeset(attrs)
          |> Ecto.Changeset.add_error(:product_id, "must name a catalog product")}
 
-      # Now that a component *is* a product, the same product twice is two lines
-      # claiming to be the same thing — and `availability/2` would count the
-      # stock against each of them separately, so a kit needing 4 and 2 of one
-      # item would report coverage for neither figure. Say so instead: the
-      # quantity on the existing line is the thing to change.
+      # The same product twice would make `availability/2` count its stock
+      # against each line separately; the existing line's quantity is the thing to change.
       already_in?(kit, attrs["product_id"]) ->
         {:error, :already_a_component}
 
@@ -166,10 +144,8 @@ defmodule EstoqueOS.Kits do
   @doc """
   Removes a line from a kit's bill of materials.
 
-  Deleted outright, unlike anything in the ledger. A kit is a recipe, and a line
-  nobody wants in it any more is an edit to a document — not a record of
-  something that happened. What was actually built lives in the transactions
-  and the lots, which this does not touch.
+  Hard-deleted, unlike the ledger: a recipe line is an edit to a document, not a
+  record of something that happened. What was built lives in transactions and lots.
   """
   def remove_kit_item(%KitItem{} = item) do
     with {:ok, deleted} <- Repo.delete(item) do
@@ -178,11 +154,8 @@ defmodule EstoqueOS.Kits do
     end
   end
 
-  # A kit carries the badge of the most restrictive thing inside it — Portaria
-  # 344 does not stop applying to a controlled drug because it is standing
-  # next to gauze. Recomputed on every recipe edit rather than stored as a
-  # choice, because a kit is controlled *because* of what is in it, not by
-  # somebody's separate say-so.
+  # A kit is controlled (Portaria 344) because of what is in it; recomputed on
+  # every recipe edit, never chosen.
   defp sync_controlled(%Kit{} = kit) do
     kit = load_kit(kit)
     controlled? = Enum.any?(kit.items, &(&1.product && &1.product.controlled))
@@ -196,9 +169,7 @@ defmodule EstoqueOS.Kits do
   @doc """
   How many of this kit are in stock, anywhere.
 
-  The kit's own product balance — the same number `Inventory.balance/1`
-  would give for a box of gauze, because from the moment one is assembled
-  that is exactly what a kit is.
+  The kit's own product balance, as for any product.
   """
   def assembled_count(%Kit{} = kit), do: Inventory.balance(product_id: kit.product.id)
 
@@ -209,24 +180,19 @@ defmodule EstoqueOS.Kits do
   How many complete kits the stock at a location can cover, and what runs out
   first.
 
-  The bottleneck is the useful half of the answer: "4 kits, and what stops the
-  fifth is the guedel cannula" is a shopping list.
+  The bottleneck is the useful half: it is the shopping list.
   """
   def availability(%Kit{} = kit, location_id) do
     resolved = Enum.filter(kit.items, & &1.product_id)
 
-    # One query for the whole bill of materials. A balance per line meant 28
-    # queries for Kit Paciente alone, and the kit listing asks this of every kit
-    # on the screen.
+    # One query for the whole bill of materials, not one per line.
     balances =
       resolved
       |> Enum.map(& &1.product_id)
       |> Enum.uniq()
       |> Inventory.balances_by_product(location_id)
 
-    # Asked at the same time and for the same reason: a component with expired
-    # stock here blocks assembly outright (see `assemble/3`), so every screen
-    # that shows availability has to be able to say why.
+    # Expired stock blocks assembly (see `assemble/3`); screens must be able to say why.
     expired =
       resolved
       |> Enum.map(& &1.product_id)
@@ -265,10 +231,8 @@ defmodule EstoqueOS.Kits do
   @doc """
   Where each resolved component of a kit is, box by box, at a location.
 
-  The conference before assembling: `availability/2` says how much of a
-  component there is; this says where to go stand to get it. A line whose
-  product is unresolved has nothing to look up and is left out — it already
-  blocks assembly on its own, loudly, elsewhere.
+  The conference before assembling: where to find what `availability/2` counted.
+  Unresolved lines are left out; they already block assembly.
   """
   def box_breakdown(%Kit{} = kit, location_id) do
     kit.items
@@ -278,12 +242,7 @@ defmodule EstoqueOS.Kits do
 
   @doc """
   The conference for a requested `quantity`: how much each component needs,
-  against what `availability/2` already found, and where to go stand for it
-  per `box_breakdown/2`.
-
-  Kept here rather than in the LiveView so a second screen that needs the same
-  "how much does building N kits need" arithmetic finds it instead of
-  reimplementing it.
+  against what `availability/2` found, and where to find it per `box_breakdown/2`.
   """
   def review_lines(%{lines: lines}, quantity, breakdown) do
     Enum.map(lines, fn line ->
@@ -300,21 +259,16 @@ defmodule EstoqueOS.Kits do
     end)
   end
 
-  ## Assembling
-
   @doc """
   Converts `quantity` kits' worth of components into that quantity of the
   kit's own product, in one new lot, in `box_id`.
 
-  Assembling is manufacturing, not packing: the components leave stock for
-  good, drawn oldest expiry first, and what appears in the box instead is a
-  lot of the kit. From here the kit is a product like any other — the same
-  screen that writes off a bandage writes off a kit.
+  Manufacturing, not packing: components leave stock for good, drawn FEFO, and
+  a lot of the kit appears in the box.
 
-  A kit is never partially built: `quantity` is capped at the largest whole
-  number the components on hand can cover. Asking for more than that is
-  refused unless `allow_partial`, which builds as many complete kits as it
-  can and says what stopped the rest.
+  A kit is never partially built: asking for more than the components cover is
+  refused unless `allow_partial`, which builds as many whole kits as it can and
+  says what stopped the rest.
   """
   def assemble(%Kit{} = kit, quantity, %{location_id: location_id, box_id: box_id} = opts) do
     quantity = to_decimal(quantity)
@@ -336,12 +290,9 @@ defmodule EstoqueOS.Kits do
     possible = availability.possible
 
     cond do
-      # Checked before anything else, and with no override. A kit is sealed:
-      # once a component is inside one, nobody opens it to read a date, and
-      # FEFO would reach for the expired lot first precisely because it is the
-      # oldest. The remedy is not a checkbox, it is to write the expired stock
-      # off — which is a movement with a reason code, and leaves a record that
-      # a suppressed warning would not.
+      # First, with no override: a kit is sealed and nobody reopens it to check
+      # a date, and FEFO reaches for the expired lot first. The remedy is a
+      # write-off with a reason code, which leaves a record a suppressed warning would not.
       availability.expired_components != [] ->
         {:error, {:expired_components, availability.expired_components}}
 
@@ -368,9 +319,8 @@ defmodule EstoqueOS.Kits do
   defp bottleneck_item(_availability), do: nil
 
   defp convert(kit, build, quantity, location_id, box_id, opts, bottleneck) do
-    # The shelf can change between `availability/2` and this pick: a concurrent
-    # write-off makes gather_picks come up short, and that is the same
-    # insufficient-stock answer the screen already renders, not a crash.
+    # The shelf can change since `availability/2`; a short pick is the usual
+    # insufficient-stock answer, not a crash.
     case gather_picks(kit, build, location_id) do
       {:ok, picks} ->
         post_assembly(kit, picks, build, quantity, location_id, box_id, opts, bottleneck)
@@ -438,10 +388,8 @@ defmodule EstoqueOS.Kits do
     })
   end
 
-  # One provenance row per distinct component lot consumed, even though a
-  # single item can draw from more than one lot to cover `build` kits — the
-  # question a recall asks is "how much of lot X ended up in this kit lot",
-  # not "which item was it for".
+  # One row per distinct component lot: a recall asks how much of lot X went
+  # into this kit lot, not which item it was for.
   defp record_provenance(repo, lot, picks) do
     picks
     |> Enum.group_by(& &1.lot_id)
@@ -461,13 +409,8 @@ defmodule EstoqueOS.Kits do
   @doc """
   How ready the stock at a location is for the next mission, worst kit first.
 
-  The question a coordinator asks before a trip is not "how much gauze is there"
-  — it is "can we build the kits". A warehouse can look full and still be unable
-  to complete a single Kit Paciente because one guedel cannula ran out, and a
-  units total will never say so.
-
-  Worst first, because a kit that covers nine missions needs no attention and a
-  kit that covers none is the whole problem.
+  The pre-trip question is "can we build the kits", not "how much gauze": a full
+  warehouse can still be one cannula short of a kit. Worst first.
   """
   def readiness(location_id) do
     list_kits()

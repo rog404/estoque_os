@@ -25,10 +25,8 @@ defmodule EstoqueOS.Invoices.Invoice do
     field :total, :decimal
     field :raw_xml, :string
     field :status, :string, default: "parsed"
-    # Which stock this delivery is for. Decided by whoever imports it — the
-    # marketing coordinator's default is marketing and the supplies
-    # coordinator's is surgical — rather than inferred from where the lines
-    # land, because at import time no line has landed anywhere yet.
+    # Which stock this delivery is for, set by the importer: no line has landed
+    # anywhere yet at import time to infer it from.
     field :segment, :string, default: "medical"
     field :posted_at, :utc_datetime
 

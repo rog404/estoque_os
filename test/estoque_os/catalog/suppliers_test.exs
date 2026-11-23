@@ -6,8 +6,7 @@ defmodule EstoqueOS.Catalog.SuppliersTest do
   alias EstoqueOS.Catalog
 
   describe "upsert_supplier/1" do
-    # An NF-e issued under a CPF (the nota avulsa behind a donation) arrives
-    # with no CNPJ. The import screen phrases that; it must not crash.
+    # An NF-e issued under a CPF (a donation's nota avulsa) arrives with no CNPJ.
     test "an issuer without a CNPJ is an answer, not a crash" do
       assert {:error, :supplier_missing_cnpj} =
                Catalog.upsert_supplier(%{cnpj: nil, legal_name: "Doador Pessoa Física"})

@@ -2,9 +2,8 @@ defmodule EstoqueOSWeb.BoxLive.Index do
   @moduledoc """
   Where every box is and what it is presumed to hold.
 
-  Moving a box is one select and one click on purpose: between missions this
-  happens dozens of times, and demanding a recount for each move is exactly
-  what makes people stop using the system.
+  Moving a box is one select and one click on purpose: demanding a recount per
+  move would make people stop using the system.
   """
 
   use EstoqueOSWeb, :live_view
@@ -26,17 +25,11 @@ defmodule EstoqueOSWeb.BoxLive.Index do
      |> load_boxes()}
   end
 
-  @doc """
-  Events a viewer may send. Everything else on this screen is refused.
-
-  Searching narrows a list and writes nothing.
-  """
+  # Events a viewer may send; everything else is refused.
   def viewer_events, do: ~w(search)
 
-  # In the order somebody should work through them, not alphabetically. The
-  # guided list this replaces was a second page ranking the same boxes; a list
-  # that is already the queue cannot disagree with itself. `Auditing.priorities/0`
-  # carries the reasons too, so the row can say why it is near the top.
+  # Ordered as a work queue, not alphabetically; `Auditing.priorities/0` also
+  # supplies the reason a row is near the top.
   defp load_boxes(socket) do
     priorities = Auditing.priorities()
 
@@ -49,10 +42,7 @@ defmodule EstoqueOSWeb.BoxLive.Index do
     assign(socket, :rows, rows)
   end
 
-  # The code written on the box in marker pen, or where it is standing. Both,
-  # because the two questions asked in front of a shelf are "where is AN01" and
-  # "what is at the São Paulo office", and typing is faster than reading a
-  # hundred rows either way.
+  # Matches the box code or its location: both questions get asked at a shelf.
   defp matches?(_row, ""), do: true
 
   defp matches?(%{box: box}, search) do
@@ -70,9 +60,8 @@ defmodule EstoqueOSWeb.BoxLive.Index do
     |> String.replace(~r/[\x{0300}-\x{036f}]/u, "")
   end
 
-  # Highest score first; among boxes the score cannot separate — an empty box
-  # has no score at all — the one nobody has counted, then the one counted
-  # longest ago, then the code, so the order is stable between two page loads.
+  # Highest score first, then never counted, then oldest count, then code, so the
+  # order is stable between page loads.
   defp queue_order(%{priority: priority, box: box}) do
     {-(priority[:score] || 0), verified_order(box.last_verified_at), box.code}
   end
@@ -134,15 +123,9 @@ defmodule EstoqueOSWeb.BoxLive.Index do
         </label>
       </form>
 
-      <!-- No title: the page header two lines up already says "Caixas", and
-           stacking the same word over its own column labels was most of what
-           made this area read as clutter. -->
       <.panel flush>
         <.data_table rows={@rows} row_id={&"box-#{&1.box.id}"}>
           <:empty>
-            <!-- Two different facts, and the same empty table said only the
-                 first: a warehouse with a hundred boxes and a search that
-                 matched none of them is not a warehouse without boxes. -->
             <.empty
               :if={@search != ""}
               title={gettext("No box matches that.")}
@@ -180,9 +163,6 @@ defmodule EstoqueOSWeb.BoxLive.Index do
           <:col :let={row} label={gettext("Last count")}>
             <span class={stale_class(row.box)}>{verified_label(row.box)}</span>
 
-            <!-- Why this box is where it is in the list. Without it the order is
-                 a ranking nobody understands, which is a ranking nobody
-                 follows — and the page that used to explain it is gone. -->
             <div :if={reasons(row) != []} class="flex flex-wrap gap-1 mt-1">
               <.status :for={{kind, label} <- reasons(row)} kind={kind} detail={label} />
             </div>
@@ -204,10 +184,7 @@ defmodule EstoqueOSWeb.BoxLive.Index do
                 phx-value-box={row.box.id}
                 class="flex items-center gap-2"
               >
-                <!-- Only the places a box may be carried to by hand. A mission
-                     site and transit are missing on purpose: arriving at one is
-                     the moment a movement acquires a reason — which trip it
-                     belongs to — and only the load-out asks. -->
+                <%!-- Mission site and transit are missing on purpose: only the load-out records the trip. --%>
                 <select
                   name="location_id"
                   class="select select-bordered"
@@ -233,8 +210,7 @@ defmodule EstoqueOSWeb.BoxLive.Index do
 
   defp by_hand?(%{kind: kind}), do: kind not in ~w(mission_site transit)
 
-  # Never counted is already said by the cell above it, so it is dropped here
-  # rather than printed twice on the same row.
+  # Never counted is already said by the cell above.
   defp reasons(%{priority: nil}), do: []
 
   defp reasons(%{priority: priority}) do

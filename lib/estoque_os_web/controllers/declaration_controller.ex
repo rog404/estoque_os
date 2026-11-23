@@ -2,13 +2,8 @@ defmodule EstoqueOSWeb.DeclarationController do
   @moduledoc """
   Prints the declaração de conteúdo that travels with a load.
 
-  A4-styled HTML rather than a generated PDF, for the same reason as the
-  donation certificates: the warehouse notebook has a browser and no guarantee
-  of anything else, and Ctrl+P → "Salvar como PDF" produces the same file with
-  no second binary to install or keep patched.
-
-  Only a load whose declaration has been written gets one. A blank paper with
-  the ONG's letterhead on it is a document waiting to say something untrue.
+  A4-styled HTML, like the donation certificates. Only a load whose declaration
+  has been written gets one: a blank letterhead page could say something untrue.
   """
 
   use EstoqueOSWeb, :controller

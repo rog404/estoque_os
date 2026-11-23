@@ -14,14 +14,9 @@ defmodule EstoqueOSWeb.Router do
     plug :fetch_current_scope_for_user
   end
 
-  # The theme script in the root layout has to run before first paint, or the
-  # screen flashes light before going dark, so it cannot move into app.js. That
-  # rules out a policy without inline scripts — hence a per-request nonce rather
-  # than `unsafe-inline`, which would permit every injected script equally.
-  #
-  # Styles keep `unsafe-inline`: Tailwind ships as a file, but DaisyUI and
-  # LiveView both set `style` attributes, and those are covered by the same
-  # directive.
+  # The root layout's theme script must run before first paint, so inline scripts
+  # stay: a per-request nonce, not `unsafe-inline`.
+  # Styles keep `unsafe-inline`: DaisyUI and LiveView set `style` attributes.
   defp put_csp(conn, _opts) do
     nonce = 16 |> :crypto.strong_rand_bytes() |> Base.encode64()
 
@@ -35,7 +30,7 @@ defmodule EstoqueOSWeb.Router do
         "font-src 'self' data:",
         "style-src 'self' 'unsafe-inline'",
         "script-src 'self' 'nonce-#{nonce}'",
-        # LiveView's own socket. Same origin, but the scheme differs.
+        # LiveView's socket: same origin, different scheme.
         "connect-src 'self' ws: wss:"
       ]
       |> Enum.join("; ")
@@ -44,11 +39,8 @@ defmodule EstoqueOSWeb.Router do
     |> assign(:csp_nonce, nonce)
     |> put_secure_browser_headers(%{
       "content-security-policy" => policy,
-      # Every page here is behind a login, and the browser's back button was
-      # showing them after the session had gone: a page restored from the cache
-      # is never re-checked with the server, so a logged-out person still read
-      # the stock they were looking at a minute ago. `no-store` is what makes
-      # going back a real request, which the auth plug then refuses.
+      # `no-store` makes the back button a real request, so a logged-out person
+      # cannot read a cached page.
       "cache-control" => "no-store, no-cache, must-revalidate, private",
       "pragma" => "no-cache"
     })
@@ -62,18 +54,8 @@ defmodule EstoqueOSWeb.Router do
     pipe_through :browser
   end
 
-  # Other scopes may use custom stacks.
-  # scope "/api", EstoqueOSWeb do
-  #   pipe_through :api
-  # end
-
-  # Enable LiveDashboard and Swoosh mailbox preview in development
+  # LiveDashboard and Swoosh mailbox preview, development only.
   if Application.compile_env(:estoque_os, :dev_routes) do
-    # If you want to use the LiveDashboard in production, you should put
-    # it behind authentication and allow only admins to access it.
-    # If your application does not have an admins-only section yet,
-    # you can use Plug.BasicAuth to set up some basic authentication
-    # as long as you are also using SSL (which you should anyway).
     import Phoenix.LiveDashboard.Router
 
     scope "/dev" do
@@ -84,19 +66,13 @@ defmodule EstoqueOSWeb.Router do
     end
   end
 
-  ## Authentication routes
-
-  # Anything that writes to the ledger. A viewer may read the stock; a viewer
-  # may not send a mission's supplies out of the warehouse.
+  # Anything that writes to the ledger; viewers may only read.
   scope "/", EstoqueOSWeb do
     pipe_through [:browser, :require_authenticated_user, :require_operator]
 
-    # The hands-on flows: what the person holding the boxes does. Logistics is
-    # here because counting, loading out and receiving a return *is* their job.
-    #
-    # Marketing is here too. Boxes used to be the surgical operation's alone;
-    # they are not — a mission mixes marketing material and supplies in the same
-    # box, and the person who packed the shirts is the person who counts them.
+    # Hands-on flows. Logistics included: counting, loading out and receiving a
+    # return is their job.
+    # Marketing included: a mission box mixes marketing material and supplies.
     live_session :operational,
       on_mount: [
         {EstoqueOSWeb.UserAuth, :require_authenticated},
@@ -109,15 +85,10 @@ defmodule EstoqueOSWeb.Router do
       live "/boxes/:id/count", BoxLive.Count, :count
       live "/returns", ReturnLive.Index, :index
       live "/load-out", LoadOutLive.Index, :index
-      # The paper that travels with a load. Written by whoever sends it, which
-      # is this same group of roles.
       live "/shipments/:id/declaracao", ShipmentLive.Declaration, :edit
     end
 
-    # Taking goods in by hand, which both stocks do the same way. Its own
-    # session rather than a line in `:operational`, because the marketing role
-    # belongs in exactly this one flow and in none of the others there —
-    # counting boxes, loading out and receiving a mission back are not theirs.
+    # Own session: marketing belongs in this flow but not in the :operational ones.
     live_session :manual_entry,
       on_mount: [
         {EstoqueOSWeb.UserAuth, :require_authenticated},
@@ -129,9 +100,8 @@ defmodule EstoqueOSWeb.Router do
       live "/entry", EntryLive.New, :new
     end
 
-    # Taking goods out by hand. Split off the invoice import for the same
-    # reason: marketing sells from this screen every week and has no business
-    # in a supplier's invoice.
+    # Split from the invoice import: marketing sells from this screen but has no
+    # business in a supplier's invoice.
     live_session :issuing,
       on_mount: [
         {EstoqueOSWeb.UserAuth, :require_authenticated},
@@ -143,9 +113,7 @@ defmodule EstoqueOSWeb.Router do
       live "/issue", IssueLive.Index, :index
     end
 
-    # Writing the whole warehouse at once, without a box in anyone's hands. The
-    # spreadsheet import is not money and not a hands-on flow: it is a planning
-    # act, and the logistics partner does not do the planning.
+    # Spreadsheet import is a planning act, not hands-on: logistics is excluded.
     live_session :planning,
       on_mount: [
         {EstoqueOSWeb.UserAuth, :require_authenticated},
@@ -157,9 +125,8 @@ defmodule EstoqueOSWeb.Router do
       live "/reports/data", StockLive.Spreadsheet, :new
     end
 
-    # Screens whose whole subject is money. An invoice is a document of prices,
-    # and a donation certificate declares a value to a hospital — neither is
-    # something a partner outside the ONG has any business opening.
+    # Money screens (invoice prices, donation certificate values): closed to
+    # partners outside the ONG.
     live_session :money,
       on_mount: [
         {EstoqueOSWeb.UserAuth, :require_authenticated},
@@ -172,10 +139,10 @@ defmodule EstoqueOSWeb.Router do
     end
 
     # on_mount never runs for controllers, so these carry their own plugs. The
-    # export is trimmed rather than refused (see `StockController.export/2`);
-    # the certificate declares a value and is refused outright.
+    # export is trimmed rather than refused (see `StockController.export/2`).
     pipe_through [:require_password_not_pending]
     get "/stock/export.xlsx", StockController, :export
+    get "/stock/template.xlsx", StockController, :template
   end
 
   scope "/", EstoqueOSWeb do
@@ -189,18 +156,15 @@ defmodule EstoqueOSWeb.Router do
     get "/issues/:id/termo/:kind", CertificateController, :certificate
   end
 
-  # The printed declaration. A controller rather than a LiveView for the same
-  # reason as the certificates: this page exists to become paper, and paper does
-  # not need a socket.
+  # Printed declaration: a controller, since the page exists to become paper.
   scope "/", EstoqueOSWeb do
     pipe_through [:browser, :require_authenticated_user, :require_password_not_pending]
 
     get "/shipments/:id/declaracao/imprimir", DeclarationController, :print
   end
 
-  # Standing in another role's shoes. Guarded inside the controller rather than
-  # by a pipeline, because leaving must work from *inside* a borrowed role — and
-  # a borrowed role is not an admin.
+  # View-as: guarded inside the controller, because leaving must work from a
+  # borrowed role, which is not an admin.
   scope "/", EstoqueOSWeb do
     pipe_through [:browser, :require_authenticated_user]
 
@@ -208,9 +172,8 @@ defmodule EstoqueOSWeb.Router do
     delete "/users/view-as", ViewAsController, :delete
   end
 
-  # Reading an invoice is reading a list of prices, so it sits behind the money
-  # door rather than the writing one — the auditor belongs here and cannot
-  # write, which is exactly the pair `require_operator` could not express.
+  # Behind the money door, not the writing one: the auditor reads but cannot
+  # write, which `require_operator` cannot express.
   scope "/", EstoqueOSWeb do
     pipe_through [:browser, :require_authenticated_user, :require_money]
 
@@ -242,9 +205,6 @@ defmodule EstoqueOSWeb.Router do
       live "/", HomeLive.Index, :index
       live "/stock", StockLive.Index, :index
       live "/issues", IssueLive.List, :index
-      # The mirror of the write-off log: what came in by hand, which the ledger
-      # files under the same types as an invoice and which therefore had no
-      # screen of its own.
       live "/entries", EntryLive.List, :index
       live "/products/:id", ProductLive.Show, :show
 
@@ -252,13 +212,8 @@ defmodule EstoqueOSWeb.Router do
       live "/users/settings/confirm-email/:token", UserLive.Settings, :confirm_email
     end
 
-    # The warehouse's own screens: the boxes stock travels in, the kits it
-    # packs, the trips it makes, the counts an auditor reads.
-    #
-    # These used to be closed to marketing, back when the marketing role was
-    # defined by not seeing the surgical stock. That fence is gone — both
-    # stocks share the warehouse, the boxes and the missions, and a box with
-    # shirts and gauze in it belongs to both of the people who packed it.
+    # Warehouse screens (boxes, kits, missions, audit). Marketing included: both
+    # stocks share the warehouse, boxes and missions.
     live_session :warehouse_read,
       on_mount: [
         {EstoqueOSWeb.UserAuth, :require_authenticated},
@@ -268,6 +223,8 @@ defmodule EstoqueOSWeb.Router do
         {EstoqueOSWeb.UserAuth, :require_password_not_pending}
       ] do
       live "/boxes", BoxLive.Index, :index
+      # Before `/boxes/:id`, or "lookup" is captured as an :id.
+      live "/boxes/lookup", BoxLive.Lookup, :index
       live "/boxes/:id", BoxLive.Show, :show
       live "/locations", LocationLive.Index, :index
       live "/kits", KitLive.Index, :index
@@ -279,14 +236,12 @@ defmodule EstoqueOSWeb.Router do
       live "/missions/:id", MissionLive.Show, :show
     end
 
-    # Deliberately NOT piped through `:require_password_not_pending` — this is
-    # exactly the route the forced "required" page posts to, so it must stay
-    # reachable while the flag is still set.
+    # Deliberately NOT behind `:require_password_not_pending`: the forced
+    # "required" page posts here while the flag is still set.
     post "/users/update-password", UserSessionController, :update_password
   end
 
-  # Only a real admin (the effective, possibly-view-as-adjusted role) manages
-  # who else gets an account.
+  # Admin only (effective role, after view-as): manages accounts.
   scope "/", EstoqueOSWeb do
     pipe_through [:browser, :require_authenticated_user, :require_password_not_pending]
 
@@ -301,11 +256,9 @@ defmodule EstoqueOSWeb.Router do
     end
   end
 
-  # The forced first-login/first-reset password change. Its own live_session,
-  # authenticated but deliberately NOT listing `:require_password_not_pending`
-  # — this is the one screen that must stay open precisely while the flag is
-  # set, which is why the gate is a router-level omission rather than a
-  # per-view exception buried in the shared hook.
+  # Forced password change: authenticated but deliberately NOT listing
+  # `:require_password_not_pending`, since it must stay open while the flag is
+  # set. The omission lives here, not as an exception in the shared hook.
   scope "/", EstoqueOSWeb do
     pipe_through [:browser, :require_authenticated_user]
 
@@ -324,24 +277,15 @@ defmodule EstoqueOSWeb.Router do
     live_session :current_user,
       on_mount: [{EstoqueOSWeb.UserAuth, :mount_current_scope}] do
       live "/users/log-in", UserLive.Login, :new
-
-      # Public on purpose, and only while this is a field test: it reads a box's
-      # whole contents — lot, expiry and the controlled-substance flag — to
-      # anyone with the (guessable) code. The plan is to move it inside the
-      # authenticated routes; until then the exposure is a known, accepted call.
-      live "/caixa", BoxLive.Lookup, :index
     end
 
     post "/users/log-in", UserSessionController, :create
     delete "/users/log-out", UserSessionController, :delete
   end
 
-  # Everything here needs a message to arrive to be worth anything: the magic
-  # link, and the "esqueci minha senha" round trip. An installation without a
-  # mailer answers them with an explanation rather than a form that leads
-  # nowhere — see `EstoqueOS.Accounts.email_enabled?/0`. Grouped into their own
-  # live_session so the gate is one line in the router rather than a condition
-  # inside each view.
+  # Flows that need an email to arrive (magic link, password reset). Without a
+  # mailer they explain instead of showing a dead form; see
+  # `EstoqueOS.Accounts.email_enabled?/0`.
   scope "/", EstoqueOSWeb do
     pipe_through [:browser, :require_email_enabled]
 

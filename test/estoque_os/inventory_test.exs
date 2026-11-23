@@ -117,7 +117,6 @@ defmodule EstoqueOS.InventoryTest do
 
       assert lot_id == lot.id
       assert location_id == warehouse.id
-      # The failed attempt left nothing behind.
       assert Decimal.equal?(Inventory.balance(lot_id: lot.id), Decimal.new(10))
       assert Decimal.equal?(Inventory.cached_balance(lot_id: lot.id), Decimal.new(10))
     end
@@ -156,9 +155,6 @@ defmodule EstoqueOS.InventoryTest do
 
       after_correction = Repo.all(from e in TransactionEntry, order_by: e.id)
 
-      # The ledger is a journal: the entry that said 10 still says 10, and the
-      # correction sits after it. Editing the first row would erase the fact that
-      # ten were ever received, and with it any way to ask why six remain.
       assert Enum.take(after_correction, length(original)) == original
       assert length(after_correction) == length(original) + 1
       assert Repo.get(Transaction, purchase.id)
@@ -231,8 +227,7 @@ defmodule EstoqueOS.InventoryTest do
                  user_id: actor_id()
                })
 
-      # The same goods would otherwise count twice — at the location named on the
-      # entry, and in a box that is physically somewhere else.
+      # Otherwise the goods count twice: at the entry's location and in the box.
       assert Decimal.equal?(Inventory.balance(box_id: box.id), Decimal.new(0))
       assert Decimal.equal?(Inventory.balance(location_id: warehouse.id), Decimal.new(0))
     end
@@ -329,14 +324,11 @@ defmodule EstoqueOS.InventoryTest do
       {:ok, _} = purchase(near_lot, warehouse, 10, box_id: near.id)
       {:ok, _} = purchase(far_lot, warehouse, 10, box_id: far.id)
 
-      # Without a box_id, the box expiring soonest is reached for first.
       assert {:ok, [pick]} =
                Inventory.suggest_fefo_positions(product.id, 10, location_id: warehouse.id)
 
       assert pick.box_id == near.id
 
-      # With a box_id, only that box is looked at — even one that is not the
-      # one FEFO would have reached for on its own.
       assert {:ok, [pick]} =
                Inventory.suggest_fefo_positions(product.id, 10,
                  location_id: warehouse.id,

@@ -1,21 +1,13 @@
 defmodule EstoqueOSWeb.AlertsBell do
   @moduledoc """
-  What is open, on every screen, with the two things that can be closed
-  closable from here.
+  What is open, on every screen, with two alert kinds closable from here.
 
-  It is a `LiveComponent` and not a function component for one reason: it takes
-  actions. A function component in the layout would have to send its events to
-  whichever LiveView happens to be underneath, so every one of the twenty-six
-  screens would need a handler for something that is not theirs. A component
-  targets itself.
-
-  That also means the layout's `:guard_writes` hook never sees these events —
-  hooks attached to a LiveView do not run for events a component handles — so
-  the authorization is inside `Alerts.acknowledge_count/3` and
-  `Alerts.acknowledge_lot/2`, where it belongs anyway. They refuse anyone
-  outside `roles_that_plan/0`, and refuse an admin wearing somebody else's role:
-  an acknowledgement carries a name, and it has to be the name of whoever
-  actually looked.
+  A `LiveComponent` so its actions target itself, not whichever LiveView is
+  underneath. The layout's `:guard_writes` hook never sees a component's
+  events, so authorization lives in `Alerts.acknowledge_count/3` and
+  `Alerts.acknowledge_lot/2`: they refuse anyone outside `roles_that_plan/0`
+  and an admin wearing another role, since an acknowledgement carries the name
+  of whoever actually looked.
   """
 
   use EstoqueOSWeb, :live_component
@@ -53,9 +45,6 @@ defmodule EstoqueOSWeb.AlertsBell do
           title={gettext("What needs attention")}
         >
           <.icon name="hero-bell" class="size-5" />
-          <!-- The number, not a dot. "Something is wrong" is not information;
-               "four things are open" is, and it is the difference between a
-               badge people learn to ignore and one they open. -->
           <span
             :if={@total > 0}
             class="absolute -top-0.5 -right-0.5 badge badge-xs badge-warning font-semibold"
@@ -72,9 +61,6 @@ defmodule EstoqueOSWeb.AlertsBell do
             </p>
           </div>
 
-          <!-- The two that can be closed come first and come as *items*, because
-               closing one is the whole point of being here. The rest are counts
-               with a way in. -->
           <section :if={@counts != []} class="px-4 py-3 border-b border-base-200 space-y-2">
             <p class="text-sm font-medium">
               {gettext("Counts that did not agree")}

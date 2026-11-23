@@ -1,30 +1,17 @@
 defmodule EstoqueOSWeb.IssueLive.List do
   @moduledoc """
-  Everything that left by hand, newest first.
-
-  This screen is what replaced the separate donations module: a donation is a
-  manual issue whose destination happens to be a hospital, so it belongs in the
-  same list as every other write-off — and filtering that list by destination is
-  how the operation answers "what did we give away", which the old module could
-  never do for anything but itself.
-
-  The donation certificate is printed from here, per movement.
+  Everything that left by hand, newest first. A donation is a manual issue whose
+  destination is a hospital, so it lives here; filter by destination to see what
+  was given away. The donation certificate is printed from here, per movement.
   """
 
   use EstoqueOSWeb, :live_view
 
-  @doc """
-  Events a viewer may send. Everything else on this screen is refused.
-
-  Reporting only.
-  """
+  # Events a viewer may send; everything else is refused. Reporting only.
   def viewer_events, do: ~w(filter)
 
   alias EstoqueOS.Inventory.Transaction
 
-  # One copy of these, in `EstoqueOSWeb.Movement`. This screen and the list of
-  # write-offs each had their own, which is how a new destination gets a label
-  # on one screen and its raw key on the other.
   import EstoqueOSWeb.Movement, only: [destination_label: 1]
   alias EstoqueOS.Accounts.Scope
   import EstoqueOS.Coercion, only: [parse_date: 2]
@@ -54,8 +41,7 @@ defmodule EstoqueOSWeb.IssueLive.List do
      |> load_issues()}
   end
 
-  # A movement belongs to a segment through what it moved. The marketing role
-  # gets theirs whatever the address says; anyone else may ask for one.
+  # A movement belongs to a segment through what it moved; the role wins over the address.
   defp segment(socket, asked), do: Scope.segment(socket.assigns.current_scope, asked)
 
   defp load_issues(socket) do
@@ -114,7 +100,6 @@ defmodule EstoqueOSWeb.IssueLive.List do
         </label>
       </form>
 
-      <!-- The page header already says it; see box_live/index.ex. -->
       <.panel flush>
         <.data_table rows={@rows} row_id={&"issue-#{&1.transaction.id}"}>
           <:empty>
@@ -130,11 +115,7 @@ defmodule EstoqueOSWeb.IssueLive.List do
             {datetime(row.transaction.occurred_at)}
           </:col>
 
-          <!-- Plain text, not a badge. A daisyUI badge does not wrap, so a
-               two-word destination — "Sala de cirurgia", "Pré e pós" — ran out
-               of its own grey fill and tore the background. And a destination is
-               a value, not one of the states `status/1` owns: it names where the
-               goods went, not whether anything is wrong. -->
+          <%!-- Plain text, not a badge: a badge does not wrap, and a destination is a value, not a `status/1` state. --%>
           <:col :let={row} label={gettext("Where to")}>
             <span :if={row.transaction.destination}>
               {destination_label(row.transaction.destination)}
@@ -182,7 +163,6 @@ defmodule EstoqueOSWeb.IssueLive.List do
     """
   end
 
-  # The products are the point of the row; the lots are not, at this altitude.
   defp items_label(transaction) do
     names =
       transaction.entries

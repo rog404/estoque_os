@@ -1,9 +1,8 @@
 defmodule EstoqueOSWeb.MissionLiveTest do
   @moduledoc """
-  The panel exists to keep four questions apart on screen: sent, returned, used,
-  and donated. A report that collapses "used" and "given away" into "gone" is the
-  reason a coordinator cannot answer an auditor, so the screen is tested for the
-  distinction and not merely for rendering.
+  The panel keeps four questions apart: sent, returned, used, and donated.
+  Collapsing "used" and "given away" into "gone" leaves a coordinator unable to
+  answer an auditor, so the distinction is tested, not just rendering.
   """
 
   use EstoqueOSWeb.ConnCase, async: true
@@ -91,9 +90,6 @@ defmodule EstoqueOSWeb.MissionLiveTest do
         })
         |> render_submit()
 
-      # A mission usually goes somewhere the ONG has never been. Sending the
-      # coordinator to another screen and back to register the place first is a
-      # detour that invites a half-created mission.
       assert html =~ "Eirunepé 2026/2"
       assert html =~ "Missão Eirunepé"
 
@@ -156,8 +152,7 @@ defmodule EstoqueOSWeb.MissionLiveTest do
     test "offers only mission sites, never the warehouse", %{conn: conn} do
       {:ok, _view, html} = live(conn, ~p"/missions")
 
-      # The picker decides where a load-out gets filed; a warehouse in it would
-      # let somebody file the trip against the place it left from.
+      # A warehouse here would let a trip be filed against the place it left from.
       assert html =~ "Missão Tefé"
       refute html =~ ">Estoque Principal<"
     end
@@ -168,7 +163,6 @@ defmodule EstoqueOSWeb.MissionLiveTest do
       mission = with_mission(context)
       %{site: site, warehouse: warehouse, gauze: gauze} = context
 
-      # Only boxes travel, so the box the stock sits in is what leaves.
       {:ok, _} =
         Outbound.load_out(%{
           source_location_id: warehouse.id,
@@ -198,9 +192,7 @@ defmodule EstoqueOSWeb.MissionLiveTest do
       assert html =~ "Usado"
       assert html =~ "Doado"
 
-      # 100 sent, 10 used, 5 donated, nothing returned: 85 the ledger cannot place.
       assert html =~ "não consegue situar"
-      # 10 used across 4 tables.
       assert html =~ "2,5 por mesa"
     end
 
@@ -219,8 +211,6 @@ defmodule EstoqueOSWeb.MissionLiveTest do
         })
         |> render_submit()
 
-      # The flight home moves and the team stays an extra day. Nothing about the
-      # movements changes.
       assert html =~ "Datas atualizadas"
       assert Missions.get_mission!(mission.id).ends_on == later
       assert Missions.get_mission!(mission.id).tables == 6
@@ -266,7 +256,6 @@ defmodule EstoqueOSWeb.MissionLiveTest do
   end
 
   describe "donate before it expires" do
-    # Puts something short-dated in the travelling box and sends it to the site.
     defp with_expiring_stock(context) do
       %{warehouse: warehouse, site: site, box: box} = context
 
@@ -336,8 +325,6 @@ defmodule EstoqueOSWeb.MissionLiveTest do
 
       {:ok, _issue, html} = live(context.conn, to)
 
-      # The basket arrives filled: the whole position, the lot it came from, and
-      # a donation already chosen. Typing none of that back in is the point.
       assert html =~ "Soro fisiológico"
       assert html =~ "L-2291"
       assert html =~ "40"
@@ -365,9 +352,7 @@ defmodule EstoqueOSWeb.MissionLiveTest do
 
       {:ok, _view, html} = live(context.conn, ~p"/missions/#{mission.id}")
 
-      # Tags first: the words this panel is made of hide inside class names and
-      # ids all over the page, and a refute that passes on markup protects
-      # nothing.
+      # Strip tags first: the panel's words also appear in class names and ids.
       text = String.replace(html, ~r{<[^>]*>}s, " ")
 
       refute text =~ "Doar antes de vencer"

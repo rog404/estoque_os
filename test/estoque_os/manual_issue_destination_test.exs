@@ -1,9 +1,7 @@
 defmodule EstoqueOS.ManualIssueDestinationTest do
   @moduledoc """
-  The operation's ask was "we need to know which items were donated". While the
-  destination of a manual issue lived in free-text notes, that question could
-  only be answered by reading every line by eye. These tests are the answer
-  being a query.
+  The destination of a manual issue is a queryable field, so "which items were
+  donated" is answered by a query, not by reading notes.
   """
 
   use EstoqueOS.DataCase, async: true
@@ -57,7 +55,7 @@ defmodule EstoqueOS.ManualIssueDestinationTest do
     assert length(donations) == 1
     assert hd(donations).transaction.destination == "donation"
 
-    # The CNPJ is kept as digits, so two entries for the same institution match.
+    # Kept as digits so two entries for the same institution match.
     assert hd(donations).transaction.recipient_tax_id == "12345678000195"
 
     assert Reports.transaction_log(from, today, destination: "pacu") |> length() == 1
@@ -77,9 +75,6 @@ defmodule EstoqueOS.ManualIssueDestinationTest do
     assert "is invalid" in errors_on(changeset).destination
   end
 
-  # It used to be. Where the goods went is the whole point of recording that
-  # they left, and a blank there is a hole nobody can fill afterwards: the goods
-  # are gone and the person who carried them has moved on.
   test "an issue with no destination is refused" do
     {product, location} = stocked_product(5)
 

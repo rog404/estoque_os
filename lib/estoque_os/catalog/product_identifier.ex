@@ -45,8 +45,7 @@ defmodule EstoqueOS.Catalog.ProductIdentifier do
     )
   end
 
-  # NF-e uses "SEM GTIN" when the item has no barcode; such lines must not
-  # create an identifier at all, so we reject them here instead of storing junk.
+  # NF-e uses "SEM GTIN" for items with no barcode; reject rather than store junk.
   defp validate_gtin(changeset) do
     if get_field(changeset, :kind) == "gtin" do
       validate_format(changeset, :value, ~r/^\d{8}$|^\d{12,14}$/)

@@ -17,7 +17,6 @@ defmodule EstoqueOS.OutboundTest do
     boxed_lot = lot_fixture(%{product_id: product.id, expires_on: ~D[2029-01-31]})
     stock_in(boxed_lot, warehouse, 300, box_id: box.id)
 
-    # Loose stock of the same product, two lots with different expiry dates.
     sooner = lot_fixture(%{product_id: product.id, expires_on: ~D[2026-12-31]})
     later = lot_fixture(%{product_id: product.id, expires_on: ~D[2028-12-31]})
     stock_in(sooner, warehouse, 40)
@@ -130,9 +129,8 @@ defmodule EstoqueOS.OutboundTest do
                  picks: [%{lot_id: sooner.id, quantity: "25"}]
                })
 
-      # Goods that leave loose have nothing identifying them at the mission and
-      # nothing bringing them back. Sending them is a write-off wearing the
-      # clothes of a transfer, so nothing moves.
+      # Loose goods have nothing identifying or returning them: a write-off in a
+      # transfer's clothes, so nothing moves.
       assert Decimal.equal?(
                Inventory.balance(lot_id: sooner.id, location_id: mission.id),
                Decimal.new(0)
@@ -163,7 +161,6 @@ defmodule EstoqueOS.OutboundTest do
       assert Decimal.equal?(Inventory.balance(location_id: mission.id), Decimal.new(300))
       assert Repo.reload!(box).location_id == mission.id
 
-      # What was never boxed stays at the warehouse, waiting for the conference.
       assert Decimal.equal?(Inventory.balance(location_id: warehouse.id), Decimal.new(140))
     end
 

@@ -1,11 +1,7 @@
 defmodule EstoqueOSWeb.InvoiceItemCardTest do
   @moduledoc """
-  The first thing the ONG said about this screen: confirming a line wrecked it.
-
-  The lines were rows of one table whose columns were sized from their content,
-  so resolving one changed the width of all of them, and the product name — long,
-  and longer than the supplier's own wording — landed in a badge that could not
-  wrap. A line has to *settle* when it is confirmed. That is what these hold.
+  A line has to settle when it is confirmed, without reflowing the others or
+  putting a long product name in a badge that cannot wrap.
   """
 
   # Not async: imports the same real invoice as the other invoice suites.
@@ -47,8 +43,6 @@ defmodule EstoqueOSWeb.InvoiceItemCardTest do
 
     card = card(html, item)
 
-    # The supplier's own wording, in full: until somebody matches it, it is the
-    # only description of the goods that exists.
     assert card =~ item.description
     assert card =~ "Buscar no catálogo"
     assert card =~ "Preço unitário"
@@ -71,12 +65,9 @@ defmodule EstoqueOSWeb.InvoiceItemCardTest do
 
     assert card =~ "confirmado"
     assert card =~ product.name
-    # What the line decided, on one line.
     assert card =~ "1 PT = 50"
-    # And the number this whole screen exists to produce.
     assert card =~ "R$ 0,2695"
 
-    # The form is gone: the line has settled.
     refute card =~ "Buscar no catálogo"
     refute card =~ "Selecione um produto"
   end
@@ -85,7 +76,6 @@ defmodule EstoqueOSWeb.InvoiceItemCardTest do
        %{conn: conn, invoice: invoice, item: item} do
     {:ok, view, html} = live(conn, ~p"/invoices/#{invoice.id}")
 
-    # The price the invoice's own factor implies, before anyone touches the field.
     assert card(html, item) =~ "R$ 0,2695"
 
     html =
@@ -93,12 +83,10 @@ defmodule EstoqueOSWeb.InvoiceItemCardTest do
       |> element("#resolve-#{item.id}")
       |> render_change(%{"conversion_factor" => "10"})
 
-    # A different factor, a different price — seeing it move is how a wrong
-    # factor gets caught, and it happens without a submit.
+    # The price moves without a submit; that is how a wrong factor gets caught.
     assert card(html, item) =~ "R$ 1,3475"
     assert card(html, item) =~ "Buscar no catálogo"
 
-    # Nothing was written: the line is still open, still asking for a product.
     refute Invoices.get_invoice!(invoice.id)
            |> Map.fetch!(:items)
            |> hd()
@@ -120,10 +108,7 @@ defmodule EstoqueOSWeb.InvoiceItemCardTest do
     html =
       view |> element(~s(button[phx-value-item="#{item.id}"][phx-click="edit"])) |> render_click()
 
-    # Reopened, the line says what it currently is rather than dropping the
-    # operator back into an empty search. The search box is one press away,
-    # behind "Alterar" — reopening a line to fix its lot number should not cost
-    # you the product you already matched.
+    # Reopening keeps the matched product; the search is one press away behind "Alterar".
     reopened = card(html, item)
     assert reopened =~ product.name
     assert reopened =~ ~s(phx-click="unpick")
@@ -138,9 +123,6 @@ defmodule EstoqueOSWeb.InvoiceItemCardTest do
     refute card(html, item) =~ "Buscar no catálogo"
   end
 
-  # The two controls that used to ask the same question. Typing went into one
-  # and the answers came out of the other, so the search looked broken and the
-  # suggestions looked like they came from opening an empty droplist.
   defp open_matches(view, item) do
     view |> element("#search-#{item.id} input[name=query]") |> render_focus()
   end
@@ -156,18 +138,14 @@ defmodule EstoqueOSWeb.InvoiceItemCardTest do
 
     assert card =~ "Buscar no catálogo"
 
-    # The second control is gone, not merely relabelled. Refuting the visible
-    # words would pass on the comment above the markup that explains why it
-    # went — the tag-matching trap this repo keeps stepping in.
+    # The second control is gone, not relabelled: refute the markup, not visible words.
     refute card =~ ~r{<select[^>]*name="product_id"}
 
-    # The name a new product would get is not asked for until it is needed.
     refute card =~ ~s(name="new_product_name")
 
     card = view |> open_matches(item) |> card(item)
 
-    # Creating comes after the matches: offered first it is the fastest path,
-    # and the catalog fills with the same item spelled three ways.
+    # Offered first, creating is the fastest path and fills the catalog with duplicates.
     matches = Regex.run(~r{<ul[^>]*id="matches-#{item.id}".*?</ul>}s, card) |> hd()
     assert String.contains?(matches, "choose_new")
 
@@ -182,9 +160,6 @@ defmodule EstoqueOSWeb.InvoiceItemCardTest do
     assert create_at > last_pick
   end
 
-  # The matches belong to the field, the way any suggestion list does. Ten rows
-  # of catalog under every unresolved line is a card the operator scrolls past
-  # on the nine lines in ten that need one glance and one click.
   test "the matches are a suggestion of the field, not a block under it", %{
     conn: conn,
     invoice: invoice,
@@ -196,8 +171,7 @@ defmodule EstoqueOSWeb.InvoiceItemCardTest do
 
     assert open_matches(view, item) |> card(item) =~ ~s(id="matches-#{item.id}")
 
-    # And clicking away puts it back. `LiveViewTest` has no click-away, so the
-    # binding is asserted and the event it sends is driven by hand.
+    # `LiveViewTest` has no click-away: assert the binding, drive its event by hand.
     assert card(render(view), item) =~ ~s(phx-click-away="close_matches")
 
     away = render_click(view, "close_matches", %{"item" => "#{item.id}"})
@@ -205,8 +179,6 @@ defmodule EstoqueOSWeb.InvoiceItemCardTest do
     refute card(away, item) =~ ~s(id="matches-#{item.id}")
   end
 
-  # Typing has to show its own results. A search whose answers stay hidden is
-  # exactly the bug this screen was rebuilt to fix.
   test "typing opens the list even if it was closed", %{
     conn: conn,
     invoice: invoice,
@@ -243,7 +215,6 @@ defmodule EstoqueOSWeb.InvoiceItemCardTest do
 
     card = card(html, item)
 
-    # Chosen, not yet confirmed: the conversion factor still has to be right.
     assert card =~ product.name
     refute card =~ "Buscar no catálogo"
     assert card =~ ~s(name="product_id" value="#{product.id}")
@@ -270,8 +241,6 @@ defmodule EstoqueOSWeb.InvoiceItemCardTest do
     assert card =~ ~s(name="product_id" value="__new__")
   end
 
-  # Confirming one line must not disturb the others — the reflow was the whole
-  # complaint.
   test "confirming one line leaves the rest exactly where they were", %{
     conn: conn,
     invoice: invoice,

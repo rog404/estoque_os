@@ -7,42 +7,23 @@ defmodule EstoqueOS.Accounts.User do
   @doc """
   Known user roles, from most to least privileged.
 
-  Five, because this operation has five kinds of person and they need different
-  answers to three different questions — what may I change, what may I see, and
-  *which stock is mine*.
+    * `admin` — everything, plus who gets an account.
+    * `manager` — the supplies coordinator; money included.
+    * `marketing` — the marketing stock; writes and sees money, they sell what they hold.
+    * `logistics` — third-party box operator (counts, load-outs, returns); never a price.
+    * `auditor` — reads everything, writes nothing.
 
-    * `admin` — everything, plus who else gets an account.
-    * `manager` — the supplies coordinator. The whole operation, money included.
-    * `marketing` — looks after the marketing stock and nothing else. Writes
-      and sees money, both only about products in their own segment: they sell
-      what they hold, so a price is the point rather than a leak.
-    * `logistics` — the third-party operator who handles the boxes: counts,
-      load-outs, returns. Never a price: they are a partner outside the ONG and
-      the spreadsheet they return has always carried quantity and box and never
-      what anything cost.
-    * `auditor` — reads everything, money and ledger included, and writes
-      nothing.
-
-  The order is a rough privilege ranking and nothing reads it as one, because
-  no ranking works: `roles_that_write/0`, `roles_that_see_money/0` and
-  `segment/1` cut the list three different ways. Logistics writes and does not
-  see; auditor sees and does not write; marketing does both and only within
-  one segment. A single ladder cannot express that.
+  The order is not a privilege ladder: `roles_that_write/0`,
+  `roles_that_see_money/0` and `default_segment/1` cut the list differently.
   """
   def roles, do: @roles
 
   @doc """
   The stock a role works in, or `nil` for a role with no particular one.
 
-  A **default**, not a fence. It used to be the fence: marketing saw the
-  marketing stock and nothing else, enforced by a `where` in every query. The
-  operation asked for the other reading — everybody may look at either stock,
-  and what the role decides is which one the screen opens on. A coordinator who
-  needs to see the surgical shelf changes the filter; the filter is a filter.
-
-  What a role may *do* is a separate question and still a fence:
-  `roles_that_write/0`, `roles_that_plan/0` and `roles_that_see_money/0` are
-  unchanged.
+  A **default**, not a fence: everybody may look at either stock; the role
+  decides which one the screen opens on. What a role may *do* is still a fence
+  (`roles_that_write/0`, `roles_that_plan/0`, `roles_that_see_money/0`).
   """
   def default_segment("marketing"), do: "marketing"
   def default_segment(role) when is_binary(role), do: "medical"
@@ -55,36 +36,25 @@ defmodule EstoqueOS.Accounts.User do
   Roles allowed to change what the catalog *says*, as opposed to what the
   shelves hold.
 
-  A third question, and not a rung above the other two. The logistics operator
-  records what physically happened and may not touch the minimum a mission is
-  expected to carry — that is a planning decision, argued with the ONG team,
-  and a number the dashboard raises alarms from. The auditor is the mirror
-  image: they read everything, including prices, and change nothing.
-
-  Marketing is out too, and for a plainer reason: what this gate protects — kit
-  recipes and the minimum a mission carries — is surgical planning, and none of
-  it is about their stock.
+  Logistics records what physically happened but may not change kit recipes or
+  the minimum a mission carries (a planning decision the dashboard alarms from).
+  Marketing is out too: that planning is surgical, not about their stock.
   """
   def roles_that_plan, do: ~w(admin manager)
 
   @doc """
   Roles that handle the boxes: putting stock into one, moving one, counting one.
 
-  Marketing writes to the ledger and is not here. The boxes are the surgical
-  operation's — they travel to missions, and every screen about them is closed
-  to marketing already. This is that same rule, said where a screen shared with
-  marketing (a product's own page) needs to ask it.
+  Marketing is not here: boxes are the surgical operation's. Exists for screens
+  shared with marketing (a product's own page).
   """
   def roles_that_box, do: ~w(admin manager logistics)
 
   @doc """
   Roles allowed to see what anything cost.
 
-  Marketing is here and logistics is not, which looks inconsistent until you
-  read what each of them is: the logistics partner is outside the ONG and the
-  prices are the ONG's, while marketing *sells* the goods they hold — the price
-  on the way out is the thing they are accountable for. And they only ever see
-  their own segment.
+  Marketing sees prices (they sell what they hold); logistics is outside the
+  ONG and does not.
   """
   def roles_that_see_money, do: ~w(admin manager marketing auditor)
 
@@ -170,10 +140,6 @@ defmodule EstoqueOS.Accounts.User do
     changeset
     |> validate_required([:password])
     |> validate_length(:password, min: 12, max: 72)
-    # Examples of additional password validation:
-    # |> validate_format(:password, ~r/[a-z]/, message: "at least one lower case character")
-    # |> validate_format(:password, ~r/[A-Z]/, message: "at least one upper case character")
-    # |> validate_format(:password, ~r/[!?@#$%^&*_0-9]/, message: "at least one digit or punctuation character")
     |> maybe_hash_password(opts)
   end
 
@@ -183,17 +149,13 @@ defmodule EstoqueOS.Accounts.User do
 
     if hash_password? && password && changeset.valid? do
       changeset
-      # If using Bcrypt, then further validate it is at most 72 bytes long
+      # Bcrypt truncates past 72 bytes.
       |> validate_length(:password, max: 72, count: :bytes)
-      # Hashing could be done with `Ecto.Changeset.prepare_changes/2`, but that
-      # would keep the database transaction open longer and hurt performance.
+      # Not in prepare_changes/2: that would hold the transaction open while hashing.
       |> put_change(:hashed_password, Bcrypt.hash_pwd_salt(password))
       |> delete_change(:password)
-      # A password set anywhere — the forced first-login change, or "esqueci
-      # minha senha" — is exactly the event that clears the requirement.
-      # Placed in this branch, not in `password_changeset/3` itself, so a live
-      # "validate as you type" call (`hash_password: false`) or a failed
-      # submission never touches the flag.
+      # Any real password set clears the requirement. Only in this branch, so
+      # live validation (`hash_password: false`) or a failed submit never touches it.
       |> put_change(:must_reset_password, false)
     else
       changeset

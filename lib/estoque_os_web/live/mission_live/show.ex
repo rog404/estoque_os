@@ -1,25 +1,15 @@
 defmodule EstoqueOSWeb.MissionLive.Show do
   @moduledoc """
-  What one trip did to the stock.
+  What one trip did to the stock. Returned, consumed and donated are different
+  questions: donated goods still exist but belong to the hospital, and rolling
+  them into "gone" leaves a coordinator unable to answer an auditor.
 
-  Four columns, and they are four different questions. Returned is not consumed:
-  the goods came back. Donated is not consumed either — they still exist, they
-  just belong to the hospital now, and a certificate was signed for them. Rolling
-  the two into "gone" is exactly the reporting that makes a coordinator unable to
-  answer an auditor.
-
-  `unaccounted` is what the ledger cannot place. It is shown even when the answer
-  is uncomfortable, because a mission report that always balances is a report
-  nobody can learn anything from.
+  `unaccounted` is what the ledger cannot place, shown even when uncomfortable.
   """
 
   use EstoqueOSWeb, :live_view
 
-  @doc """
-  Events a viewer may send. Everything else on this screen is refused.
-
-  Reporting only.
-  """
+  # Events a viewer may send; everything else is refused. Reporting only.
   def viewer_events, do: ~w(filter select_donation)
 
   alias EstoqueOS.Missions
@@ -43,9 +33,7 @@ defmodule EstoqueOSWeb.MissionLive.Show do
     {:noreply, assign(socket, :only_open, params["only_open"] == "true")}
   end
 
-  # Ticking a line moves nothing. The whole panel is a suggestion until the
-  # operator carries it over to the write-off screen, which is where a movement
-  # is actually posted and where the permissions for posting one live.
+  # Ticking moves nothing: the write-off screen posts the movement and owns its permissions.
   def handle_event("select_donation", params, socket) do
     selected =
       params
@@ -61,10 +49,7 @@ defmodule EstoqueOSWeb.MissionLive.Show do
     {:noreply, assign(socket, :selected, selected)}
   end
 
-  # A navigation, not a write: the write-off screen is the one that asks for a
-  # recipient and posts the transaction. Ticking here and pressing there is the
-  # same two-step every donation already goes through — this only skips typing
-  # six product names into a search box while standing in a hospital corridor.
+  # A navigation, not a write: the write-off screen asks for a recipient and posts.
   def handle_event("donate", _params, socket) do
     if Enum.empty?(socket.assigns.selected) do
       {:noreply, socket}
@@ -119,9 +104,6 @@ defmodule EstoqueOSWeb.MissionLive.Show do
         </:subtitle>
       </.header>
 
-      <!-- Plans change: the flight home moves, the team stays an extra day. The
-           dates are what somebody wrote down, not something the ledger decided,
-           so they are editable without touching a single movement. -->
       <.write_gate may={@role_may_write?} allowed={@controls_enabled?}>
         <form
           id="mission-dates"
@@ -179,8 +161,6 @@ defmodule EstoqueOSWeb.MissionLive.Show do
         />
       </div>
 
-      <!-- Only shown when it happened. Stock does not always come home between
-           trips, and a column of zeroes teaches nobody anything. -->
       <div :if={not Decimal.equal?(@panel.totals.handed_on, Decimal.new(0))} class="mt-3">
         <.stat
           label={gettext("Went on to the next mission")}
@@ -205,9 +185,6 @@ defmodule EstoqueOSWeb.MissionLive.Show do
         </span>
       </div>
 
-      <%!-- Shown only when the site still holds something with a short life left.
-            An empty panel on every closed mission would be a heading that means
-            "nothing to do" in a screen already full of numbers. --%>
       <.panel :if={@candidates != []} title={gettext("Donate before it expires")} flush>
         <p class="px-4 pt-3 text-sm text-base-content/70">
           {gettext(
@@ -307,8 +284,7 @@ defmodule EstoqueOSWeb.MissionLive.Show do
     """
   end
 
-  # Comparing two missions only means something per table: a trip with six
-  # tables is expected to use more than one with four.
+  # Missions are only comparable per table.
   defp per_table_hint(assigns) do
     case Missions.consumption_per_table(assigns.panel) do
       nil -> gettext("record the number of tables to compare missions")
@@ -316,18 +292,15 @@ defmodule EstoqueOSWeb.MissionLive.Show do
     end
   end
 
-  # Days, not a date, because "expires 12/09" needs a calendar and "in 11 days"
-  # does not — and the question this panel asks is whether the trip home is
-  # longer than what the item has left.
+  # Days, not a date: the question is whether the trip home outlasts the item.
   defp expiry_hint(%{days_left: days}) when days < 0 do
     gettext("expired %{days} day(s) ago", days: abs(days))
   end
 
   defp expiry_hint(%{days_left: days}), do: gettext("in %{days} day(s)", days: days)
 
-  # Lot ids in the address, not a basket carried across the socket: the write-off
-  # screen rebuilds the lines from the ledger, so a link that sat in a tab
-  # overnight cannot post yesterday's quantities.
+  # Lot ids in the address: the write-off screen rebuilds lines from the ledger,
+  # so a stale link cannot post yesterday's quantities.
   defp donate_path(%{mission: mission}, selected) do
     lots = selected |> Enum.sort() |> Enum.join(",")
 

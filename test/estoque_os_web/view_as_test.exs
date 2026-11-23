@@ -1,14 +1,7 @@
 defmodule EstoqueOSWeb.ViewAsTest do
   @moduledoc """
-  An admin standing in another role's shoes.
-
-  Roles now decide two different things — what may be changed and what may be
-  seen — and the second is invisible from the inside. This is how an admin finds
-  out whether the logistics operator's stock screen still shows a price, without
-  keeping four accounts and a private window.
-
-  The properties that make it safe to have at all are the ones under test: a
-  role and never a person, read-only whatever the role allows, and never upward.
+  An admin standing in another role's shoes. The properties under test: a role
+  and never a person, read-only whatever the role allows, and never upward.
   """
 
   use EstoqueOSWeb.ConnCase, async: true
@@ -73,14 +66,8 @@ defmodule EstoqueOSWeb.ViewAsTest do
       assert html =~ "Somente leitura"
     end
 
-    # This used to refuse the *page*, and that was the wrong door to shut.
-    # "Ver como" existed to answer "what does this person see", and the screens
-    # a role actually works in are most of the answer — an admin who borrowed
-    # the logistics role got the overview and then "você não tem permissão" on
-    # everything else, which reads as a broken app rather than as a role.
-    #
-    # So the page opens and the *write* is what is refused, by the same hook
-    # that already refuses one on any read-only screen.
+    # The page opens and the write is what is refused, by the same hook that
+    # refuses one on any read-only screen.
     test "walks into a writing screen while wearing another role", %{conn: conn} do
       conn = post(conn, ~p"/users/view-as", %{"role" => "logistics"})
 
@@ -91,16 +78,9 @@ defmodule EstoqueOSWeb.ViewAsTest do
       assert html =~ "Entrada manual"
     end
 
-    # Every transaction records who made it, and one made under a borrowed role
-    # would name the wrong role. `operator?/1` is what says no, and it says no on
-    # the screens the role works in exactly as it does on the stock list.
-    #
-    # One test over the screens rather than one test per screen: three copies of
-    # this said the same sentence about three paths, and the third would have
-    # been forgotten the day a fourth screen appeared. The event is sent
-    # straight at the socket because that is how a write would actually be
-    # attempted — the button is not rendered, and a button nobody rendered has
-    # never been what stops anything.
+    # A transaction under a borrowed role would name the wrong role; `operator?/1`
+    # refuses it. One test over all the screens, with the event sent straight at
+    # the socket, since an unrendered button never stops anything.
     test "is refused the write on every screen it may now open", %{conn: conn} do
       conn = post(conn, ~p"/users/view-as", %{"role" => "manager"})
 
@@ -121,17 +101,12 @@ defmodule EstoqueOSWeb.ViewAsTest do
     end
 
     test "is refused writes on a screen it is allowed to open", %{conn: conn} do
-      # `/stock` is a screen every role may open, so the route gate has nothing
-      # to say here and `operator?/1` is the only thing standing between a
-      # borrowed role and a write. `require_role` had a second copy of this rule
-      # for a while; it could never fire, because `require_operator` in the
-      # pipeline already asks `operator?/1`, and an authorization guard that
-      # cannot fire is worse than none — it reads like protection.
+      # `/stock` is open to every role, so the route gate says nothing and
+      # `operator?/1` alone stands between a borrowed role and a write.
       conn = post(conn, ~p"/users/view-as", %{"role" => "manager"})
 
       {:ok, view, html} = live(conn, ~p"/stock")
 
-      # Manager writes; an admin standing in that role does not.
       refute html =~ "phx-submit=\"import\""
 
       refute EstoqueOSWeb.UserAuth.operator?(
@@ -139,12 +114,7 @@ defmodule EstoqueOSWeb.ViewAsTest do
              )
     end
 
-    # What the ONG actually asked for: "preciso poder NAVEGAR como se fosse um
-    # operador logístico para ver tudo que ele pode ver". The controls used to
-    # be rendered and greyed out, which answered a different question — it
-    # showed the app that person would be refused by rather than the app they
-    # use. Now the screen is theirs, button for button, and the refusal happens
-    # on the event, where it cannot be faked.
+    # The screen is the role's, button for button; the refusal happens on the event.
     test "sees the operator's controls exactly as the operator does", %{conn: conn} do
       conn = post(conn, ~p"/users/view-as", %{"role" => "logistics"})
 
@@ -156,7 +126,6 @@ defmodule EstoqueOSWeb.ViewAsTest do
       refute gate =~ "disabled"
     end
 
-    # And pressing one does nothing but say no.
     test "pressing a control says no and writes nothing", %{conn: conn} do
       warehouse = Locations.default_location()
       conn = post(conn, ~p"/users/view-as", %{"role" => "logistics"})
@@ -175,9 +144,8 @@ defmodule EstoqueOSWeb.ViewAsTest do
     end
 
     test "the operator's controls are absent for a role that never had them", %{conn: conn} do
-      # Not disabled — gone. The auditor does not write anywhere, so a greyed-out
-      # box form on their screen would be describing a permission that does not
-      # exist rather than one they are currently standing outside of.
+      # Not disabled but gone: the auditor never writes, so a greyed-out form
+      # would describe a permission that does not exist.
       conn = post(conn, ~p"/users/view-as", %{"role" => "auditor"})
 
       {:ok, _view, html} = live(conn, ~p"/boxes")

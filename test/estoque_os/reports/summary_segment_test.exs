@@ -1,10 +1,7 @@
 defmodule EstoqueOS.Reports.SummarySegmentTest do
   @moduledoc """
-  The headline numbers, once per stock.
-
-  A note pending confirmation is a job for whoever owns the goods in it, and
-  the marketing overview raising a number about a delivery of gauze is the same
-  wrong answer as showing them the gauze.
+  The headline numbers, once per stock. A pending note belongs to whoever owns
+  its goods; marketing must not count a delivery of gauze.
   """
 
   use EstoqueOS.DataCase, async: true
@@ -66,9 +63,7 @@ defmodule EstoqueOS.Reports.SummarySegmentTest do
     assert Reports.summary().invoices_pending == 2
   end
 
-  # An item the importer could not match to a product yet has no segment to be
-  # counted under. It stays in the whole-operation number, which is the one the
-  # person who resolves it is reading.
+  # An unmatched item has no segment, so only the whole-operation number counts it.
   test "an item without a product yet belongs to no stock", %{gauze: gauze} do
     {:ok, _} =
       %Invoice{}

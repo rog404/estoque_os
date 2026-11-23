@@ -1,10 +1,7 @@
 defmodule EstoqueOSWeb.LoadOutLive.Index do
   @moduledoc """
-  The load-out: sending a mission's supplies out of the warehouse.
-
-  Everything starts selected, because in practice the whole stock leaves and
-  what stays behind is the exception. Taking something out of the load is one
-  click; building the load item by item would be a week of work.
+  The load-out: sending a mission's supplies out of the warehouse. Everything
+  starts selected, since the whole stock usually leaves.
   """
 
   use EstoqueOSWeb, :live_view
@@ -16,12 +13,7 @@ defmodule EstoqueOSWeb.LoadOutLive.Index do
 
   alias EstoqueOS.Inventory.Locations
 
-  @doc """
-  Events a viewer may send. Everything else on this screen is refused.
-
-  Choosing where the load goes and where it comes from only recalculates the
-  plan. `send` is the movement.
-  """
+  # Events a viewer may send; everything else is refused. `send` is the movement.
   def viewer_events, do: ~w(route)
 
   @impl true
@@ -56,11 +48,8 @@ defmodule EstoqueOSWeb.LoadOutLive.Index do
     end
   end
 
-  # Transit is not somewhere a load is sent; it is where a load *is* while
-  # somebody else drives it. Naming a carrier is what puts it there, and the
-  # arrival is what takes it out — so offering it as a destination asked the
-  # operator to model the trip by hand, and a load parked in transit on purpose
-  # is a load addressed to nowhere.
+  # Transit is where a load is while someone drives it, not a destination: naming
+  # a carrier puts it there and the arrival takes it out.
   defp destinations(locations, source) do
     Enum.reject(locations, &((source && &1.id == source.id) or &1.kind == "transit"))
   end
@@ -125,12 +114,7 @@ defmodule EstoqueOSWeb.LoadOutLive.Index do
         </label>
       </form>
 
-      <!-- Who has the load, and under what number. The ledger could always say
-           stock was in transit and nothing more — not with whom, not since when,
-           not expected where — so "quem está com a carga?" had no answer in the
-           system that holds the stock. Optional, because a volunteer's car is
-           not a carrier and refusing the trip over a missing name would lose
-           the trip. -->
+      <%!-- Optional: a volunteer's car is not a carrier, and refusing over a missing name would lose the trip. --%>
       <.toolbar class="mt-4">
         <label class="fieldset grow min-w-56">
           <span class="label">{gettext("Carrier")}</span>
@@ -237,10 +221,7 @@ defmodule EstoqueOSWeb.LoadOutLive.Index do
         </div>
       </form>
 
-      <!-- Listed, never offered. Goods that leave without a box have nothing
-           identifying them at the mission and nothing bringing them back — in
-           practice already written off — so the screen points at the conference
-           instead of taking the order. -->
+      <%!-- Listed, never offered: loose goods cannot be identified at the mission or brought back. --%>
       <section
         :if={@plan.loose != []}
         class="alert alert-warning flex-col items-start gap-2 mt-6"
@@ -290,9 +271,7 @@ defmodule EstoqueOSWeb.LoadOutLive.Index do
       |> Enum.reject(fn {_lot_id, value} -> String.trim(value) in ["", "0"] end)
       |> Map.new()
 
-    # A name typed here resolves to the carrier that already has it, case
-    # insensitively — otherwise "STRALOG" today and "Stralog" next month are two
-    # carriers and the transit report can be asked nothing about either.
+    # Resolves case-insensitively to an existing carrier, or "STRALOG" and "Stralog" split the history.
     {:ok, carrier} = Catalog.resolve_carrier(params["carrier"])
 
     attrs = %{

@@ -8,8 +8,7 @@ defmodule EstoqueOSWeb.UserAuth do
   alias EstoqueOS.Accounts
   alias EstoqueOS.Accounts.Scope
 
-  # Make the remember me cookie valid for 14 days. This should match
-  # the session validity setting in UserToken.
+  # Must match the session validity in UserToken.
   @max_cookie_age_in_days 14
   @remember_me_cookie "_estoque_os_web_user_remember_me"
   @remember_me_options [
@@ -19,13 +18,8 @@ defmodule EstoqueOSWeb.UserAuth do
     same_site: "Lax"
   ]
 
-  # How old the session token should be before a new one is issued. When a request is made
-  # with a session token older than this value, then a new session token will be created
-  # and the session and remember-me cookies (if set) will be updated with the new token.
-  # Lowering this value will result in more tokens being created by active users. Increasing
-  # it will result in less time before a session token expires for a user to get issued a new
-  # token. This can be set to a value greater than `@max_cookie_age_in_days` to disable
-  # the reissuing of tokens completely.
+  # Age at which a session token is reissued. Above `@max_cookie_age_in_days`
+  # disables reissuing.
   @session_reissue_age_in_days 7
 
   @doc """
@@ -102,14 +96,7 @@ defmodule EstoqueOSWeb.UserAuth do
     end
   end
 
-  # This function is the one responsible for creating session tokens
-  # and storing them safely in the session and cookies. It may be called
-  # either when logging in, during sudo mode, or to renew a session which
-  # will soon expire.
-  #
-  # When the session is created, rather than extended, the renew_session
-  # function will clear the session to avoid fixation attacks. See the
-  # renew_session function to customize this behaviour.
+  # Creating a session clears it via renew_session to avoid fixation attacks.
   defp create_or_extend_session(conn, user, params) do
     token = Accounts.generate_user_session_token(user)
     remember_me = get_session(conn, :user_remember_me)
@@ -120,28 +107,12 @@ defmodule EstoqueOSWeb.UserAuth do
     |> maybe_write_remember_me_cookie(token, params, remember_me)
   end
 
-  # Do not renew session if the user is already logged in
-  # to prevent CSRF errors or data being lost in tabs that are still open
+  # Not renewed if already logged in: avoids CSRF errors and lost data in open tabs.
   defp renew_session(conn, user) when conn.assigns.current_scope.user.id == user.id do
     conn
   end
 
-  # This function renews the session ID and erases the whole
-  # session to avoid fixation attacks. If there is any data
-  # in the session you may want to preserve after log in/log out,
-  # you must explicitly fetch the session data before clearing
-  # and then immediately set it after clearing, for example:
-  #
-  #     defp renew_session(conn, _user) do
-  #       delete_csrf_token()
-  #       preferred_locale = get_session(conn, :preferred_locale)
-  #
-  #       conn
-  #       |> configure_session(renew: true)
-  #       |> clear_session()
-  #       |> put_session(:preferred_locale, preferred_locale)
-  #     end
-  #
+  # Renews the session ID and erases the session to avoid fixation attacks.
   defp renew_session(conn, _user) do
     delete_csrf_token()
 
@@ -184,34 +155,8 @@ defmodule EstoqueOSWeb.UserAuth do
   @doc """
   Handles mounting and authenticating the current_scope in LiveViews.
 
-  ## `on_mount` arguments
-
-    * `:mount_current_scope` - Assigns current_scope
-      to socket assigns based on user_token, or nil if
-      there's no user_token or no matching user.
-
-    * `:require_authenticated` - Authenticates the user from the session,
-      and assigns the current_scope to socket assigns based
-      on user_token.
-      Redirects to login page if there's no logged user.
-
-  ## Examples
-
-  Use the `on_mount` lifecycle macro in LiveViews to mount or authenticate
-  the `current_scope`:
-
-      defmodule EstoqueOSWeb.PageLive do
-        use EstoqueOSWeb, :live_view
-
-        on_mount {EstoqueOSWeb.UserAuth, :mount_current_scope}
-        ...
-      end
-
-  Or use the `live_session` of your router to invoke the on_mount callback:
-
-      live_session :authenticated, on_mount: [{EstoqueOSWeb.UserAuth, :require_authenticated}] do
-        live "/profile", ProfileLive, :index
-      end
+    * `:mount_current_scope` - assigns current_scope, nil if no valid token.
+    * `:require_authenticated` - same, redirecting to login if there is no user.
   """
   def on_mount(:mount_current_scope, _params, session, socket) do
     {:cont, mount_current_scope(socket, session)}
@@ -221,10 +166,8 @@ defmodule EstoqueOSWeb.UserAuth do
     socket = mount_current_scope(socket, session)
 
     if socket.assigns.current_scope && socket.assigns.current_scope.user do
-      # Assigned here rather than beside `@writable?`, because every live_session
-      # mounts this one and only some mount `:guard_writes`. A screen that asked
-      # `@sees_money?` from the wrong session would raise in production and
-      # render the price in the meantime; from here the answer always exists.
+      # Assigned here, not beside `@writable?`: every live_session mounts this
+      # clause but only some mount `:guard_writes`, and `@sees_money?` must always exist.
       {:cont,
        Phoenix.Component.assign(socket, :sees_money?, sees_money?(socket.assigns.current_scope))}
     else
@@ -237,8 +180,7 @@ defmodule EstoqueOSWeb.UserAuth do
     end
   end
 
-  # The navigation marks where you are, which means the layout needs the path.
-  # LiveView only knows it per handle_params, so we keep it on the socket.
+  # The layout marks the current nav entry; LiveView only knows the path per handle_params.
   def on_mount(:current_path, _params, _session, socket) do
     {:cont,
      Phoenix.LiveView.attach_hook(socket, :save_current_path, :handle_params, fn
@@ -248,29 +190,15 @@ defmodule EstoqueOSWeb.UserAuth do
   end
 
   @doc false
-  # Screens that report to everyone still carry buttons that write: a box is
-  # moved from the box screen, a kit is packed from the kit screen. The route is
-  # the wrong gate for those — blocking it would take the reporting away from the
-  # people it is for — so the gate is the event.
-  #
-  # Default-deny, and deliberately so. A LiveView lists the events a viewer may
-  # send; anything else is refused. The inverse — listing the writes — fails open
-  # the day somebody adds a handler and forgets the list, which is exactly how
-  # this hole appeared in the first place.
+  # Read-only screens still carry write buttons, so the gate is the event, not
+  # the route. Default-deny: a LiveView lists the events a viewer may send
+  # (`viewer_events/0`); listing the writes instead fails open when a handler
+  # is added and the list forgotten.
   def on_mount(:guard_writes, _params, _session, socket) do
-    # Three answers from one place, so a hidden button and an open handler
-    # cannot drift apart:
-    #
-    #   * `@role_may_write?` — does the role being shown write here at all. False
-    #     removes the markup: a reader has no business seeing an action they
-    #     will never have.
-    #   * `@controls_enabled?` — does the screen *look* usable. Borrowing a role
-    #     is supposed to show that person's app, and a wall of greyed-out
-    #     controls is a different app. So the buttons look exactly as they look
-    #     to them.
-    #   * `@writable?` — may this session actually write. Still false the whole
-    #     time an admin is wearing somebody else's role, and it is what the
-    #     handlers and the contexts ask.
+    # Three assigns:
+    #   * `@role_may_write?` - the shown role writes here at all; false removes the markup.
+    #   * `@controls_enabled?` - controls look usable, so view-as shows the real app.
+    #   * `@writable?` - this session may actually write; false while viewing as.
     scope = socket.assigns[:current_scope]
 
     socket =
@@ -327,13 +255,8 @@ defmodule EstoqueOSWeb.UserAuth do
   end
 
   @doc false
-  # A temporary password (admin-created account) or a password just reset
-  # blocks everything else until it's replaced. Deliberately its own clause,
-  # appended to every protected live_session's on_mount list, rather than a
-  # per-view exception folded into `:require_authenticated` — the router stays
-  # the one place that says which routes skip this, and
-  # `UserLive.ResetPassword, :required` simply lives in a live_session that
-  # never lists this clause.
+  # A temporary or just-reset password blocks everything until replaced. Its own
+  # clause, so the router stays the one place saying which routes skip it.
   def on_mount(:require_password_not_pending, _params, _session, socket) do
     if socket.assigns.current_scope.user.must_reset_password do
       {:halt, Phoenix.LiveView.redirect(socket, to: ~p"/users/reset-password/required")}
@@ -343,9 +266,7 @@ defmodule EstoqueOSWeb.UserAuth do
   end
 
   @doc false
-  # Guards the flows that only work if a message arrives. `mount_current_scope`
-  # runs before this in the same live_session, so there may or may not be a
-  # user; either way the answer is the login page and a sentence saying why.
+  # Guards flows that need an email to arrive; there may or may not be a user.
   def on_mount(:require_email_enabled, _params, _session, socket) do
     if EstoqueOS.Accounts.email_enabled?() do
       {:cont, socket}
@@ -383,20 +304,9 @@ defmodule EstoqueOSWeb.UserAuth do
     end
   end
 
-  # Read from the token every time, deliberately not `assign_new`.
-  #
-  # A live navigation runs `mount` again on the *same* socket, and that socket
-  # already carries `current_scope` from the moment it connected. With
-  # `assign_new` the token was therefore checked once, when the tab was opened,
-  # and never again: a session that had expired or been deleted elsewhere kept
-  # every screen open for as long as the tab stayed alive. You lost the session,
-  # clicked the menu, and the app answered.
-  #
-  # An explicit log out still disconnects the socket outright — see
-  # `log_out_user/1` — but that only covers the logout that happened here, in
-  # this browser.
-  #
-  # The cost is one query per navigation, for an app with two users.
+  # Read from the token every time, not `assign_new`: a live navigation reuses
+  # the socket, so `assign_new` would check the token once and keep an expired
+  # or remotely deleted session alive. Costs one query per navigation.
   defp mount_current_scope(socket, session) do
     {user, _} =
       if user_token = session["user_token"] do
@@ -420,17 +330,11 @@ defmodule EstoqueOSWeb.UserAuth do
   def signed_in_path(_), do: ~p"/"
 
   @doc """
-  Whether this scope may write to the ledger.
-
-  The plug and the `on_mount` gate whole routes. This answers the same question
-  inside a page that a reader is allowed to open but not to write from — the
-  stock screen, which reports to everyone and imports counts from the people who
-  handle the boxes.
+  Whether this scope may write to the ledger. The plug and `on_mount` gate
+  whole routes; this answers it inside a page a reader may open.
   """
   def operator?(%Scope{} = scope) do
-    # Read-only, always. An admin standing in the logistics operator's shoes is
-    # there to see what that person sees; letting them post a transaction would
-    # write somebody else's role into a ledger that records who did what.
+    # Always false while viewing as: the ledger records who did what.
     not Scope.viewing_as?(scope) and
       Scope.effective_role(scope) in Accounts.User.roles_that_write()
   end
@@ -438,19 +342,11 @@ defmodule EstoqueOSWeb.UserAuth do
   def operator?(_scope), do: false
 
   @doc """
-  Whether the role being *shown* writes here — which is a different question
-  from whether this session may press the button.
+  Whether the role being *shown* writes here, as opposed to whether this session
+  may press the button.
 
-  A hidden button teaches nothing. An admin who steps into the logistics
-  operator's shoes to see what that person sees was getting a hollow copy of
-  every screen: the route opened, the page rendered, and every control that
-  made the page worth visiting was gone. You could not tell a permission you
-  lack from a feature that does not exist from a bug.
-
-  So the control is rendered, and — since the operation asked for it — rendered
-  usable, exactly as the person whose screen it is sees it. The refusal itself
-  does not move: `operator?/1` still says no, the event hook still refuses, and
-  an admin standing in somebody else's shoes still cannot post a transaction.
+  Controls are rendered usable under view-as, so the admin sees the real app;
+  the refusal stays in `operator?/1` and the event hook.
   """
   def role_may_write?(%Scope{} = scope),
     do: Scope.effective_role(scope) in Accounts.User.roles_that_write()
@@ -458,13 +354,8 @@ defmodule EstoqueOSWeb.UserAuth do
   def role_may_write?(_scope), do: false
 
   @doc """
-  Whether the controls are drawn as usable.
-
-  They are, for the role that writes here — including an admin borrowing it.
-  "Ver como" exists to answer *what does this person see*, and a screen full of
-  disabled controls answers a different question: it shows the app somebody
-  else would be refused by, not the app they use. So the screen looks the same
-  and the refusal happens where it cannot be faked, on the way in.
+  Whether the controls are drawn as usable: for the role that writes here,
+  including an admin borrowing it. Refusal happens on the way in, not in looks.
   """
   def controls_enabled?(%Scope{} = scope), do: role_may_write?(scope)
   def controls_enabled?(_scope), do: false
@@ -472,16 +363,11 @@ defmodule EstoqueOSWeb.UserAuth do
   @doc """
   Whether this scope may see what anything cost.
 
-  A separate question from `operator?/1`, and deliberately not a rung on the
-  same ladder: the logistics operator writes and must not see prices, the
-  auditor sees prices and must not write. Ordering the roles by "power" cannot
-  express that, so there are two predicates and each screen asks the one it
-  means.
+  Separate from `operator?/1`, not a rung on one ladder: logistics writes but
+  must not see prices; the auditor sees prices but must not write.
 
-  This is not a display preference. Where it says no, the number must never be
-  rendered — hiding it in markup still ships it to the browser, and the whole
-  point is that a partner outside the ONG does not receive the ONG's purchase
-  prices.
+  Where it says no, the number must never be rendered: hiding it in markup
+  still ships it to the browser.
   """
   def sees_money?(%Scope{} = scope),
     do: Scope.effective_role(scope) in Accounts.User.roles_that_see_money()
@@ -491,18 +377,9 @@ defmodule EstoqueOSWeb.UserAuth do
   @doc """
   Plug for the routes that write, and for the export.
 
-  It asks `role_may_write?/1` and not `operator?/1`, which is the difference
-  between *may this role write here* and *may this session press the button*.
-  An admin standing in another role's shoes is the second question answered no
-  while the first is yes, and refusing them at the door made "ver como" almost
-  useless: the overview opened and every screen the borrowed role actually
-  works in answered "você não tem permissão", which reads as a broken app
-  rather than as a role.
-
-  Nothing is loosened by this. Every `live_session` behind this pipeline mounts
-  `:guard_writes`, which refuses any event a screen has not declared as a read,
-  and `operator?/1` — still false the whole time — is what the contexts and the
-  buttons ask.
+  Asks `role_may_write?/1`, not `operator?/1`, so view-as can open the borrowed
+  role's screens. Nothing is loosened: every `live_session` behind it mounts
+  `:guard_writes`, and `operator?/1` stays false while viewing as.
   """
   def require_operator(conn, _opts) do
     case conn.assigns[:current_scope] do
@@ -515,9 +392,8 @@ defmodule EstoqueOSWeb.UserAuth do
   end
 
   @doc """
-  Plug for controller routes whose content is money. Same shape as
-  `require_operator/2`, different question — the donation certificate declares a
-  value and is not for the logistics partner, however much they may write.
+  Plug for controller routes whose content is money; same shape as
+  `require_operator/2`, different question.
   """
   def require_money(conn, _opts) do
     if sees_money?(conn.assigns[:current_scope]), do: conn, else: refuse(conn)
@@ -525,9 +401,7 @@ defmodule EstoqueOSWeb.UserAuth do
 
   @doc """
   Plug equivalent of the `:require_password_not_pending` on_mount clause, for
-  controller routes (`on_mount` never runs for those). Not piped through the
-  reset-password routes themselves — a temporary password must still be able
-  to reach the flow that replaces it.
+  controller routes. Not used on the reset-password routes themselves.
   """
   def require_password_not_pending(conn, _opts) do
     if conn.assigns.current_scope.user.must_reset_password do

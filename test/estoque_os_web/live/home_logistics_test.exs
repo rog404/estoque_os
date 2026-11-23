@@ -1,12 +1,7 @@
 defmodule EstoqueOSWeb.HomeLogisticsTest do
   @moduledoc """
-  Reported from the field: the logistics operator does not see Recent activity.
-
-  Nothing in the code explains it — `Reports.recent_activity/1` filters by no
-  role, and `HomeLive.Index` sits in the `:signed_in` live_session that every
-  authenticated role mounts. These tests are the reproduction attempt, kept
-  because they pin down what the operator is entitled to see: the movements,
-  yes; the amounts, no.
+  What the logistics operator is entitled to see: the movements, yes; the
+  amounts, no.
   """
 
   use EstoqueOSWeb.ConnCase, async: true

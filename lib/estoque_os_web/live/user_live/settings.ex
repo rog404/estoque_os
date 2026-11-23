@@ -1,27 +1,12 @@
 defmodule EstoqueOSWeb.UserLive.Settings do
   use EstoqueOSWeb, :live_view
 
-  @doc """
-  Events a viewer may send. Everything else on this screen is refused.
-
-  Your own account is yours to change whatever your role is. These write, and
-  are meant to.
-  """
+  # Your own account is yours to change whatever your role: these events write on purpose.
   def viewer_events, do: ~w(validate_email update_email validate_password update_password)
 
-  # No `:require_sudo_mode` on the screen, deliberately, and this is a bug fix
-  # rather than a relaxation.
-  #
-  # It was gated at ten minutes, so ten minutes after signing in, clicking
-  # "Configurações" answered with the login page. Reported as a bug, and read as
-  # one: you were still signed in everywhere else, so the app looked like it had
-  # forgotten you at random. Nothing on this screen is secret — it is your own
-  # address and two empty forms.
-  #
-  # What *is* sensitive is submitting one, and that is still checked, at the
-  # twenty minutes the account code has always used. The difference is that a
-  # lapsed window now disables the button and says why, which is the pattern
-  # every other guarded control in this app already follows.
+  # No `:require_sudo_mode` on the screen, deliberately: nothing here is secret.
+  # Submitting is what is sensitive and is still checked (sudo window); a lapsed
+  # window disables the button and says why.
 
   alias EstoqueOS.Accounts
 
@@ -110,10 +95,6 @@ defmodule EstoqueOSWeb.UserLive.Settings do
         </.button>
       </.form>
 
-      <!-- Said once, above the forms it applies to, rather than discovered by
-           pressing a dead button. There is no mailer here — accounts are handed
-           out by an administrator — so "sign in again" is the whole of the
-           remedy and the message says exactly that. -->
       <p :if={not @confirmed_recently?} class="alert alert-warning mt-6">
         {gettext(
           "For your own security, changing your email or password needs a fresh sign-in. Log out and in again, and come back here."
@@ -124,9 +105,8 @@ defmodule EstoqueOSWeb.UserLive.Settings do
   end
 
   @impl true
-  # Confirming an address change. Lives in the settings live_session rather
-  # than the gated `:email_flows` one because it needs sudo mode, so the
-  # no-mailer case is checked here instead of in the router.
+  # Confirming an address change: lives here, not in `:email_flows`, because it
+  # needs sudo mode, so the no-mailer case is checked here.
   def mount(%{"token" => token}, _session, socket) when is_binary(token) do
     if Accounts.email_enabled?() do
       confirm_email_change(token, socket)
@@ -150,10 +130,7 @@ defmodule EstoqueOSWeb.UserLive.Settings do
       |> assign(:email_form, to_form(email_changeset))
       |> assign(:password_form, to_form(password_changeset))
       |> assign(:trigger_submit, false)
-      # Twenty minutes, the window the account code has always used for a
-      # sensitive change. Read once on mount and again when a submission is
-      # refused, which is the only moment it can have lapsed while somebody was
-      # looking at the screen.
+      # Sudo window (twenty minutes); re-read on mount and when a submission is refused.
       |> assign(:confirmed_recently?, Accounts.sudo_mode?(user))
 
     {:ok, socket}
@@ -189,14 +166,9 @@ defmodule EstoqueOSWeb.UserLive.Settings do
     %{"user" => user_params} = params
     user = socket.assigns.current_scope.user
 
-    # `true = Accounts.sudo_mode?(user)` was here, and it was the second half of
-    # the same bug: the window could lapse between opening the screen and
-    # pressing the button, and then this raised a MatchError. A crashed
-    # LiveView explains nothing to the person who just typed a password.
-
-    # The form is not rendered when there is no mailer, but a socket can still
-    # be sent the event. Confirming an address by emailing it is the whole
-    # mechanism here, so with no mailer there is nothing to fall back to.
+    # The sudo window can lapse between opening the screen and pressing the
+    # button, so check rather than match. The form is hidden with no mailer, but
+    # the event can still arrive and there is no fallback.
     cond do
       not Accounts.sudo_mode?(user) ->
         {:noreply,
@@ -262,9 +234,7 @@ defmodule EstoqueOSWeb.UserLive.Settings do
     end
   end
 
-  # Why the two buttons are disabled, or nil when they are not. This one is
-  # about a stale login rather than about a role, which is why it survived the
-  # removal of the role-shaped version.
+  # Why the two buttons are disabled (a stale login), or nil.
   defp sudo_block(%{confirmed_recently?: true}), do: nil
   defp sudo_block(_assigns), do: sudo_message()
 

@@ -21,8 +21,7 @@ defmodule EstoqueOS.KitsTest do
         ]
       })
 
-    # Relative, not fixed: a fixed "future" date silently expires one day, and
-    # assembly then refuses the component in a test about something else.
+    # Relative: a fixed "future" date eventually expires and assembly refuses it.
     far_expiry = Date.add(Date.utc_today(), 400)
     gown_lot = lot_fixture(%{product_id: gown.id, expires_on: far_expiry})
     pen_lot = lot_fixture(%{product_id: pen.id, expires_on: far_expiry})
@@ -81,7 +80,6 @@ defmodule EstoqueOS.KitsTest do
       warehouse: warehouse,
       pen: pen
     } do
-      # 40 gowns cover 10 kits; 6 pens cover only 6.
       availability = Kits.availability(kit, warehouse.id)
 
       assert Decimal.equal?(availability.possible, Decimal.new(6))
@@ -168,11 +166,9 @@ defmodule EstoqueOS.KitsTest do
       assert Decimal.equal?(quantity, Decimal.new(2))
       assert lot.product_id == kit.product.id
 
-      # The kit's own product now sits in the box, 2 of it.
       assert Decimal.equal?(Inventory.balance(box_id: box.id), Decimal.new(2))
       assert Decimal.equal?(Inventory.balance(lot_id: lot.id, box_id: box.id), Decimal.new(2))
 
-      # 2 kits: 8 gowns and 2 pens left stock for good.
       assert Decimal.equal?(Inventory.balance(lot_id: gown_lot.id), Decimal.new(32))
       assert Decimal.equal?(Inventory.balance(lot_id: pen_lot.id), Decimal.new(4))
     end
@@ -246,7 +242,6 @@ defmodule EstoqueOS.KitsTest do
                })
 
       assert Decimal.equal?(quantity, Decimal.new(10))
-      # The storage box was drawn from, so it is lighter than it started.
       assert Decimal.compare(Inventory.balance(box_id: storage.id), Decimal.new(70)) == :lt
     end
 
@@ -268,7 +263,6 @@ defmodule EstoqueOS.KitsTest do
       assert item.product_id == pen.id
       assert Decimal.equal?(missing, Decimal.new(4))
 
-      # Nothing was converted.
       assert Decimal.equal?(Inventory.balance(location_id: warehouse.id), Decimal.new(46))
     end
 
@@ -284,7 +278,6 @@ defmodule EstoqueOS.KitsTest do
                  allow_partial: true
                })
 
-      # 6 pens is the bottleneck: only 6 whole kits can be built.
       assert Decimal.equal?(built, Decimal.new(6))
       assert Decimal.equal?(requested, Decimal.new(10))
       assert item.product_id == pen.id

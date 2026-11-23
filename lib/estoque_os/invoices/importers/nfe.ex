@@ -2,19 +2,16 @@ defmodule EstoqueOS.Invoices.Importers.NFe do
   @moduledoc """
   Parser for the Brazilian NF-e, layout 4.00.
 
-  The layout is standardized nationally, so there is one parser rather than one
-  per supplier. What actually varies between suppliers is *where the lot data
-  hides*, so lot and expiry are looked up in this order:
+  One parser, since the layout is national; what varies by supplier is *where
+  the lot data hides*, so lot and expiry are looked up in this order:
 
-    1. the structured `rastro` group (MedSul ships it);
-    2. a regex over the free text of `infAdProd` (Cirúrgica Atlântica writes
-       `| Lote:114391U02, Validade:31/03/27, Quantidade:6` there);
-    3. nothing — the item is flagged `needs_review` and a human fills it in.
+    1. the structured `rastro` group;
+    2. a regex over the free text of `infAdProd`
+       (e.g. `| Lote:114391U02, Validade:31/03/27, Quantidade:6`);
+    3. nothing — the item is flagged `needs_review`.
 
-  `xProd` is capped at 120 characters by the layout, and suppliers let the rest
-  spill into `infAdProd` mid-word — MedSul splits `Lote:` from `Data Val:`
-  across the two fields. The regexes therefore run over both fields joined
-  together, so a value cut in half still reassembles.
+  `xProd` is capped at 120 characters and suppliers let the rest spill into
+  `infAdProd` mid-word, so the regexes run over both fields joined.
   """
 
   @behaviour EstoqueOS.Invoices.Importer
@@ -48,9 +45,8 @@ defmodule EstoqueOS.Invoices.Importers.NFe do
 
   @impl true
   def parse(document) when is_binary(document) do
-    # Every lookup is anchored at the invoice node: a signed NF-e repeats parts
-    # of itself (signature, protocol), and an unanchored "//nNF" would happily
-    # concatenate the text of every match it finds.
+    # Anchor every lookup at the invoice node: a signed NF-e repeats parts of
+    # itself, and an unanchored "//nNF" concatenates every match.
     with {:ok, doc} <- parse_xml(document),
          {:ok, invoice} <- invoice_node(doc),
          {:ok, access_key} <- access_key(invoice),
@@ -83,8 +79,7 @@ defmodule EstoqueOS.Invoices.Importers.NFe do
   """
   def parse_event(document) when is_binary(document) do
     with {:ok, doc} <- parse_xml(document) do
-      # A CC-e carries the event twice: the one the supplier sent and the one
-      # SEFAZ echoed back. Anchor on the first, or the two would run together.
+      # A CC-e carries the event twice (supplier's and SEFAZ's echo); anchor on the first.
       case xpath(doc, ~x"//infEvento"o) do
         nil ->
           {:error, :not_an_event}
@@ -170,7 +165,7 @@ defmodule EstoqueOS.Invoices.Importers.NFe do
     }
   end
 
-  # 1. The structured group, when the supplier bothers to send it.
+  # 1. The structured group, when the supplier sends it.
   defp lot(det, description, additional_info) do
     case xpath(det, ~x"./prod/rastro"l) do
       [] ->
@@ -183,14 +178,12 @@ defmodule EstoqueOS.Invoices.Importers.NFe do
           expires_on: iso_date(rastro, ~x"./dVal/text()"s)
         }
 
-        # One invoice line may span several lots. We take the first and let a
-        # human split the quantity rather than guessing how it divides.
+        # Several lots on one line: take the first; a human splits the quantity.
         {lot, "rastro", rest != []}
     end
   end
 
-  # 2. Free text. Both fields are searched joined together because suppliers
-  # let the description overflow from xProd into infAdProd mid-sentence.
+  # 2. Free text; both fields are joined because xProd overflows into infAdProd.
   defp lot_from_free_text(description, additional_info) do
     text = [description, additional_info] |> Enum.reject(&is_nil/1) |> Enum.join(" ")
 
@@ -211,8 +204,7 @@ defmodule EstoqueOS.Invoices.Importers.NFe do
   defp normalize_lot_number(nil), do: nil
 
   defp normalize_lot_number(value) do
-    # Free text runs on: "Lote: 25071596, Qtde: 2" and "Lote:114391U02" both
-    # end at the first separator, but a trailing "Qtde" fragment can survive.
+    # A trailing "Qtde" fragment can survive the separator-bounded capture.
     value
     |> String.split(~r/\s{2,}|\bqtde\b|\bquantidade\b/iu, parts: 2)
     |> List.first()
@@ -276,8 +268,7 @@ defmodule EstoqueOS.Invoices.Importers.NFe do
   end
 
   defp parse_xml(document) do
-    # dtd: :none blocks XXE and entity expansion; quiet: true keeps xmerl from
-    # writing attacker-supplied fragments into the logs on every bad upload.
+    # dtd: :none blocks XXE; quiet: true keeps attacker-supplied fragments out of the logs.
     {:ok, SweetXml.parse(document, dtd: :none, quiet: true)}
   rescue
     _ -> {:error, :malformed_xml}
@@ -317,8 +308,7 @@ defmodule EstoqueOS.Invoices.Importers.NFe do
     end
   end
 
-  # Supplier XML is untrusted input: a non-numeric nItem or nSeqEvento must
-  # come back as a parse failure, not as an exception that kills the upload.
+  # Supplier XML is untrusted: a non-numeric nItem must be a nil, not an exception.
   defp parse_integer(value) do
     case Integer.parse(to_string(value)) do
       {number, _rest} -> number
@@ -344,7 +334,7 @@ defmodule EstoqueOS.Invoices.Importers.NFe do
     end
   end
 
-  # Two-digit years are the norm on Cirúrgica Atlântica invoices: "31/03/27".
+  # Suppliers write two-digit years: "31/03/27".
   defp brazilian_date(nil), do: nil
 
   defp brazilian_date(value) do

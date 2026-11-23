@@ -2,11 +2,9 @@ defmodule EstoqueOS.Catalog do
   @moduledoc """
   Products, groups, identifiers, suppliers and unit conversions.
 
-  This is where an invoice line stops being a supplier's wording and becomes
-  one of our products: `match/1` looks a line up by GTIN first, then by the
-  supplier's own code, and only then falls back to guessing from the
-  description — the order matters, because supplier wording is exactly what
-  killed the previous SAP attempt.
+  Where an invoice line becomes one of our products: `match/1` tries GTIN,
+  then the supplier's code, and only then guesses from the description. The
+  order matters: supplier wording is the least reliable evidence.
   """
 
   import Ecto.Query
@@ -33,8 +31,6 @@ defmodule EstoqueOS.Catalog do
   @doc "The factor at which a unit cost is considered suspicious."
   def unit_cost_divergence_factor, do: @unit_cost_divergence_factor
 
-  ## Suppliers
-
   def get_supplier_by_cnpj(cnpj) when is_binary(cnpj) do
     Repo.get_by(Supplier, cnpj: String.replace(cnpj, ~r/\D/, ""))
   end
@@ -42,9 +38,8 @@ defmodule EstoqueOS.Catalog do
   @doc """
   Finds a supplier by CNPJ or creates it from the invoice data.
 
-  An NF-e issued under a CPF (the nota avulsa a person issues for a donation)
-  carries no CNPJ at all. That is an answer the import screen can phrase, not
-  a crash inside the import.
+  An NF-e issued under a CPF (nota avulsa for a donation) has no CNPJ; that
+  returns an error the import screen can phrase.
   """
   def upsert_supplier(attrs) do
     case field(attrs, :cnpj) do
@@ -65,16 +60,13 @@ defmodule EstoqueOS.Catalog do
     Supplier |> order_by([s], asc: s.legal_name) |> Repo.all()
   end
 
-  ## Products
-
   def get_product!(id), do: Repo.get!(Product, id)
 
   @doc """
   The product, or `:error` when there is no such id.
 
-  For an id that arrived in a URL rather than from a list this screen drew: a
-  product that was deactivated between the two pages is not a crash, it is a
-  link that no longer leads anywhere.
+  For ids that arrived in a URL: a product deactivated in the meantime is a
+  dead link, not a crash.
   """
   def fetch_product(id) do
     case Repo.get(Product, id) do
@@ -88,16 +80,9 @@ defmodule EstoqueOS.Catalog do
   @doc """
   A name reduced to what two people typing the same product would agree on.
 
-  Accents, case, punctuation and repeated spaces all vary between the invoice,
-  the spreadsheet and the person at the counter. What survives is the words and
-  the measurements.
-
-  Letters and digits are separated, and a measurement is kept whole. Splitting
-  on every non-alphanumeric character used to tear `7,5cm` into `7` and `5cm`
-  while `7.5 CM` became `7`, `5`, `cm` — the same product, two different token
-  sets, scoring 0.6 against itself. Worse, it made `3.0` and `4.0` share the
-  token `0`, which is how two tubes for different-sized airways came to look
-  alike.
+  Accents, case, punctuation and spacing are dropped; words and measurements
+  survive. Letters and digits are separated and a measurement is kept whole
+  (`7,5cm` and `7.5 CM` give the same tokens; `3.0` and `4.0` do not share one).
 
       iex> normalize_for_match("Gaze Estéril  7,5cm")
       ["gaze", "esteril", "7.5", "cm"]
@@ -144,10 +129,8 @@ defmodule EstoqueOS.Catalog do
   @doc """
   The measurements in a name: every token carrying a digit.
 
-  In surgical supply the numbers *are* the product. A 3.0 mm endotracheal tube
-  is for an infant and a 7.0 mm is for an adult; they share every word in their
-  names and merging them in the catalog is a clinical problem, not a tidiness
-  one.
+  In surgical supply the numbers *are* the product: a 3.0 mm tube is for an
+  infant, a 7.0 mm for an adult, and merging them is a clinical problem.
 
       iex> measurements("TUBO ENDOTRAQUEAL PRE-FORMADO 3.0 MM - COM BALÃO")
       ["3"]
@@ -167,13 +150,9 @@ defmodule EstoqueOS.Catalog do
   Catalog entries close enough to `name` that creating it would probably be a
   duplicate, most alike first.
 
-  The unique index on `lower(name)` only catches an exact repeat. It does not
-  catch "GAZE ESTERIL 7,5CM" against "Gaze estéril 7,5 cm", and that class of
-  near-miss is what killed the previous attempt at this system: the same item
-  entered three ways is a catalog nobody can search.
-
-  Scored on shared words rather than substrings, because word order varies too —
-  "compressa de gaze" and "gaze compressa" are the same thing.
+  The unique index on `lower(name)` only catches exact repeats, not near-misses
+  like "GAZE ESTERIL 7,5CM" vs "Gaze estéril 7,5 cm". Scored on shared words,
+  not substrings, because word order varies.
   """
   def similar_products(name, opts \\ []) do
     case normalize_for_match(name) do
@@ -208,9 +187,8 @@ defmodule EstoqueOS.Catalog do
         found -> found
       end
 
-    # The word matches are OR'd with each other and then AND'd with `active`.
-    # Chaining `or_where` would have OR'd against the active filter itself, which
-    # quietly returned deactivated products.
+    # Word matches are OR'd together, then AND'd with `active`; `or_where`
+    # would OR against the active filter and return deactivated products.
     matches_a_word =
       Enum.reduce(significant, dynamic(false), fn word, acc ->
         dynamic([p], ^acc or ilike(p.name, ^"%#{word}%"))
@@ -227,20 +205,9 @@ defmodule EstoqueOS.Catalog do
   defp maybe_exclude(query, nil), do: query
   defp maybe_exclude(query, id), do: where(query, [p], p.id != ^id)
 
-  # Two names whose measurements disagree are two products, however many words
-  # they share.
-  #
-  # Word overlap alone cannot express this. `TUBO ENDOTRAQUEAL PRE-FORMADO 3.0
-  # MM - COM BALÃO` and the 7.0 version share eight tokens out of nine and
-  # scored 0.89 — the one token that tells them apart weighed exactly as much as
-  # `com`. A warning that fires on 161 pairs of legitimately different sizes is
-  # a warning the operator learns to click past, and clicking past it is how the
-  # catalog fills with the same item entered three ways, which is what killed
-  # the previous attempt at this system.
-  #
-  # Only when *both* names carry measurements. `GAZE ESTERIL` against `GAZE
-  # ESTERIL 7,5CM` has nothing to compare, and refusing to compare is not the
-  # same as deciding they differ.
+  # Names whose measurements disagree are two products however many words they
+  # share (word overlap alone scores 3.0 mm vs 7.0 mm tubes at 0.89). Only when
+  # *both* carry measurements: nothing to compare is not a difference.
   defp different_product?([], _other_name), do: false
 
   defp different_product?(wanted_measurements, other_name) do
@@ -284,18 +251,13 @@ defmodule EstoqueOS.Catalog do
   @doc """
   A catalog name proposed from what the supplier wrote on the invoice.
 
-  Suppliers append the shipment's own data to the description — supplier code,
-  lot, quantity, manufacturing and expiry dates — and the field is often cut off
-  mid-word by a length limit, so the raw text arrives like:
+  Suppliers append shipment data (code, lot, quantity, dates) to the
+  description, often cut off mid-word:
 
       BUPIVACAINA S/V 0.5% 20ML GEN-HYPOFARMA (Fornecedor: 4219, Lote: 25071596, Qtde: 2 ,Data
 
-  None of that belongs in a catalog name, and none of it is lost: the importer
-  already parses the lot and the dates out of this same text. What is left is
-  the product.
-
-  A suggestion, never a decision — the operator sees it in an editable field,
-  because no rule survives every supplier's formatting.
+  That tail is stripped (the importer parses lot and dates from the same text).
+  A suggestion only: the operator edits it, as no rule survives every supplier.
   """
   def suggested_product_name(description) when is_binary(description) do
     description
@@ -313,8 +275,8 @@ defmodule EstoqueOS.Catalog do
 
   def suggested_product_name(nil), do: nil
 
-  # The tail starts at the parenthesis that introduces shipment data, open or
-  # closed — a truncated description never gets its closing bracket.
+  # The tail starts at the parenthesis introducing shipment data, closed or not
+  # (truncated descriptions lose the closing bracket).
   @shipment_keys ~w(Fornecedor Lote Qtde Qtd Data Val Fab Venc)
 
   defp strip_shipment_tail(description) do
@@ -328,9 +290,8 @@ defmodule EstoqueOS.Catalog do
     end
   end
 
-  # Only the group this parenthesis opens is inspected, not everything after it:
-  # a name like "SUGAMADEX (200MG) ... (Fornecedor: 47" would otherwise be cut at
-  # the dose, because the supplier's tail lies further along the same string.
+  # Inspect only the group this parenthesis opens, or "SUGAMADEX (200MG) ...
+  # (Fornecedor: 47" would be cut at the dose.
   defp shipment_group?(description, at, positions) do
     next = Enum.find(positions, byte_size(description), &(&1 > at))
 
@@ -348,13 +309,10 @@ defmodule EstoqueOS.Catalog do
   @doc """
   Sets the minimum a mission is expected to carry, and records who did it.
 
-  Both halves in one database transaction, because a minimum that changed with
-  nobody's name on it is the state this exists to prevent. The dashboard raises
-  alarms off this number and a mission is packed against it, so "who lowered it,
-  and when" gets asked the moment a trip runs short.
+  Update and change-log row commit together: alarms and packing depend on this
+  number, so "who lowered it" must always have an answer.
 
-  A blank clears it back to unknown, which is a real answer and not zero: zero
-  would mean "we are content to carry none of this".
+  A blank clears it to unknown, not zero (zero means "content to carry none").
   """
   def set_min_stock(%Product{} = product, value, opts \\ []) do
     minimum = blank_to_nil(value)
@@ -380,16 +338,12 @@ defmodule EstoqueOS.Catalog do
   @doc """
   Takes a product out of the catalog without taking it out of the history.
 
-  Every picker in the app already asks for `active` — the invoice matcher, the
-  manual entry, the write-off, the kit editor — so this one flag is the whole
-  mechanism. Nothing is deleted: the movements that named this product keep
-  naming it, and its page still opens by id, because a recall asks about goods
-  that left years ago and a row that vanished cannot answer.
+  Every picker filters on `active`, so the flag is the whole mechanism. Nothing
+  is deleted: history keeps naming the product and its page opens by id (a
+  recall asks about goods that left years ago).
 
-  Refused while any of it is still on a shelf. Like a location that still holds
-  boxes, this is a fact about the ledger rather than about the row, so it is
-  checked here and not in the changeset: a hand-crafted event must not be able
-  to take stock out of every picker and leave it sitting in a box.
+  Refused while any of it is on a shelf. That is a fact about the ledger, so it
+  is checked here and not in the changeset.
   """
   def deactivate_product(%Product{} = product, opts \\ []) do
     if in_stock?(product) do
@@ -402,8 +356,7 @@ defmodule EstoqueOS.Catalog do
   @doc """
   Puts a product back in the catalog.
 
-  The way back is this and not a second row: an identifier is unique, and the
-  row that owns it is the one holding the history.
+  Not a second row: identifiers are unique and the original row holds the history.
   """
   def reactivate_product(%Product{} = product, opts \\ []) do
     set_active(product, true, opts)
@@ -412,9 +365,8 @@ defmodule EstoqueOS.Catalog do
   @doc """
   Whether any lot of this product is still on a shelf.
 
-  `!= 0` rather than `> 0`: a negative balance is a bug somebody has to look at,
-  and quietly treating it as "nothing here" would let the product leave the
-  catalog with the bug still in it.
+  `!= 0` rather than `> 0`: a negative balance is a bug that must not leave the
+  catalog with the product.
   """
   def in_stock?(%Product{} = product), do: in_stock?(product.id)
 
@@ -427,17 +379,10 @@ defmodule EstoqueOS.Catalog do
     )
   end
 
-  # Both halves in one transaction, for the same reason `set_min_stock/3` does
-  # it: a product that left the catalog with nobody's name on it is the state
-  # this is here to prevent. The row lands in the same log the page already
-  # renders.
+  # Update and log row commit together, as in `set_min_stock/3`.
   defp set_active(%Product{} = product, active, opts) do
-    # Reloaded first, and this is not a nicety. A caller holding the struct it
-    # read a moment ago hands us `active: true` for a row that is already
-    # false, the changeset sees no change, and `Repo.update` cheerfully returns
-    # the struct without writing anything — a Reactivate that reports success
-    # and does nothing. Both the write and the `from_value` in the log have to
-    # be about the row as the database has it.
+    # Reload: a stale struct makes the changeset a no-op that still reports
+    # success, and `from_value` in the log must match the database row.
     product = Repo.reload!(product)
 
     Ecto.Multi.new()
@@ -489,9 +434,7 @@ defmodule EstoqueOS.Catalog do
     where(query, [p], ilike(p.name, ^pattern))
   end
 
-  # Which stock the caller is allowed to look at. Passed down from the scope by
-  # every screen that lists or searches products, so the marketing role's search
-  # cannot surface a surgical product for them to write off.
+  # Which stock the caller is looking at, passed down from the scope.
   defp maybe_segment(query, nil), do: query
   defp maybe_segment(query, ""), do: query
   defp maybe_segment(query, segment), do: where(query, [p], p.segment == ^segment)
@@ -499,12 +442,8 @@ defmodule EstoqueOS.Catalog do
   @doc """
   Finds products the way a person actually looks for them.
 
-  Order matters and it is the same order the invoice importer uses: an exact
-  GTIN or supplier code is an answer, not a guess, so a scanned barcode lands
-  on one product and stops. Only then does it fall back to the group's
-  synonyms and to the name — because supplier naming chaos ("agulha" versus
-  "Sterecam") is the thing that killed the previous system, and a name match is
-  the weakest evidence we have.
+  Same order as the invoice importer: an exact GTIN or supplier code is an
+  answer and stops there; only then group synonyms and name, the weakest evidence.
 
   Returns `%{product: product, matched: :gtin | :supplier_code | :synonym |
   :name}` so the screen can say *why* something matched.
@@ -580,13 +519,10 @@ defmodule EstoqueOS.Catalog do
     |> Enum.take(limit)
   end
 
-  # The product is the last binding in all three search queries, whatever else
-  # they join on first.
+  # The product is the last binding in all three search queries.
   defp segment_scope(query, nil), do: query
   defp segment_scope(query, ""), do: query
   defp segment_scope(query, segment), do: where(query, [..., p], p.segment == ^segment)
-
-  ## Carriers
 
   @doc "Carriers still in use, by the name a person would look for."
   def list_carriers do
@@ -599,9 +535,8 @@ defmodule EstoqueOS.Catalog do
   @doc """
   The carrier by that name, creating it the first time it is seen.
 
-  Case-insensitively, and that is the whole point: "STRALOG" typed today and
-  "Stralog" typed next month are one carrier, or the transit report can be asked
-  nothing about either of them.
+  Case-insensitive: "STRALOG" and "Stralog" must be one carrier for the transit
+  report to mean anything.
   """
   def resolve_carrier(name) do
     case String.trim(to_string(name)) do
@@ -626,8 +561,6 @@ defmodule EstoqueOS.Catalog do
   def add_group_synonym(attrs) do
     %ProductGroupSynonym{} |> ProductGroupSynonym.changeset(attrs) |> Repo.insert()
   end
-
-  ## Identifiers
 
   def get_product_by_gtin(nil), do: nil
 
@@ -663,8 +596,6 @@ defmodule EstoqueOS.Catalog do
     |> ProductIdentifier.changeset(attrs)
     |> Repo.insert(on_conflict: :nothing, conflict_target: [:kind, :value, :supplier_id])
   end
-
-  ## Matching
 
   @doc """
   Matches a parsed invoice line against the catalog.
@@ -736,15 +667,12 @@ defmodule EstoqueOS.Catalog do
     text
     |> String.downcase()
     |> :unicode.characters_to_nfd_binary()
-    # Combining marks vanish, they do not split: replacing them with a space
-    # tore "estéril" into "este" and "ril", which never matched "esteril".
+    # Combining marks are removed, not spaced: "estéril" must not split.
     |> String.replace(~r/[\x{0300}-\x{036f}]/u, "")
     |> String.replace(~r/[^a-z0-9\s]/u, " ")
     |> String.split(~r/\s+/, trim: true)
     |> Enum.reject(&(String.length(&1) < 3 or &1 in ~w(com para sem est ger gen)))
   end
-
-  ## Unit conversions
 
   def get_conversion(product_id, unit) when is_binary(unit) do
     Repo.get_by(UnitConversion, product_id: product_id, from_unit: String.upcase(unit))
@@ -766,8 +694,6 @@ defmodule EstoqueOS.Catalog do
       returning: true
     )
   end
-
-  ## Unit cost sanity
 
   @doc """
   The unit cost this product entered stock at most recently, or nil.
@@ -800,8 +726,7 @@ defmodule EstoqueOS.Catalog do
 
       previous ->
         cond do
-          # A zero cost is a bonus line, not a price to compare — and the
-          # divergence ratio would divide by it.
+          # A zero cost is a bonus line, and the ratio would divide by it.
           Decimal.equal?(unit_cost, 0) ->
             :ok
 

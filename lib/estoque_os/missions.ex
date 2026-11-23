@@ -2,15 +2,11 @@ defmodule EstoqueOS.Missions do
   @moduledoc """
   Surgical trips, and what each one did to the stock.
 
-  A mission is the unit the coordinator answers for: what left the warehouse,
-  what came back, what was used up, and what was handed to the hospital at the
-  end. All four are already in the ledger — this context is the lens that groups
-  them by trip rather than by day.
+  A lens over the ledger that groups what left, came back, was used and was
+  donated by trip rather than by day.
 
-  Movements carry `mission_id`, stamped when they happen by the screens that
-  know which trip they belong to. Nothing is re-derived at read time: a
-  load-out that went to Tefé in March is a fact about that mission, not a guess
-  made later from dates that may have shifted.
+  Movements carry `mission_id`, stamped when they happen. Nothing is re-derived
+  at read time from dates that may have shifted.
   """
 
   import Ecto.Query
@@ -43,21 +39,15 @@ defmodule EstoqueOS.Missions do
   @doc """
   The mission a movement at this location belongs to.
 
-  A mission's dates are something for a person to read — when the team flew out,
-  when it flew back. They are not a gate the stock consults: a load-out gets
-  prepared before the departure date, a box comes home a week after the return
-  date because the flight is when the flight is, and a coordinator records both
-  whenever they get to a computer. Attributing goods by comparing those dates to
-  the clock would file them under nobody on exactly the days that are hardest.
+  Mission dates are for people to read, not a gate: load-outs are prepared
+  before departure and boxes come home after the return date, so attributing
+  goods by comparing dates to the clock would misfile them.
 
-  So the answer comes from the place: the most recent trip to have *started*
-  there. Started, not registered — the next trip gets created well in advance,
-  and a mission that only exists on paper must not collect the late returns and
-  write-offs of the one that actually happened. A trip that has not started yet
-  is the answer only when no trip ever has: goods can be staged at a site before
-  the very first mission, and they belong to it. Missions at one place cannot
-  overlap — the database refuses it — so the latest started is also the open one
-  whenever there is an open one. `nil` for a warehouse, which hosts no trips.
+  The answer comes from the place: the most recent trip to have *started* there
+  (not merely registered, or a future trip would collect the late returns of the
+  real one). A not-yet-started trip is the answer only when no trip ever
+  started: goods can be staged before the first mission. Trips at one place
+  cannot overlap, so the latest started is the open one. `nil` for a warehouse.
   """
   def for_location(nil), do: nil
 
@@ -82,25 +72,17 @@ defmodule EstoqueOS.Missions do
   @doc """
   What the mission did to the stock, product by product.
 
-  Four numbers per line, and they answer different questions:
+  Per line:
 
-    * `sent` — what left the warehouse for this trip
+    * `sent` — what arrived for this trip (the arriving half of a load-out,
+      read at the mission's own location)
     * `returned` — what came back
     * `consumed` — what was used during the mission
-    * `donated` — what was handed over at the end, which is not the same as used
+    * `donated` — what was handed over at the end, not the same as used
+    * `handed_on` — what went straight to the next mission without coming home
 
-  Read at the mission's own location, which is why `sent` counts the arriving
-  half of a load-out rather than the leaving half: the question is what the
-  mission received, not what the warehouse lost.
-
-  A fifth, `handed_on`, is what left for the next mission without coming home
-  first. Stock does not always return between trips, and counting a box that went
-  straight to the next city as unaccounted would make the one number that should
-  mean something mean nothing.
-
-  `unaccounted` is what is left after all four are subtracted. It is usually zero
-  and is worth showing when it is not — the honest name for stock the ledger
-  cannot place.
+  `unaccounted` is `sent` minus the other four: usually zero, otherwise stock
+  the ledger cannot place.
   """
   def panel(%Mission{} = mission) do
     rows =
@@ -135,8 +117,7 @@ defmodule EstoqueOS.Missions do
   end
 
   defp line([first | _] = entries, mission_id) do
-    # A load-out at this site is an arrival when it belongs to this mission and a
-    # departure when it belongs to the next one.
+    # A load-out here is an arrival for this mission, a departure for the next.
     sent = sum(entries, &(&1.type == "load_out" and &1.mission_id == mission_id))
     handed_on = sum(entries, &(&1.type == "load_out" and &1.mission_id != mission_id))
     returned = sum(entries, &(&1.type == "return_in"))
@@ -195,9 +176,7 @@ defmodule EstoqueOS.Missions do
     )
   end
 
-  # What the ledger still believes is sitting at the mission site. Between
-  # missions this should be nothing; anything left is either yet to be returned
-  # or has quietly stayed behind.
+  # What the ledger still places at the site; between missions it should be nothing.
   defp still_there(%Mission{} = mission) do
     StockSnapshot
     |> where([s], s.location_id == ^mission.location_id)
@@ -208,10 +187,8 @@ defmodule EstoqueOS.Missions do
   @doc """
   Consumption per operating table, the only figure that compares two missions.
 
-  A mission of six tables uses more than one of four, so the raw total says
-  nothing about whether a trip went through more than it should have. Returns
-  nil when nobody recorded the size — a division by a number nobody entered
-  would be an invented precision.
+  Raw totals say nothing across missions of different size. Returns nil when no
+  size was recorded rather than invent a precision.
   """
   def consumption_per_table(%{mission: %Mission{tables: nil}}), do: nil
   def consumption_per_table(%{mission: %Mission{tables: 0}}), do: nil
@@ -223,19 +200,12 @@ defmodule EstoqueOS.Missions do
   @doc """
   What is still at the mission site and will not survive the trip home.
 
-  The end of a trip is the last moment donating something is still cheap: the
-  goods are already in the city that needs them, and a box flown back to the
-  warehouse to expire there helped nobody. So the suggestion is FEFO — soonest
-  expiry first — over the stock the ledger still places at the site.
+  Donating at the end of a trip is cheap: the goods are already where they are
+  needed, and flying them home to expire helps nobody. FEFO over the stock still
+  at the site, using the dashboard's `:expiry_alert_days` window (per-product
+  override honoured).
 
-  The window is the same one the dashboard uses, `:expiry_alert_days`, with the
-  per-product override honoured. A second threshold to explain would buy
-  nothing: an item too close to expiry to be worth flying home is the same item
-  the warehouse would have alerted on next week.
-
-  This is a suggestion, never an instruction. Nothing here writes to the ledger
-  — the operator picks lines and the ordinary write-off flow does the writing,
-  with the reason and the certificate it already produces.
+  A suggestion only: nothing is written here; the ordinary write-off flow does it.
   """
   def donation_candidates(%Mission{} = mission) do
     Reports.expiring_soon(location_id: mission.location_id, limit: nil)

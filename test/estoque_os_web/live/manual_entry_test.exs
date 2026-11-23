@@ -1,9 +1,8 @@
 defmodule EstoqueOSWeb.ManualEntryTest do
   @moduledoc """
-  Donated goods are real stock with no document and no price. The point of these
-  tests is the second half: the ledger records NO value, while the screen and the
-  certificate show R$ 0,01. A symbolic centavo written into the ledger would drag
-  average cost and stock value toward a number nobody paid.
+  Donated goods are real stock with no document and no price: the ledger records
+  NO value, while the screen and certificate show R$ 0,01. A symbolic centavo in
+  the ledger would drag average cost and stock value toward a number nobody paid.
   """
 
   use EstoqueOSWeb.ConnCase, async: true
@@ -54,7 +53,6 @@ defmodule EstoqueOSWeb.ManualEntryTest do
           preload: [:transaction]
       )
 
-    # The whole point: nothing, not a symbolic centavo.
     assert is_nil(entry.unit_cost)
     assert entry.transaction.notes == "Doado por uma escola"
   end
@@ -77,10 +75,7 @@ defmodule EstoqueOSWeb.ManualEntryTest do
   end
 
   test "a product that has no lot number is not flagged for one", %{conn: conn} do
-    # The blanket a volunteer brought has no lot printed on it. Flagging that
-    # fills the review list with rows nobody can ever resolve, and a list like
-    # that stops being read — which is how the gauze that *does* have a lot
-    # gets missed.
+    # Flagging goods that never have a lot fills the review list with unresolvable rows.
     blanket = product_fixture(%{name: "Cobertor doado", lot_expected: false})
 
     conn |> pick(blanket) |> enter(%{"quantity" => "12"})
@@ -98,8 +93,7 @@ defmodule EstoqueOSWeb.ManualEntryTest do
     conn |> pick(toy) |> enter(%{"quantity" => "4", "lot_number" => "DOA-1"})
     conn |> pick(toy) |> enter(%{"quantity" => "6", "lot_number" => "DOA-1"})
 
-    # Two rows for the same lot would split the balance and hide half of it from
-    # a recall.
+    # Two rows for one lot would split the balance and hide half of it from a recall.
     assert Repo.aggregate(from(l in Lot, where: l.product_id == ^toy.id), :count) == 1
     assert Decimal.equal?(Inventory.balance(product_id: toy.id), Decimal.new(10))
   end
@@ -135,9 +129,8 @@ defmodule EstoqueOSWeb.ManualEntryTest do
 
     html = conn |> pick(toy) |> render()
 
-    # Goods in a box that is physically somewhere else would count twice: once at
-    # the location on the entry, once in the box. The guard is in Inventory; the
-    # screen never offers the mistake in the first place.
+    # A box elsewhere would count the goods twice; the guard is in Inventory, and
+    # the screen never offers the mistake.
     refute html =~ "SP01"
   end
 
@@ -182,8 +175,7 @@ defmodule EstoqueOSWeb.ManualEntryTest do
         |> form("#new-product", %{"name" => "GAZE ESTERIL 7,5 CM", "stock_unit" => "UN"})
         |> render_submit()
 
-      # The same item spelled two ways is the thing that killed the previous
-      # system: the warning offers the existing row rather than just refusing.
+      # The warning offers the existing row rather than just refusing.
       assert html =~ "já tem algo muito parecido"
       assert html =~ "Gaze estéril 7,5 cm"
 
@@ -193,14 +185,9 @@ defmodule EstoqueOSWeb.ManualEntryTest do
              ) == 1
     end
 
-    # It shipped white-on-white. The list sits on `bg-base-100` inside an
-    # `alert-warning`, which hands down the alert's text colour — and in the
-    # light theme that colour is white. The products this warning exists to
-    # offer were invisible, on the one screen where picking one of them is the
-    # entire point.
-    #
-    # Asserting a class is crude, but the alternative is asserting nothing: the
-    # bug is a colour, and it renders correctly in the dark theme.
+    # The list sits on `bg-base-100` inside an `alert-warning`, which hands down
+    # white text in the light theme. Asserting a class is crude, but the bug is a
+    # colour that only shows in light.
     test "the near-duplicate list sets its own text colour", %{conn: conn} do
       product_fixture(%{name: "Gaze estéril 7,5 cm"})
 
@@ -237,17 +224,13 @@ defmodule EstoqueOSWeb.ManualEntryTest do
       {:ok, view, _html} = live(conn, ~p"/entry")
       render_change(element(view, "#search-form"), %{"query" => "Boneca de pano"})
 
-      # Unticked: a rag doll has no expiry and never will, so a lot arriving
-      # without one is correct rather than an alarm.
-      # An unticked checkbox posts nothing at all, which `form/3` cannot express
-      # because it fills the field from the rendered `checked`. This is the exact
-      # payload a browser sends.
+      # An unticked checkbox posts nothing, which `form/3` cannot express (it fills
+      # from the rendered `checked`), so send the browser's exact payload.
       render_hook(view, "create_product", %{"name" => "Boneca de pano", "stock_unit" => "UN"})
 
       product = Repo.one!(from p in Product, where: p.name == "Boneca de pano")
 
       refute product.expiry_expected
-      # Same payload, same reading for the lot number: a rag doll has none.
       refute product.lot_expected
     end
 
@@ -258,8 +241,7 @@ defmodule EstoqueOSWeb.ManualEntryTest do
 
       view |> form("#new-product", %{"name" => "Cetamina 50mg"}) |> render_submit()
 
-      # A product nobody classified is better treated as one that should have
-      # been dated: silence on an anesthetic is the expensive mistake.
+      # Unclassified is treated as should-be-dated: silence on an anesthetic is the expensive mistake.
       product = Repo.one!(from p in Product, where: p.name == "Cetamina 50mg")
 
       assert product.expiry_expected
@@ -277,8 +259,7 @@ defmodule EstoqueOSWeb.ManualEntryTest do
     html =
       enter(view, %{"quantity" => "2", "lot_number" => "DOA-4", "expires_on" => "2030-01-31"})
 
-    # One of the two dates is wrong, and guessing which would put the wrong batch
-    # in front of a recall.
+    # Guessing which date is wrong would put the wrong batch in front of a recall.
     assert html =~ "outra data de validade"
 
     lot = Repo.one!(from l in Lot, where: l.lot_number == "DOA-4")
@@ -357,8 +338,7 @@ defmodule EstoqueOSWeb.ManualEntryTest do
         |> element("#entry-form")
         |> render_submit(%{"quantity" => "12", "box_code" => "ZZ99"})
 
-      # Asked, not done. A code one character wrong makes a box that exists, is
-      # empty, and is never opened again.
+      # Asked, not done: a code one character wrong would create an empty box nobody opens.
       assert html =~ "Criar a caixa ZZ99?"
       refute EstoqueOS.Repo.get_by(EstoqueOS.Inventory.Box, code: "ZZ99")
 
@@ -388,8 +368,7 @@ defmodule EstoqueOSWeb.ManualEntryTest do
       refute EstoqueOS.Repo.get_by(EstoqueOS.Inventory.Box, code: "ZZ99")
       refute html =~ "Criar a caixa"
 
-      # The quantity and the lot survive: the box code was wrong, not the count.
-      # Retyping a counted number is how a real one gets replaced by a guess.
+      # The box code was wrong, not the count; retyping risks replacing it with a guess.
       assert html =~ ~s(name="quantity" value="12")
       assert html =~ ~s(name="lot_number" value="L-7")
       assert html =~ ~s(name="box_code" value="")
@@ -432,8 +411,6 @@ defmodule EstoqueOSWeb.ManualEntryTest do
 
       html = conn |> pick(toy) |> render()
 
-      # Splitting one product across two boxes is how a recall finds half of it,
-      # so the box that already has it is chosen rather than merely listed.
       assert html =~ ~s(value="#{box.code}")
       assert html =~ "já tem"
       assert html =~ "um produto, uma caixa"
@@ -444,8 +421,6 @@ defmodule EstoqueOSWeb.ManualEntryTest do
 
       html = conn |> pick(toy) |> render()
 
-      # A suggestion with no reason is noise, and noise is what makes people stop
-      # reading suggestions.
       refute html =~ "um produto, uma caixa"
       refute html =~ "do mesmo grupo"
     end

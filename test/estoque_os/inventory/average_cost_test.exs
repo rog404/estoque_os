@@ -1,10 +1,7 @@
 defmodule EstoqueOS.Inventory.AverageCostTest do
   @moduledoc """
-  The same gauze arrives on three invoices at three prices. What is it worth?
-
-  Decided 2026-08-10: a weighted moving average over the stock on hand. The two
-  things that make it honest are pinned here, because both are the kind of rule
-  that a later refactor quietly breaks and no screen would show.
+  Weighted moving average cost over the stock on hand. Donations (no cost) are
+  left out, and the ledger is never written back; no screen would show a break.
   """
 
   use EstoqueOS.DataCase, async: true
@@ -47,7 +44,7 @@ defmodule EstoqueOS.Inventory.AverageCostTest do
     bring_in(product, warehouse, 100, "1.00")
     bring_in(product, warehouse, 300, "2.00")
 
-    # (100×1 + 300×2) / 400 = 1.75 — not the 1.50 a plain mean would give.
+    # (100×1 + 300×2) / 400 = 1.75, not the plain mean 1.50.
     assert %{average: average, quantity: quantity} =
              Inventory.average_cost_by_product()[product.id]
 
@@ -55,7 +52,6 @@ defmodule EstoqueOS.Inventory.AverageCostTest do
     assert Decimal.equal?(quantity, Decimal.new(400))
   end
 
-  # SPEC §4.7: a donation has no cost, and zero is not the same as unknown.
   test "leaves donated stock out of the average instead of counting it as zero", %{
     product: product,
     warehouse: warehouse
@@ -66,8 +62,7 @@ defmodule EstoqueOS.Inventory.AverageCostTest do
     assert %{average: average, priced_quantity: priced, unpriced_quantity: unpriced} =
              Inventory.average_cost_by_product()[product.id]
 
-    # Counted as zero the average would be 0.50, which understates every value
-    # built on it.
+    # Counted as zero the average would be 0.50.
     assert Decimal.equal?(Decimal.round(average, 2), Decimal.new("2.00"))
     assert Decimal.equal?(priced, Decimal.new(100))
     assert Decimal.equal?(unpriced, Decimal.new(300))
@@ -86,7 +81,6 @@ defmodule EstoqueOS.Inventory.AverageCostTest do
     assert Decimal.equal?(value, Decimal.new(0))
   end
 
-  # Stock that has left is not stock: the average follows what is on the shelf.
   test "moves as stock leaves", %{product: product, warehouse: warehouse} do
     cheap = bring_in(product, warehouse, 100, "1.00")
     bring_in(product, warehouse, 100, "3.00")
@@ -107,8 +101,6 @@ defmodule EstoqueOS.Inventory.AverageCostTest do
     assert Decimal.equal?(Decimal.round(after_issue, 2), Decimal.new("3.00"))
   end
 
-  # The entries keep the price they entered at. That is the auditor's trail, and
-  # the average is only ever derived from it.
   test "never writes back into the ledger", %{product: product, warehouse: warehouse} do
     lot = bring_in(product, warehouse, 100, "1.00")
     bring_in(product, warehouse, 300, "2.00")

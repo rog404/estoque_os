@@ -2,15 +2,11 @@ defmodule EstoqueOS.Auditing do
   @moduledoc """
   The guided mini-audit.
 
-  A full inventory is never a precondition for anything here — in a mission
-  storage room it is not even possible. What the operation can do is count a
-  few boxes well, so the job is to answer "which box should I open first?" and
-  then make recording that count cheap.
+  Answers "which box should I open first?" and makes recording the count cheap;
+  a full inventory is never a precondition.
 
-  Priority follows the SPEC, in order: controlled substances, then stock about
-  to expire, then value at risk, then whatever has gone longest without being
-  looked at. Every suggestion carries the reasons that put it there, because a
-  ranking nobody understands is a ranking nobody follows.
+  Priority follows the SPEC: controlled substances, stock about to expire,
+  value at risk, longest unverified. Each suggestion carries its reasons.
   """
 
   use Gettext, backend: EstoqueOSWeb.Gettext
@@ -47,13 +43,7 @@ defmodule EstoqueOS.Auditing do
 
   @doc """
   The same ranking, keyed by box, for a screen that already has the boxes.
-
-  The guided list used to be a page of its own, which meant the box list and the
-  counting queue were two places saying different things about the same boxes.
-  There is one list now — the boxes — and this is what puts it in the order
-  somebody should work through: what is controlled, then what is expiring, then
-  what is worth the most, then what has gone longest unlooked-at. A box with no
-  contents is not in here at all; there is nothing in it to count.
+  A box with no contents is absent: there is nothing to count.
   """
   def priorities(opts \\ []) do
     horizon = Date.add(Date.utc_today(), opts[:expiry_days] || 90)
@@ -160,15 +150,12 @@ defmodule EstoqueOS.Auditing do
   @doc """
   Records a count of a box.
 
-  `counts` maps lot ids to what was actually found. Lots left out are not
-  counted — they keep whatever the ledger presumed, exactly like an uncounted
-  line in a receiving conference. A lot that is not supposed to be in the box
-  may be included: finding something unexpected is a normal outcome of a
-  count, not an error.
+  `counts` maps lot ids to what was actually found. Lots left out keep the
+  presumed balance. A lot not expected in the box may be included: that is a
+  normal outcome, not an error.
 
-  Everything is posted as one adjustment with reason `count_correction`, and
-  the box is stamped as verified — which is what turns its balance from
-  presumed into verified.
+  Posted as one adjustment with reason `count_correction`, and the box is
+  stamped verified, which turns its balance from presumed into verified.
   """
   def record_count(%Box{} = box, counts, opts \\ []) do
     entries = count_entries(box, counts)
@@ -207,11 +194,8 @@ defmodule EstoqueOS.Auditing do
     end
   end
 
-  # What the count was, said in the ledger where it cannot be edited later.
-  #
-  # A count taken with the expected figures on screen is a different measurement
-  # from a blind one, and six months on nobody will remember which this was. If
-  # it is not written down here it is not written down anywhere.
+  # A count with expected figures on screen is a different measurement from a
+  # blind one; record which in the ledger, where it cannot be edited.
   defp count_notes(box, opts) do
     [
       gettext("Count of box %{code}", code: box.code),
@@ -223,15 +207,10 @@ defmodule EstoqueOS.Auditing do
   end
 
   @doc """
-  What a set of counts would change, without changing anything.
+  What a set of counts would change, without posting anything.
 
-  The screen asks this before it writes, so the operator confirms real numbers
-  rather than an intention — and so a second count can be compared against the
-  first without either of them having been posted.
-
-  Lines absent from `counts` are absent from the answer: not counted is not the
-  same as counted zero, and that distinction is the whole reason partial counts
-  are allowed at all.
+  Lines absent from `counts` are absent from the answer: not counted is not
+  counted zero.
   """
   def preview_count(%Box{} = box, counts) do
     counts

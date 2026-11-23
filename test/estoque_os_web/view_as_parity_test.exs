@@ -1,15 +1,8 @@
 defmodule EstoqueOSWeb.ViewAsParityTest do
   @moduledoc """
-  Standing in a role's shoes has to *be* that role, minus the writing.
-
-  The complaint this pins down: "acessar como" is supposed to give exactly the
-  access of the person being tested, and anything less makes the feature a worse
-  copy of the app rather than an answer to "what does this person see".
-
-  So the audit is a comparison, not an opinion: for every borrowable role, the
-  menu and the doors are asked twice — once of somebody who really is that role,
-  once of an admin wearing it — and the two answers have to match. What differs
-  is writing, in one direction only.
+  Standing in a role's shoes has to be that role, minus the writing. For every
+  borrowable role, the menu and the doors are asked of a real holder and of an
+  admin wearing it, and the answers must match.
   """
 
   use EstoqueOSWeb.ConnCase, async: true
@@ -25,9 +18,7 @@ defmodule EstoqueOSWeb.ViewAsParityTest do
 
   @roles ~w(manager marketing logistics auditor)
 
-  # Every screen the menu can reach, plus the ones it deliberately does not
-  # link: a borrowed role must be stopped at the same doors, whichever way
-  # somebody arrives at them.
+  # Every screen the menu reaches, plus those it deliberately does not link.
   @paths ~w(
     / /stock /boxes /locations /kits /missions /conferences /load-out /returns
     /entry /entries /issue /issues /invoices /invoices/import
@@ -94,9 +85,8 @@ defmodule EstoqueOSWeb.ViewAsParityTest do
     |> Enum.sort()
   end
 
-  # The `disabled` attribute on the gate that wraps a screen's controls. Two
-  # screens are compared by it because that is the difference the operation
-  # complained about: a borrowed role was looking at a greyed-out app.
+  # The `disabled` attribute on the gate wrapping a screen's controls: a borrowed
+  # role must not look at a greyed-out app.
   defp gate_disabled?(conn, path) do
     {:ok, _view, html} = live(conn, path)
 
@@ -135,9 +125,8 @@ defmodule EstoqueOSWeb.ViewAsParityTest do
   end
 
   describe "writing" do
-    # The one difference, and the direction matters: what a role can do, a
-    # borrowed role can only look at. Every transaction records who made it, and
-    # a ledger that misattributes is worse than no ledger.
+    # What a role can do, a borrowed role can only look at: a ledger that
+    # misattributes is worse than none.
     test "is refused where the role would have written", %{box: box, warehouse: warehouse} do
       conn = as_admin_viewing("logistics")
       {:ok, view, _html} = live(conn, ~p"/boxes/#{box.id}")
@@ -156,9 +145,7 @@ defmodule EstoqueOSWeb.ViewAsParityTest do
       assert is_nil(Locations.get_box!(box.id).last_verified_at)
     end
 
-    # Picking a product and previewing FEFO are reads, and they stay open — that
-    # is what makes the borrowed screen worth looking at. What is refused is the
-    # act.
+    # Picking a product and previewing FEFO are reads and stay open; the act is refused.
     test "is refused on a write-off", %{product: product} do
       conn = as_admin_viewing("manager")
       {:ok, view, _html} = live(conn, ~p"/issue")
@@ -170,8 +157,7 @@ defmodule EstoqueOSWeb.ViewAsParityTest do
       assert Repo.aggregate(from(t in Transaction, where: t.type == "manual_out"), :count) == 0
     end
 
-    # Never upward: the borrowed role cannot be admin, and the picker is not
-    # offered while already wearing somebody else's shoes.
+    # Never upward, and no picker while already wearing another role.
     test "cannot be used to become an admin" do
       conn = as_admin_viewing("auditor")
 

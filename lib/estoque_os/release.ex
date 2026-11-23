@@ -11,9 +11,8 @@ defmodule EstoqueOS.Release do
   @doc """
   Runs every pending migration.
 
-  Starts the repository on its own, with a pool of two: the free-tier database
-  allows two connections in total, and a migration that has to wait for the
-  running web server to hand one back would deadlock the deploy.
+  Starts the repository with a pool of two: the free-tier database allows two
+  connections in total, and waiting on the web server would deadlock the deploy.
   """
   def migrate do
     load_app()
@@ -24,8 +23,7 @@ defmodule EstoqueOS.Release do
   end
 
   @doc """
-  Rolls the given repository back to `version`. Not part of any deploy — it is
-  here because the alternative, at the moment it is needed, is `psql`.
+  Rolls the given repository back to `version`. Not part of any deploy.
   """
   def rollback(repo, version) do
     load_app()
@@ -72,16 +70,9 @@ defmodule EstoqueOS.Release do
   Loads the catalog and the demo scenario, but only into a database that has
   nobody in it yet.
 
-  This exists because the free plans these demos run on do not give you a
-  shell. Without it there is no way to run `seed/0` on the server, and the
-  deployment comes up correct and empty — which for a demo is the same as
-  broken.
-
-  Guarded twice, so it cannot become a surprise. It runs only when
-  `SEED_ON_EMPTY` is set, and only when the `users` table is empty — which is
-  true exactly once, on the first boot against a fresh database. After that it
-  costs one `SELECT` per boot, which matters on a plan where the service sleeps
-  and wakes all day.
+  Exists because free plans give no shell to run `seed/0`. Guarded twice: only
+  when `SEED_ON_EMPTY` is set and the `users` table is empty (once, on first
+  boot); afterwards it costs one `SELECT` per boot.
   """
   def seed_if_empty do
     load_app()
@@ -99,11 +90,8 @@ defmodule EstoqueOS.Release do
     end
   end
 
-  # The from-zero deployment loads the bootstrap (locations, kits, role
-  # accounts) and nothing more: its stock arrives by import, so the fake demo
-  # scenario would only get in the way. The demo scenario is still available on
-  # first boot behind `SEED_DEMO`, for a deployment that wants something to look
-  # at without importing anything.
+  # From-zero loads only the bootstrap, since stock arrives by import; the demo
+  # scenario is opt-in via `SEED_DEMO`.
   defp seed_empty_repo(repo) do
     if repo.aggregate(EstoqueOS.Accounts.User, :count) == 0 do
       EstoqueOS.Seeds.bootstrap()

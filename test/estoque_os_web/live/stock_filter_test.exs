@@ -64,14 +64,10 @@ defmodule EstoqueOSWeb.StockFilterTest do
       })
   end
 
-  # An unchecked checkbox is not submitted at all, so the defaults carry only
-  # the two fields a browser always sends. A test that hands the filter form a
-  # value the browser never produces is a test that can pass while the screen is
-  # broken — which is exactly what happened here: the checkboxes send "true" and
-  # the view was reading "on".
-  # Two forms now, and they behave differently on purpose: the search answers as
-  # you type, the panel waits for "Aplicar". A test that drove both through one
-  # form would not notice if that stopped being true.
+  # An unchecked checkbox is not submitted, and checkboxes send "true", not "on":
+  # never hand the form a value a browser does not produce. The search answers as
+  # you type while the panel waits for "Aplicar", so the two forms are driven
+  # separately.
   defp filter(view, params) do
     {search, panel} = Map.pop(params, "search")
 
@@ -84,9 +80,7 @@ defmodule EstoqueOSWeb.StockFilterTest do
     end
   end
 
-  # The values the rendered chips would actually send, read off the page rather
-  # than typed here. The group has been three checkboxes, then one droplist, and
-  # is now a row of chips; asking the DOM what it offers survives all three.
+  # The values the rendered chips would send, read off the page, not typed here.
   defp situation_values(html) do
     ~r/name="situation\[\]"[^>]*value="([^"]*)"/
     |> Regex.scan(html)
@@ -132,8 +126,6 @@ defmodule EstoqueOSWeb.StockFilterTest do
   test "filters to what is expiring and to controlled substances", %{conn: conn} do
     {:ok, view, html} = live(conn, ~p"/stock")
 
-    # Read off the page: the panel offers these, so the test cannot drift from
-    # what a browser would post.
     assert "expiring" in situation_values(html)
     assert "controlled" in situation_values(html)
 
@@ -146,9 +138,7 @@ defmodule EstoqueOSWeb.StockFilterTest do
     refute controlled =~ "Eletrodo ECG adulto"
   end
 
-  # A union, not an intersection: somebody chasing problems means "either of
-  # these", and three separate conditions would have meant "all at once" and
-  # answered almost nothing.
+  # A union, not an intersection: "all at once" would answer almost nothing.
   test "several situations at once mean either of them", %{conn: conn, warehouse: warehouse} do
     expired = product_fixture(%{name: "Propofol vencido"})
 
@@ -178,10 +168,7 @@ defmodule EstoqueOSWeb.StockFilterTest do
 
     {:ok, view, html} = live(conn, ~p"/stock")
 
-    # The bug all three of these hold: `<.check>` renders value="true" and the
-    # view compared against "on", so every checkbox in the filter panel was dead
-    # on the page while the tests handed the event an "on" no browser sends.
-    # Both halves are read from the DOM now, so they cannot drift apart again.
+    # `<.check>` renders value="true"; read the value from the DOM, not a literal.
     assert "review" in situation_values(html)
 
     filtered = filter(view, %{"situation" => ["review"]})
@@ -202,8 +189,7 @@ defmodule EstoqueOSWeb.StockFilterTest do
     assert filtered =~ "Fentanila"
     refute filtered =~ "Compressa de gaze"
 
-    # Dropping the situation leaves the location where it was: the chip undoes
-    # one answer, not the whole panel.
+    # The chip undoes one answer, not the whole panel.
     left =
       view
       |> element(~s{button[phx-value-kind="situation"][phx-value-filter="controlled"]})
@@ -214,11 +200,9 @@ defmodule EstoqueOSWeb.StockFilterTest do
     refute left =~ "Compressa de gaze"
   end
 
-  # This test does not click anything, because clicking is exactly what the test
-  # above does successfully while the browser does not: `render_click/1` reads
-  # the attribute straight off the markup, and the client overwrites the `value`
-  # key with the button's own `value` property before it sends the event. So the
-  # rule is checked where it can be checked — in the markup, by name.
+  # No click here: `render_click/1` reads the attribute off the markup, but the
+  # browser overwrites the `value` key with the button's own `value` property, so
+  # check the markup by name.
   test "a chip never carries the one phx-value name a button overwrites", %{
     conn: conn,
     warehouse: warehouse
@@ -256,8 +240,6 @@ defmodule EstoqueOSWeb.StockFilterTest do
   } do
     {:ok, view, _html} = live(conn, ~p"/stock")
 
-    # One place at a time was two searches and a subtraction done in somebody's
-    # head, while the goods were on a truck between the two.
     html = filter(view, %{"location_id" => ["#{warehouse.id}", "#{mission.id}"]})
 
     assert html =~ "Eletrodo ECG adulto"
@@ -272,10 +254,8 @@ defmodule EstoqueOSWeb.StockFilterTest do
   test "the panel waits for Aplicar, and the search does not", %{conn: conn, mission: mission} do
     {:ok, view, html} = live(conn, ~p"/stock")
 
-    # The panel carries no `phx-change`, and that absence is the whole
-    # guarantee: picking three filters used to be three reloads, two of them
-    # showing something nobody had asked for yet. LiveViewTest refuses to fire a
-    # change on a form without one, so it is asserted directly.
+    # The absence of `phx-change` is the whole guarantee, and LiveViewTest refuses
+    # to fire a change on such a form, so assert it directly.
     assert [filter_form] = Regex.run(~r{<form[^>]*id="filter-form"[^>]*>}, html)
     refute filter_form =~ "phx-change"
     assert filter_form =~ ~s(phx-submit="filter")
@@ -303,7 +283,6 @@ defmodule EstoqueOSWeb.StockFilterTest do
 
     html = filter(view, %{"search" => "eletrodo"})
 
-    # Stock is counted in individual units; the supplier sells packs of 50.
     assert html =~ "UN"
     assert html =~ "PT/50"
   end
@@ -311,7 +290,6 @@ defmodule EstoqueOSWeb.StockFilterTest do
   test "clicking the sorted column flips its direction", %{conn: conn} do
     {:ok, view, html} = live(conn, ~p"/stock")
 
-    # Product ascending is the default, so the first click reverses it.
     assert position(html, "Compressa de gaze") < position(html, "Fentanila")
 
     descending = view |> element("th button", "Produto") |> render_click()
@@ -326,45 +304,34 @@ defmodule EstoqueOSWeb.StockFilterTest do
 
     html = view |> element("th button", "Validade") |> render_click()
 
-    # Gaze has no expiry date; an unknown date is not "the oldest".
+    # An unknown date is not "the oldest".
     assert position(html, "Fentanila") < position(html, "Compressa de gaze")
   end
 
   test "renders one table that collapses into blocks on a phone", %{conn: conn} do
     {:ok, _view, html} = live(conn, ~p"/stock")
 
-    # One DOM, two shapes: rendering a separate card list duplicated every id
-    # inside a cell, which is invalid HTML and breaks LiveView.
+    # One DOM, two shapes: a separate card list duplicated cell ids, which breaks LiveView.
     assert html =~ "data-table"
     assert length(String.split(html, "<table")) - 1 == 1
 
-    # Each cell carries the label its header shows on a wide screen, so the
-    # collapsed form still says what the number is.
     assert html =~ ~s(data-label="Quantidade")
     assert html =~ ~s(data-label="Validade")
 
-    # Zebra striping is the tell of a generic record set.
     refute html =~ "table-zebra"
   end
 
-  # The claim itself is what matters and it has not moved: a balance nobody has
-  # counted says so. What changed is the room it takes. Two lines of prose per
-  # row turned every long list into paragraphs, so it is a mark on the box label
-  # it qualifies — with the sentence on hover *and* in the accessible name, which
-  # is what keeps this from being the 10px ghost badge it once was.
+  # A mark on the box label, with the sentence on hover and in the accessible
+  # name, not a tiny badge.
   test "says a balance is presumed, on the box it is a claim about", %{conn: conn} do
     {:ok, view, _html} = live(conn, ~p"/stock")
 
     html = filter(view, %{"search" => "eletrodo"})
 
-    # Readable by a screen reader and on hover, not colour alone.
     assert html =~ ~s(data-tip="presumido · nunca contada")
     assert has_element?(view, ".sr-only", "presumido · nunca contada")
 
-    # Not "no badge anywhere on the page" — other states legitimately use one,
-    # and a test that fails because an unrelated badge appeared elsewhere is a
-    # test people learn to delete. What must not come back is *this* claim
-    # shrunk into a badge, so the badges are asked what they say.
+    # Other states legitimately use badges, so ask what the badges say.
     refute has_element?(view, ".badge", "presumido")
   end
 
@@ -372,7 +339,6 @@ defmodule EstoqueOSWeb.StockFilterTest do
     warehouse = Locations.default_location()
     product = product_fixture(%{name: "Gaze paginada"})
 
-    # 60 positions of one product: more than a page.
     for index <- 1..60 do
       lot = lot_fixture(%{product_id: product.id, lot_number: "PG-#{index}"})
       stock_in(lot, warehouse, 10)
@@ -454,7 +420,6 @@ defmodule EstoqueOSWeb.StockFilterTest do
   end
 
   test "a lot without an expiry date is neither expiring nor expired", %{conn: conn} do
-    # This raised in the template before expiring/expired were real booleans.
     {:ok, view, _html} = live(conn, ~p"/stock")
 
     html = filter(view, %{"search" => "gaze"})

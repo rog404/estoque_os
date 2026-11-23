@@ -29,11 +29,8 @@ defmodule EstoqueOSWeb.BoxLive.Show do
     socket
     |> assign(:box, box)
     |> assign(:contents, Locations.box_contents(box))
-    # The other boxes in the same room. Goods re-boxed anywhere else would be
-    # goods moved between locations, which is a different act with a different
-    # name.
+    # Re-boxing is within one room; elsewhere is a location move, a different act.
     |> assign(:siblings, Enum.reject(Locations.list_boxes(box.location_id), &(&1.id == box.id)))
-    # What is on the floor in the same room, waiting for a box.
     |> assign(:loose, Locations.loose_stock(box.location_id))
   end
 
@@ -48,10 +45,6 @@ defmodule EstoqueOSWeb.BoxLive.Show do
         </:subtitle>
         <:actions>
           <.write_gate may={@role_may_write?} allowed={@controls_enabled?}>
-            <!-- Counting it and saying it was counted are different acts, and
-                 this screen only offered the second. Somebody standing in front
-                 of the box is already here; the blind count is a route away and
-                 was reachable only from the mini-audit list. -->
             <.button navigate={~p"/boxes/#{@box}/count"} variant="primary" class="btn-sm">
               {gettext("Count this box")}
             </.button>
@@ -59,16 +52,8 @@ defmodule EstoqueOSWeb.BoxLive.Show do
               {gettext("Mark as counted")}
             </.button>
 
-            <!-- Carrying the whole box somewhere else is an action on this box,
-                 so it sits with the other two rather than floating between the
-                 header and the contents. Loose there, it read as a caption on
-                 the table below — a table whose own column moves *goods between
-                 boxes*, which is a different act with a nearly identical name. -->
             <form id="move-form" phx-submit="move" class="flex items-center gap-2">
-              <!-- Same rule as the Boxes listing: a mission and transit are not
-                   places a box is carried to by hand. Arriving at one is where
-                   the movement acquires a trip, and only the load-out asks
-                   which. -->
+              <%!-- As in the Boxes listing: mission and transit are reached only by load-out. --%>
               <select
                 name="location_id"
                 class="select select-sm select-bordered"
@@ -106,10 +91,6 @@ defmodule EstoqueOSWeb.BoxLive.Show do
             <span class="figure">{quantity(row.quantity)}</span>
           </:col>
 
-          <!-- Re-boxing, per line. Two half-empty boxes become one, or a product
-               goes where its group already lives. The quantity defaults to the
-               whole line because that is the usual move, and part of it can be
-               sent by typing less. -->
           <:col
             :let={row}
             :if={@role_may_write? and @siblings != []}
@@ -143,17 +124,7 @@ defmodule EstoqueOSWeb.BoxLive.Show do
                   {gettext("Move")}
                 </.button>
 
-                <!-- Grows the row it's in, unlike the tick above — a deliberate
-                     exception to "always render, never :if". The tick is a
-                     passive confirmation glanced at while the thumb is already
-                     moving to the next row, so a shift there lands the next tap
-                     on the wrong line. This banner is a decision the operator
-                     must answer before doing anything else; it appears exactly
-                     where they are already looking and holds their next tap
-                     inside itself, not on a sibling row. Reserving its height
-                     in every row instead (its fix-sized sibling's remedy) was
-                     tried and rejected: at "forty rows" (see the comment two
-                     screens up) that is a table mostly made of blank space. -->
+                <%!-- Deliberate exception to "always render, never :if": this banner is a decision to answer before anything else and holds the next tap inside itself; reserving its height in every row would leave a table of blank space. --%>
                 <.new_box_confirm
                   :if={@new_box && @new_box.lot_id == to_string(row.lot_id)}
                   code={@new_box.code}
@@ -165,12 +136,6 @@ defmodule EstoqueOSWeb.BoxLive.Show do
         </.data_table>
       </.panel>
 
-      <!-- The answer to "how do I get a product with no box into one?", which
-           until now was "you cannot". Loose stock is a real and temporary state
-           — goods arrived and nobody has boxed them yet — and it is temporary
-           because a load-out refuses to carry it: nothing identifies it at the
-           other end and nothing brings it back. So this list is work, and it
-           belongs on the screen of the box somebody is holding. -->
       <.panel
         :if={@role_may_write? and @loose != []}
         title={gettext("Loose here, with no box")}
@@ -196,8 +161,6 @@ defmodule EstoqueOSWeb.BoxLive.Show do
                 phx-value-lot={row.lot_id}
                 class="flex flex-wrap items-center gap-2 justify-end"
               >
-                <!-- The whole line, because putting away half of what is on the
-                     floor is the exception. Type less to send part of it. -->
                 <input
                   type="text"
                   name="quantity"
@@ -232,7 +195,6 @@ defmodule EstoqueOSWeb.BoxLive.Show do
          |> put_flash(
            :info,
            gettext("%{quantity} moved into %{code}.",
-             # The raw form value is a string; `quantity/1` formats numbers.
              quantity: quantity(to_decimal(quantity)),
              code: target.code
            )
@@ -295,8 +257,7 @@ defmodule EstoqueOSWeb.BoxLive.Show do
     rebox(socket, lot_id, params, create: false)
   end
 
-  # The yes. The code and the move riding on it were held rather than written,
-  # so this replays the same submission with permission to create.
+  # Replays the held submission with permission to create the box.
   def handle_event("confirm_new_box", _params, socket) do
     %{lot_id: lot_id, params: params} = socket.assigns.new_box
 

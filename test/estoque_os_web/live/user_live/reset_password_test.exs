@@ -75,7 +75,6 @@ defmodule EstoqueOSWeb.UserLive.ResetPasswordTest do
     end
 
     test "a token already consumed by another tab is refused, not re-accepted", %{token: token} do
-      # Both tabs load the page while the token is still good.
       {:ok, lv1, _html} = live(build_conn(), ~p"/users/reset-password/#{token}")
       {:ok, lv2, _html} = live(build_conn(), ~p"/users/reset-password/#{token}")
 
@@ -87,7 +86,6 @@ defmodule EstoqueOSWeb.UserLive.ResetPasswordTest do
       conn1 = follow_trigger_action(form1, build_conn())
       assert get_session(conn1, :user_token)
 
-      # Tab B submits the same, now-spent token.
       form2 = form(lv2, "#reset_password_edit_form", %{"user" => user_params})
       render_submit(form2)
       conn2 = follow_trigger_action(form2, build_conn())
@@ -116,10 +114,6 @@ defmodule EstoqueOSWeb.UserLive.ResetPasswordTest do
     end
   end
 
-  # Two fields that must match, both of them dots, and the first sign of a typo
-  # is being told the confirmation disagrees — with no way to see which of the
-  # two is wrong. Asked for by Rogerio: "ao gerar nova senha, ter o ícone para
-  # ver a senha, para não escrever a senha errada".
   describe "the eye on a password field" do
     setup do
       user = user_fixture()
@@ -135,10 +129,7 @@ defmodule EstoqueOSWeb.UserLive.ResetPasswordTest do
     test "is offered for both fields when setting a new password", %{conn: conn, token: token} do
       {:ok, _lv, html} = live(conn, ~p"/users/reset-password/#{token}")
 
-      # Both fields, by id, so a toggle wired to the wrong one fails here. The
-      # new password and its confirmation are exactly the pair the eye exists
-      # for: told only that they disagree, there is no way to see which is
-      # wrong.
+      # Both fields, by id, so a toggle wired to the wrong one fails here.
       assert [_first, _second] = password_field_ids(html)
 
       for id <- password_field_ids(html) do
@@ -147,8 +138,7 @@ defmodule EstoqueOSWeb.UserLive.ResetPasswordTest do
 
       assert html =~ "Mostrar senha"
 
-      # And the field still arrives hidden: revealing is something the person
-      # does, never the state it opens in.
+      # The field opens hidden; revealing is the person's act.
       assert html =~ ~s(type="password")
     end
 

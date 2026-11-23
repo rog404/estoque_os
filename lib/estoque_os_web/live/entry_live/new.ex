@@ -1,14 +1,9 @@
 defmodule EstoqueOSWeb.EntryLive.New do
   @moduledoc """
-  Taking goods into stock that arrived without an invoice.
-
-  Donated toys, a bag somebody handed over at the door. It is real stock and it
-  has to be counted, but there is no document and no price — so the ledger
-  records no value at all rather than a made-up one, and the screen says R$ 0,01
-  where a figure is unavoidable.
-
-  Quantity is in the product's own unit. An invoice says "2 boxes of 100" and
-  needs a conversion factor; a person holding the goods counts the things.
+  Taking goods into stock that arrived without an invoice (donations, a bag at
+  the door). No document and no price, so the ledger records no value rather
+  than a made-up one. Quantity is in the product's own unit, with no conversion
+  factor.
   """
 
   use EstoqueOSWeb, :live_view
@@ -19,13 +14,8 @@ defmodule EstoqueOSWeb.EntryLive.New do
   alias EstoqueOS.Catalog.Product
   alias EstoqueOS.Inventory.Locations
 
-  @doc """
-  Events a viewer may send. Everything else on this screen is refused.
-
-  Finding a product, picking it, saying where it came from: none of that
-  writes. `enter` posts the entry, `create_product` adds to the catalog and
-  `confirm_new_box` creates a box.
-  """
+  # Events a viewer may send; everything else is refused. `enter`,
+  # `create_product` and `confirm_new_box` write and are excluded.
   def viewer_events, do: ~w(search pick origin clear cancel_new_box)
 
   @impl true
@@ -48,25 +38,16 @@ defmodule EstoqueOSWeb.EntryLive.New do
      |> assign(:lot_expected, true)
      |> assign(:suggestions, [])
      |> assign(:origin, "donation")
-     # What is in the form right now, held server-side rather than left to the
-     # browser. The screen has to be able to put the entry back on screen —
-     # after a refused box code, after a question about creating one — and it
-     # cannot do that from values it never kept.
+     # Form values held server-side so a re-render (refused box code, new-box
+     # question) can put the entry back.
      |> assign(:draft, %{})
      |> assign(:new_box, nil)
      |> assign(:entered, nil)}
   end
 
-  @doc """
-  Which stock this entry is for.
-
-  Two ways in, and the role wins both times. The marketing menu links here with
-  `?segment=marketing`, which is a convenience for an admin or the coordinator
-  — it preselects the stock and narrows the search. For the marketing role
-  itself the address is irrelevant: `Scope.segment/1` already answers, and a
-  hand-typed `?segment=medical` gets the same answer it would have got with no
-  query at all.
-  """
+  # The role wins over `?segment=`: it only preselects the stock for an admin or
+  # coordinator, and `Scope.segment/2` answers for a marketing user whatever the
+  # address says.
   @impl true
   def handle_params(params, _uri, socket) do
     segment = segment(socket, params["segment"])
@@ -77,14 +58,8 @@ defmodule EstoqueOSWeb.EntryLive.New do
      |> preselect_location(segment)}
   end
 
-  # Goods for the two stocks come in through different doors — surgical
-  # supplies at the warehouse, marketing material at the office — so the place
-  # follows the stock rather than a single default that was right for one of
-  # them and corrected by hand on every entry by the other.
-  #
-  # Only on the way in. Once the screen is open the location is the operator's
-  # to change, and a default that moved it back under them would be worse than
-  # the wrong default.
+  # The two stocks come in through different doors, so the location follows the
+  # stock. Only on the way in: once open, the location is the operator's to change.
   defp preselect_location(socket, segment) do
     location = Locations.default_location(segment) || List.first(socket.assigns.locations)
 
@@ -95,9 +70,7 @@ defmodule EstoqueOSWeb.EntryLive.New do
 
   defp segment(socket, asked), do: Scope.segment(socket.assigns.current_scope, asked)
 
-  # Which segment a product created from here is filed under. A screen narrowed
-  # to one stock creates into that stock; an unnarrowed one creates into the
-  # surgical catalog, which is what 322 of the 322 seeded products are.
+  # A narrowed screen creates into its stock; otherwise into the surgical catalog.
   defp segment_for_new_product(socket), do: socket.assigns.segment || "medical"
 
   defp pick_product(socket, product) do
@@ -146,11 +119,6 @@ defmodule EstoqueOSWeb.EntryLive.New do
             phx-debounce="300"
           />
         </label>
-        <!-- Both stocks, for everybody, already on the one this role works in.
-             Each option carries its own value: a blank one used to mean
-             surgical, which the default now reads as "whatever this role
-             does" — and for the marketing coordinator that is the opposite
-             answer. -->
         <label class="fieldset">
           <span class="label">{gettext("Stock")}</span>
           <select name="segment" class="select select-bordered">
@@ -176,9 +144,6 @@ defmodule EstoqueOSWeb.EntryLive.New do
         </label>
       </form>
 
-      <!-- Nothing typed yet. The screen used to be a title, one field, and a
-           page of white below it, which says nothing about what this flow is
-           for — and this is a screen the ONG will be shown. -->
       <.panel :if={@query == "" and is_nil(@product)}>
         <.empty
           title={gettext("Start by finding the product.")}
@@ -202,11 +167,7 @@ defmodule EstoqueOSWeb.EntryLive.New do
         </li>
       </ul>
 
-      <!-- Creating from here sits *below* the results on purpose. Offered before
-           them, it is the fastest path and the catalog fills with the same item
-           spelled three ways. -->
-      <!-- No `@writable?` guard: this route already requires an operator, so the
-           question is settled before the page renders. -->
+      <%!-- Creating sits below the results on purpose: offered first, the catalog fills with one item spelled three ways. No `@writable?` guard: the route already requires an operator. --%>
       <div
         :if={@query != "" and is_nil(@product)}
         class="panel"
@@ -230,9 +191,7 @@ defmodule EstoqueOSWeb.EntryLive.New do
                 required
               />
             </label>
-            <!-- A list, not a text field. Typed, one product arrives as UN, the
-                 next as Un, a third as UND and a fourth as unidade, and the
-                 catalog splits a single item four ways. -->
+            <%!-- A list, not free text, so one unit is not spelled four ways. --%>
             <label class="fieldset">
               <span class="label">{gettext("Counted in")}</span>
               <select name="stock_unit" class="select select-bordered w-24">
@@ -241,11 +200,7 @@ defmodule EstoqueOSWeb.EntryLive.New do
                 </option>
               </select>
             </label>
-            <!-- Neither question is asked about the marketing stock, and the
-                 answer to both is always no: a shirt is not a controlled drug
-                 and does not expire. Asked anyway, they are two ticks the
-                 person has to *not* tick, every time, and a tick that only ever
-                 has one right answer is a trap rather than a question. -->
+            <%!-- Not asked for the marketing stock: the answer is always no. --%>
             <.check :if={@segment != "marketing"} name="controlled" label={gettext("controlled")} />
             <.check
               :if={@segment != "marketing"}
@@ -265,21 +220,8 @@ defmodule EstoqueOSWeb.EntryLive.New do
             </.button>
           </form>
 
-          <!-- `.alert` is a grid, not a flex box, so the `flex-col` this used to
-               carry did nothing and the list was dealt into a second column.
-
-               The colour is the sharper half. A nested `bg-base-100` keeps the
-               alert's *text* colour while dropping its background, and in the
-               light theme `warning-content` is white — so the one thing this
-               warning exists to show, the products it found, rendered white on
-               white. `text-base-content` is not decoration here; without it the
-               list is invisible. Check both themes before touching it. -->
+          <%!-- `.alert` is a grid: one child keeps it one column. The nested `bg-base-100` list needs `text-base-content`, or warning-content is white on white in the light theme. --%>
           <div :if={@similar != []} class="alert alert-warning">
-            <!-- One child, deliberately. `.alert` lays its children out as grid
-                 columns, so the paragraph and the list used to sit side by side
-                 with the list crushed against the right edge. Wrapping them
-                 makes the alert a one-column grid without fighting daisyUI over
-                 specificity. -->
             <div class="w-full space-y-2 text-left">
               <p>
                 {gettext(
@@ -312,15 +254,7 @@ defmodule EstoqueOSWeb.EntryLive.New do
             <.status :if={@product.controlled} kind={:controlled} />
           </h2>
 
-          <!-- The first question, because it decides what the rest of the form
-               asks and what the ledger is allowed to record. A donation has no
-               price and must never be given one; goods bought without an
-               invoice have a real price that used to vanish here. -->
-          <!-- Two cards rather than two loose radios in a line. This choice
-               changes what the rest of the form asks, so it has to read as a
-               choice and not as a checkbox somebody might skim past. The whole
-               card is the target, which is also the only sane size for it on a
-               phone. -->
+          <%!-- First question: it decides what the form asks and what the ledger may record (a donation never gets a price). Whole-card targets for phones. --%>
           <fieldset class="grid sm:grid-cols-2 gap-2">
             <legend class="label">{gettext("How it arrived")}</legend>
             <label class={[
@@ -418,12 +352,7 @@ defmodule EstoqueOSWeb.EntryLive.New do
               />
             </label>
 
-            <!-- Off for a product that has neither, and the catalog already
-                 knows which: a blanket a volunteer brought has no lot printed on
-                 it and no date, and `lot_expected` / `expiry_expected` are the
-                 two flags that say so. Rendered and disabled rather than hidden,
-                 so the row keeps its shape and the reason is on hover — the same
-                 rule every other guarded control here follows. -->
+            <%!-- Lot and expiry are disabled, not hidden, when `lot_expected` / `expiry_expected` are false, so the row keeps its shape. --%>
             <label class="fieldset">
               <span class="label">{gettext("Lot")}</span>
               <input
@@ -465,10 +394,6 @@ defmodule EstoqueOSWeb.EntryLive.New do
                 hint={@suggestions != [] && suggestion_reason(hd(@suggestions))}
               />
 
-              <!-- Same question the conference asks, in the same place: under
-                   the field, not at the top of the page. A code typed one
-                   character wrong makes a box that exists, is empty, and is
-                   never opened again. -->
               <.new_box_confirm :if={@new_box} code={@new_box.code} class="mt-2" />
             </label>
           </div>
@@ -509,9 +434,8 @@ defmodule EstoqueOSWeb.EntryLive.New do
     location_id = parse_id(params["location_id"]) || socket.assigns.location_id
     location = Enum.find(socket.assigns.locations, &(&1.id == location_id))
     query = params["query"] || ""
-    # Only when the form actually carries one. Recomputing from a missing key
-    # would answer with the role's default and quietly undo the stock the
-    # address asked for, on the first keystroke in the search box.
+    # Only when the form carries one: a missing key would fall back to the role's
+    # default and undo the stock the address asked for.
     socket =
       case params["segment"] do
         nil -> socket
@@ -538,24 +462,20 @@ defmodule EstoqueOSWeb.EntryLive.New do
     product = Catalog.get_product!(String.to_integer(product_id))
 
     if socket.assigns.segment && product.segment != socket.assigns.segment do
-      # The list this id came from was already filtered, so arriving here means
-      # the id was typed rather than clicked. Refused rather than ignored: the
-      # screen should say no out loud.
+      # The list was already filtered, so this id was hand-made: refuse out loud.
       {:noreply, put_flash(socket, :error, gettext("That product is not in this stock."))}
     else
       pick_product(socket, product)
     end
   end
 
-  # The second submit is the confirmation: the warning listed what it found, and
-  # the operator sent the same name back anyway. Nothing to click twice.
+  # The second submit is the confirmation: the operator resent the same name
+  # after the similar-products warning.
   def handle_event("create_product", params, socket) do
     segment = segment_for_new_product(socket)
 
-    # The form does not render either tick for marketing, so the answer cannot
-    # arrive from it — and must not be read from a submission that was
-    # hand-made either. Decided here, from the stock, which is where the rule
-    # actually lives.
+    # Decided from the stock, not the submission: marketing never renders these
+    # ticks and a hand-made post must not set them.
     attrs = %{
       name: String.trim(params["name"] || ""),
       stock_unit: blank_to_default(params["stock_unit"], "UN"),
@@ -590,13 +510,8 @@ defmodule EstoqueOSWeb.EntryLive.New do
     end
   end
 
-  # Fires on every change in the form, not only the two radios. It reveals the
-  # price fields when the goods were bought, and it keeps the draft.
-  #
-  # The draft used to be nobody's job: the comment here said the form "keeps its
-  # own values in the DOM", which is true right up until something re-renders
-  # the fields — switching to Bought and back, or being asked about a box code.
-  # The field said otherwise, so the values are kept where they can be put back.
+  # Fires on every change in the form: reveals the price fields for a purchase
+  # and keeps the draft, since the DOM loses values on re-render.
   def handle_event("origin", params, socket) do
     {:noreply,
      socket
@@ -612,8 +527,7 @@ defmodule EstoqueOSWeb.EntryLive.New do
     resolve_and_enter(socket, params, create: false)
   end
 
-  # The yes. The entry was held rather than posted, so this replays it with
-  # permission to create the box.
+  # Replays the held entry with permission to create the box.
   def handle_event("confirm_new_box", _params, socket) do
     %{params: params} = socket.assigns.new_box
 
@@ -622,8 +536,7 @@ defmodule EstoqueOSWeb.EntryLive.New do
     |> resolve_and_enter(params, create: true)
   end
 
-  # The no. Everything typed comes back with the box code cleared, because the
-  # box is what was wrong.
+  # Everything typed comes back with the box code cleared.
   def handle_event("cancel_new_box", _params, socket) do
     %{params: params} = socket.assigns.new_box
 
@@ -644,8 +557,7 @@ defmodule EstoqueOSWeb.EntryLive.New do
       {:ok, box} ->
         take_in(socket, product, box, params)
 
-      # Not a box we know, and a typo here splits the stock into a box nobody
-      # will ever open. Same question the conference asks, same answer.
+      # A typo here would split the stock into a box nobody opens.
       {:unknown, code} ->
         {:noreply, assign(socket, :new_box, %{code: code, params: params})}
 
@@ -702,11 +614,9 @@ defmodule EstoqueOSWeb.EntryLive.New do
          |> assign(:product, nil)
          |> assign(:query, "")
          |> assign(:products, [])
-         # Spent. The next entry starts blank, or the operator posts the same
-         # lot number twice without noticing.
+         # Spent: the next entry starts blank so a lot number is not posted twice.
          |> assign(:draft, %{})
-         # A box may have just been created by the code that was typed; the
-         # next entry should find it in the list.
+         # The typed code may have just created a box.
          |> assign(:boxes, boxes_at(socket.assigns.location_id))}
 
       {:error, :invalid_quantity} ->
@@ -738,8 +648,6 @@ defmodule EstoqueOSWeb.EntryLive.New do
     end
   end
 
-  # Where this belongs, not just which boxes exist. Preselected rather than
-  # merely listed: the suggestion is only worth making if it saves the choice.
   defp assign_suggestions(socket, product) do
     case socket.assigns.location_id do
       nil ->

@@ -1,16 +1,7 @@
 defmodule EstoqueOS.DemoDataTest do
   @moduledoc """
-  The demo scenario is what a person is shown first, and it is built by code
-  that no screen exercises. It broke twice while being written — once because
-  the seeded kits had no backing product and could not be assembled, once
-  because three products were chosen to be short before two missions had spent
-  them — and both failures were silent: the scenario loaded and simply did not
-  contain what it claimed to.
-
-  So the claims are asserted here rather than read off the console.
-
-  `async: false` and one slow test rather than several: building the scenario
-  takes most of a second, and it is one indivisible thing.
+  The demo scenario is built by code no screen exercises, and its failures are
+  silent (it loads without containing what it claims), so the claims are asserted.
   """
 
   use EstoqueOS.DataCase, async: false
@@ -37,28 +28,21 @@ defmodule EstoqueOS.DemoDataTest do
     assert {:error, :already_loaded} = DemoData.run()
   end
 
-  # The second stock exists in the demo, or nobody demonstrating the marketing
-  # role has anything to look at — and the role's whole screen is a filter on
-  # this segment.
   test "loads a marketing stock alongside the surgical one", %{summary: summary} do
     assert summary.marketing_products > 0
 
     marketing = EstoqueOS.Catalog.list_products(segment: "marketing", limit: 100)
     assert length(marketing) == summary.marketing_products
 
-    # In stock, not just in the catalog.
     rows = EstoqueOS.Reports.stock_rows(segment: "marketing")
     assert rows != []
     assert Enum.all?(rows, &(&1.quantity |> Decimal.compare(0) == :gt))
 
-    # And the surgical stock is not counted into it.
     surgical = EstoqueOS.Reports.stock_rows(segment: "medical")
     assert length(surgical) > length(rows)
   end
 
   describe "the account" do
-    # One, and only one. Creating the rest is the administrator's first job on a
-    # fresh install and a flow worth walking rather than seeding around.
     test "just the administrator, named for the role and not for a person",
          %{summary: summary} do
       assert summary.accounts == ["admin@exemplo.org"]
@@ -67,9 +51,6 @@ defmodule EstoqueOS.DemoDataTest do
       assert Accounts.list_users() |> length() == 1
     end
 
-    # A demo account that demands a new password before it will show anything
-    # is not a demo account. Accounts the administrator then creates *do* demand
-    # one, which is the right default and is tested where it belongs.
     test "logs in with the published password and lands on the app, not on a reset",
          %{summary: summary} do
       [email] = summary.accounts
@@ -101,8 +82,6 @@ defmodule EstoqueOS.DemoDataTest do
       assert length(entries) == length(invoice.items)
       assert Enum.all?(entries, &(Decimal.compare(&1.quantity, 0) == :gt))
 
-      # Never a symbolic cent, and never nil for a purchase: the whole point of
-      # posting an invoice rather than typing a quantity is the unit cost.
       for entry <- entries do
         assert entry.unit_cost, "an invoice entry posted without a unit cost"
         assert Decimal.compare(entry.unit_cost, 0) == :gt
@@ -134,9 +113,7 @@ defmodule EstoqueOS.DemoDataTest do
       assert Kits.unresolved_items(kit) == []
     end
 
-    # Both states at once, which is the whole reason the order in `build/0`
-    # matters: a kit in the box, and the refusal waiting for whoever tries to
-    # build the next one.
+    # Both states at once, so the order in `build/0` matters.
     test "one component has expired since, so assembling another is refused",
          %{summary: summary} do
       kit = Kits.get_kit!(summary.kit.id)
@@ -155,8 +132,6 @@ defmodule EstoqueOS.DemoDataTest do
                })
     end
 
-    # The four other kits are left as the spreadsheets wrote them. That state is
-    # what the kit screen exists to work through, so the demo has to contain it.
     test "the other kits still show unresolved lines", %{summary: summary} do
       others =
         Kits.list_kits()
@@ -235,8 +210,6 @@ defmodule EstoqueOS.DemoDataTest do
   end
 
   describe "the ledger" do
-    # The invariant the whole design rests on. A scenario built by hand is
-    # exactly where a snapshot and its entries can drift apart.
     test "every snapshot equals the sum of the entries behind it" do
       snapshots =
         Repo.all(
@@ -272,10 +245,7 @@ defmodule EstoqueOS.DemoDataTest do
     end
   end
 
-  # The free-tier database this is demonstrated on stops at ten thousand rows.
-  # A scenario that grows past it fails at deploy time, on someone else's
-  # afternoon. Counted across every table the scenario writes to, with room to
-  # spare rather than to the last row.
+  # The free-tier database stops at ten thousand rows; keep room to spare.
   test "the whole scenario fits in a free-tier database" do
     tables = [
       EstoqueOS.Accounts.User,

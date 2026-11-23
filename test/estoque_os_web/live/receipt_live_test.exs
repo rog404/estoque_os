@@ -44,13 +44,11 @@ defmodule EstoqueOSWeb.ReceiptLiveTest do
     Enum.find(receipt.lines, &(&1.invoice_item.item_number == item_number))
   end
 
-  # The rows as rendered, in the order they were rendered in.
   defp line_order(html) do
     ~r/id="line-(\d+)"/ |> Regex.scan(html) |> Enum.map(fn [_whole, id] -> id end)
   end
 
-  # One line's form, alone. Asserting against the whole page would let a value
-  # belonging to another row satisfy the assertion.
+  # One line's form: the whole page would let another row's value satisfy the assertion.
   defp form_for_line(html, line) do
     case Regex.run(~r{<form[^>]*id="count-#{line.id}".*?</form>}s, html) do
       [form] -> form
@@ -68,11 +66,8 @@ defmodule EstoqueOSWeb.ReceiptLiveTest do
     Receiving.get_receipt!(receipt.id).lines |> Enum.find(&(&1.id == line.id))
   end
 
-  # Counting a line the way the screen now asks for it: a number that disagrees
-  # with the invoice is not believed until it has been counted
-  # `Receiving.counts_required/0` times. A number that agrees is recorded on the
-  # first submit, so this stops as soon as the line is settled rather than
-  # submitting a fixed three times into a locked form.
+  # A disagreeing number is believed only after `Receiving.counts_required/0`
+  # counts; an agreeing one is recorded at once, so stop as soon as it settles.
   defp count_line(view, receipt, line, quantity, box_code) do
     Enum.reduce_while(1..Receiving.counts_required(), nil, fn _attempt, _acc ->
       html =
@@ -124,8 +119,7 @@ defmodule EstoqueOSWeb.ReceiptLiveTest do
       end
     end
 
-    # The operator typed into row four and watched it move: the lines came back
-    # from Postgres in whatever order the plan produced.
+    # Lines must keep a stable order, or the row being typed into jumps.
     test "recording a line leaves the others where they were", %{
       conn: conn,
       receipt: receipt,
@@ -145,11 +139,8 @@ defmodule EstoqueOSWeb.ReceiptLiveTest do
       assert after_saving == before
     end
 
-    # The operator counts six boxes onto one screen, records the first, and the
-    # five they had already typed come back empty. Every line is its own form and
-    # every value is rendered from the server, so saving one line repaints all of
-    # them with what the database knows — which, for a line not yet recorded, is
-    # nothing.
+    # Every line is its own form with server-rendered values, so saving one
+    # repaints all; unsaved drafts must survive it.
     test "recording a line keeps what was typed into the others", %{
       conn: conn,
       receipt: receipt,
@@ -174,8 +165,7 @@ defmodule EstoqueOSWeb.ReceiptLiveTest do
       assert form =~ ~s(value="RC01")
     end
 
-    # Once it is saved, the draft is spent: the line must show what the database
-    # accepted, not what was in the box before it was submitted.
+    # Once saved, the draft is spent: show what the database accepted.
     test "a recorded line shows the saved number, not the draft", %{
       conn: conn,
       receipt: receipt,
@@ -193,9 +183,8 @@ defmodule EstoqueOSWeb.ReceiptLiveTest do
       refute form =~ ~s(value="9")
     end
 
-    # The other half of the same rule, and the one the recount depends on: a
-    # count that was taken but not believed must leave the field empty. Keeping
-    # the number in it makes the second count a reading of the first.
+    # A taken-but-unbelieved count must leave the field empty, or the recount is
+    # a reading of the first.
     test "a line waiting to be counted again shows an empty field", %{
       conn: conn,
       receipt: receipt,
@@ -213,14 +202,11 @@ defmodule EstoqueOSWeb.ReceiptLiveTest do
       assert form =~ ~s(name="counted_quantity" value="")
       refute form =~ ~s(value="287")
 
-      # The box stays: the goods are on that shelf whatever the count turns out
-      # to be, and asking for it again is asking a question already answered.
+      # The box stays: the goods are on that shelf whatever the count turns out to be.
       assert form =~ box.code
     end
 
-    # "registrado" used to belong to whichever line was saved last, so counting
-    # the second line took the tick off the first. Nothing about the first line
-    # changed when the second was counted.
+    # Counting the second line must not take the tick off the first.
     test "every counted line keeps saying it was recorded", %{
       conn: conn,
       receipt: receipt,
@@ -244,8 +230,7 @@ defmodule EstoqueOSWeb.ReceiptLiveTest do
       assert form_for_line(html, second) =~ "registrado"
     end
 
-    # The tick may not push the row around when it appears: it lands under the
-    # thumb of somebody typing into the next line down.
+    # The tick appearing must not push the row around under the thumb.
     test "the recorded tick is present before it is earned, only invisible", %{
       conn: conn,
       receipt: receipt
@@ -255,15 +240,13 @@ defmodule EstoqueOSWeb.ReceiptLiveTest do
 
       form = form_for_line(html, line)
 
-      # Rendered, so the row is already the height it will be; hidden, so it
-      # makes no claim about a line nobody has counted.
+      # Rendered so the row height is fixed; hidden so it claims nothing yet.
       assert form =~ "registrado"
       assert form =~ "invisible"
     end
 
-    # CX-102 typed where CX-012 was meant is a box that exists, is empty, is
-    # never opened, and holds the difference in somebody's stock forever. The
-    # flash announcing the creation arrives after the goods are already in it.
+    # CX-102 typed for CX-012 would create an empty box nobody opens, holding the
+    # difference forever.
     test "an unknown box code is not created until it is confirmed", %{
       conn: conn,
       receipt: receipt
@@ -279,7 +262,6 @@ defmodule EstoqueOSWeb.ReceiptLiveTest do
       assert html =~ "CX-102"
       assert html =~ "Criar a caixa"
 
-      # Nothing written: not the box, and not the count that was riding on it.
       refute Locations.get_box_by_code("CX-102")
 
       saved = Receiving.get_receipt!(receipt.id).lines |> Enum.find(&(&1.id == line.id))
@@ -305,10 +287,8 @@ defmodule EstoqueOSWeb.ReceiptLiveTest do
 
       refute html =~ "Criar a caixa"
 
-      # The count that was waiting was taken — and, disagreeing with the
-      # invoice, taken as a first count rather than as the answer. The box is
-      # already recorded: the operator put the goods on a shelf, which is true
-      # whichever way the arithmetic ends up.
+      # The waiting count disagrees with the invoice, so it is taken as a first
+      # count, not the answer; the box is recorded regardless.
       saved = reload_line(receipt, line)
       assert is_nil(saved.counted_quantity)
       assert [attempt] = saved.count_attempts
@@ -333,8 +313,7 @@ defmodule EstoqueOSWeb.ReceiptLiveTest do
       refute Locations.get_box_by_code("CX-102")
       refute html =~ "Criar a caixa"
 
-      # The 287 they counted is still on the line: they mistyped the box, not
-      # the count, and retyping the count is how a real number gets rounded.
+      # They mistyped the box, not the count; retyping a count risks rounding it.
       assert form_for_line(html, line) =~ ~s(value="287")
     end
 
@@ -351,10 +330,8 @@ defmodule EstoqueOSWeb.ReceiptLiveTest do
         |> element("#count-#{line.id}")
         |> render_submit(%{"counted_quantity" => "287", "box_code" => box.code})
 
-      # Not booked, and not yet a divergence anybody reports: one count that
-      # disagrees with the invoice is more often a miscount than a loss, and the
-      # line goes back to asking. On the row, not in a flash — forty lines is
-      # forty toasts over the table they are about.
+      # One disagreeing count is more often a miscount than a loss, so the line
+      # asks again, on the row rather than in a flash.
       assert first =~ "Conte este item de novo"
       assert first =~ "contagem 2 de 3"
       refute first =~ "Divergências em relação à nota"
@@ -367,7 +344,6 @@ defmodule EstoqueOSWeb.ReceiptLiveTest do
       assert html =~ "-13"
       assert html =~ "3 linha(s) não contada(s)"
 
-      # Counted three times, still short. Not the operator's to close alone.
       assert reload_line(receipt, line) |> ReceiptLine.diverged_after_recounts?()
     end
 
@@ -384,8 +360,6 @@ defmodule EstoqueOSWeb.ReceiptLiveTest do
         |> element("#count-#{line.id}")
         |> render_submit(%{"counted_quantity" => "300", "box_code" => box.code})
 
-      # Nobody is sent back to the shelf to confirm a number that already
-      # matches. Counting again is the price of a disagreement, not a ritual.
       refute html =~ "Conte este item de novo"
       assert Decimal.equal?(reload_line(receipt, line).counted_quantity, Decimal.new(300))
     end
@@ -406,9 +380,7 @@ defmodule EstoqueOSWeb.ReceiptLiveTest do
 
       saved = reload_line(receipt, line)
 
-      # Three different counts, and the last one is the one booked: it is the
-      # count made with the most care, by an operator who now knows the first
-      # two were disputed.
+      # The last count is the one booked.
       assert Enum.map(saved.count_attempts, &Decimal.to_string/1) == ~w(287 290 288)
       assert Decimal.equal?(saved.counted_quantity, Decimal.new(288))
     end
@@ -427,9 +399,7 @@ defmodule EstoqueOSWeb.ReceiptLiveTest do
       |> element(~s(button[phx-click="count_again"][phx-value-line="#{line.id}"]))
       |> render_click()
 
-      # The trail goes with it. Keeping it would let the next single count land
-      # as the third attempt and be believed on the spot, which is the rule
-      # deleting itself.
+      # A kept trail would make the next single count the third attempt, believed at once.
       assert reload_line(receipt, line).count_attempts == []
 
       html =
@@ -458,16 +428,13 @@ defmodule EstoqueOSWeb.ReceiptLiveTest do
 
       assert Decimal.equal?(Inventory.balance(box_id: box.id), Decimal.new(287))
 
-      # The three lines nobody counted are untouched: 50 + 100 + 100.
       assert Decimal.equal?(
                Inventory.balance(location_id: warehouse.id, box_id: nil),
                Decimal.new(250)
              )
     end
 
-    # The way back from a number typed wrong. Nothing has reached the ledger
-    # yet — a conference writes at the close — so this is an edit, not an
-    # adjustment.
+    # Nothing reaches the ledger until the close, so this is an edit, not an adjustment.
     test "a recorded line can be counted again, from empty", %{
       conn: conn,
       receipt: receipt,
@@ -485,15 +452,11 @@ defmodule EstoqueOSWeb.ReceiptLiveTest do
 
       form = form_for_line(html, line)
 
-      # Empty, not 287. A second count that starts from the first one is not a
-      # second count — the eye stops at the number it was shown, which is what
-      # this whole screen is built to prevent.
+      # Empty, not 287: a count that starts from the first is not a second count.
       assert form =~ ~s(name="counted_quantity" value="")
 
-      # The box is kept: they mistyped a quantity, not the shelf.
       assert form =~ box.code
 
-      # And the line is honestly uncounted again.
       assert Receiving.get_receipt!(receipt.id).lines
              |> Enum.find(&(&1.id == line.id))
              |> Map.fetch!(:counted_quantity) == nil
@@ -506,9 +469,7 @@ defmodule EstoqueOSWeb.ReceiptLiveTest do
       line = line_for(receipt, 1)
       {:ok, _view, html} = live(conn, ~p"/receipts/#{receipt}")
 
-      # Same reasoning as the recorded tick: a control that appears on save
-      # pushes the row below it down, and the row below it is where the thumb
-      # already is.
+      # Same as the recorded tick: a control appearing on save moves the next row.
       [button] =
         Regex.run(~r{<button[^>]*phx-click="count_again"[^>]*>}, form_for_line(html, line))
 
@@ -516,8 +477,6 @@ defmodule EstoqueOSWeb.ReceiptLiveTest do
       assert button =~ "disabled"
     end
 
-    # "Deseja mesmo continuar ou voltar. O Voltar fica o botão melhor, o
-    # Continuar mesmo assim fica o botão menos chamativo."
     test "closing with lines uncounted names them first", %{
       conn: conn,
       receipt: receipt,
@@ -527,22 +486,17 @@ defmodule EstoqueOSWeb.ReceiptLiveTest do
 
       dialog = Regex.run(~r{<dialog[^>]*id="uncounted-warning".*?</dialog>}s, html) |> hd()
 
-      # The products, not the number: "4 linhas" is not something anyone can
-      # act on, and the answer is usually "that box is still in the van".
+      # The products, not the number: "4 linhas" is not actionable.
       assert dialog =~ "Produto 2"
       assert dialog =~ "Produto 3"
 
-      # Going back is the loud button; continuing is offered plainly and is
-      # never blocked. The order is the assertion — a primary "continue" is how
-      # these dialogs are usually built and is exactly backwards.
+      # Going back is the loud button; continuing is plain and never blocked.
       [{back, _}] = Regex.run(~r{btn btn-primary}, dialog, return: :index)
       [{anyway, _}] = Regex.run(~r{btn btn-ghost}, dialog, return: :index)
       assert anyway < back
 
-      # The close button no longer submits on its own press.
       assert html =~ ~s(data-confirm-open="uncounted-warning")
 
-      # And with everything counted, there is nothing to warn about.
       Enum.each(receipt.lines, fn each ->
         count_line(view, receipt, each, "1", box.code)
       end)
@@ -569,9 +523,7 @@ defmodule EstoqueOSWeb.ReceiptLiveTest do
       assert html =~ "Digite a quantidade contada como número"
     end
 
-    # Goods counted into no box are loose at the location, and loose stock
-    # cannot travel: the next person to load a mission finds a quantity and
-    # nothing to carry it in. The field says `required`; this is the rule
+    # Loose stock cannot travel. The field says `required`; this is the rule
     # behind it, which a socket message cannot skip.
     test "a line cannot be recorded without a box", %{conn: conn, receipt: receipt} do
       line = line_for(receipt, 1)

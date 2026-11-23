@@ -1,22 +1,10 @@
 defmodule EstoqueOS.SeedsLocationsTest do
   @moduledoc """
-  Split out of `SeedsTest`, and deliberately serial.
-
-  `locations` carries a unique index on `lower(name)`, and these are the only
-  tests that must use the real names — "Estoque Principal" in particular, because
-  `config :estoque_os, :default_location_name` points at it and
-  `Locations.default_location/0` looks it up by name. Two dozen other suites
-  create locations with those same names for their own fixtures.
-
-  Concurrent inserts of the same name do not merely queue: each transaction
-  holds the names it already inserted while waiting for the next, so two suites
-  that reach the same pair in opposite orders deadlock. It failed roughly one run
-  in five, always here, because this is the suite that inserts all three canonical
-  names in one go.
-
-  Running these two serially takes them out of every cycle. It costs nothing
-  measurable — the slow half of the seeds, the two spreadsheets, stays async in
-  `SeedsTest`.
+  Deliberately serial. `locations` has a unique index on `lower(name)`, and these
+  tests must use the real names ("Estoque Principal" is the configured default
+  location), which other suites also use in fixtures. Concurrent inserts of the
+  same names hold locks while waiting, so suites reaching a pair in opposite
+  orders deadlock.
   """
 
   use EstoqueOS.DataCase, async: false

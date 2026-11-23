@@ -2,15 +2,10 @@ defmodule EstoqueOS.Outbound.TransportDeclaration do
   @moduledoc """
   The declaração de conteúdo that travels with a load.
 
-  A carrier asks for a paper that says what is inside, who is sending it, who
-  receives it and that none of it is dangerous. The ONG typed it in Word for
-  every trip, copying the item list out of this system by hand — which is the
-  work this replaces.
+  The paper a carrier asks for: contents, sender, recipient, nothing dangerous.
 
-  The recipient is written down here rather than read from the location at print
-  time. What was declared is what was declared: a hospital renamed next month,
-  or a registration corrected after a typo, must not rewrite a document somebody
-  already signed.
+  The recipient is stored here, not read from the location at print time, so a
+  later rename or corrected registration cannot rewrite a document already signed.
   """
 
   use Ecto.Schema
@@ -26,9 +21,7 @@ defmodule EstoqueOS.Outbound.TransportDeclaration do
     field :recipient_address, :string
     field :recipient_postal_code, :string
 
-    # What the carrier's paperwork calls the trip, and the invoice that covers
-    # the goods. Both optional: a donation travelling to a mission has neither,
-    # and a blank line on the printed page is the honest way to say so.
+    # Both optional: a donation travelling to a mission has neither.
     field :scheduling_code, :string
     field :invoice_number, :string
     field :reference, :string
@@ -61,7 +54,7 @@ defmodule EstoqueOS.Outbound.TransportDeclaration do
     |> unique_constraint(:shipment_id)
   end
 
-  # Typed with or without the dots, and the paper always prints them.
+  # Stored as digits; `format_document/1` adds the mask.
   defp normalize_document(nil), do: nil
 
   defp normalize_document(value) do
@@ -74,9 +67,8 @@ defmodule EstoqueOS.Outbound.TransportDeclaration do
   @doc """
   A CNPJ as the paper prints it, and whatever was typed when it is not one.
 
-  Fourteen digits is a CNPJ; anything else is left alone rather than padded into
-  a number that does not exist — a foreign consignee or a hospital that gave a
-  CPF are both real, and both would be corrupted by forcing the mask.
+  Only fourteen digits is a CNPJ; anything else (a CPF, a foreign consignee) is
+  left alone rather than corrupted by forcing the mask.
   """
   def format_document(nil), do: nil
 
