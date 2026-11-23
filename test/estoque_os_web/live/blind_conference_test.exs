@@ -108,12 +108,13 @@ defmodule EstoqueOSWeb.BlindConferenceTest do
       line = hd(receipt.lines)
       {:ok, view, _html} = live(conn, ~p"/receipts/#{receipt}")
 
-      html =
-        view
-        |> element("#count-#{line.id}")
-        |> render_submit(%{"counted_quantity" => "287", "box_code" => box.code})
+      view
+      |> element("#count-#{line.id}")
+      |> render_submit(%{"counted_quantity" => "287", "box_code" => box.code})
 
-      text = visible_text(html)
+      # Scope to the lines panel: the topbar's test email can contain "300" by
+      # chance. Strip tags too: "300" lives in `border-base-300`.
+      text = view |> element("#receipt-lines") |> render() |> visible_text()
 
       assert text =~ "Conte este item de novo"
       assert text =~ "contagem 2 de 3"
