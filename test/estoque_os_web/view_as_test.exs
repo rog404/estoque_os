@@ -107,7 +107,7 @@ defmodule EstoqueOSWeb.ViewAsTest do
 
       {:ok, view, html} = live(conn, ~p"/stock")
 
-      refute html =~ "phx-submit=\"import\""
+      refute html =~ "phx-submit=\"preview\""
 
       refute EstoqueOSWeb.UserAuth.operator?(
                :sys.get_state(view.pid).socket.assigns.current_scope

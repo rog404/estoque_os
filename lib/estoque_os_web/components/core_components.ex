@@ -524,7 +524,7 @@ defmodule EstoqueOSWeb.CoreComponents do
       {gettext("Download example spreadsheet")}
     </a>
 
-    <form id={@id} phx-submit="import" phx-change="validate" class="space-y-2">
+    <form id={@id} phx-submit="preview" phx-change="validate" class="space-y-2">
       <.live_file_input upload={@upload} class="file-input file-input-bordered w-full" />
 
       <label :if={@initial_import} class="flex items-center gap-2 text-sm">
@@ -534,7 +534,7 @@ defmodule EstoqueOSWeb.CoreComponents do
 
       <.button class="btn-block" phx-disable-with={gettext("Reading the spreadsheet...")}>
         <.icon name="hero-arrow-up-tray" class="size-5" />
-        {gettext("Import count")}
+        {gettext("Preview the count")}
       </.button>
       <p class="text-sm text-base-content/80">
         {gettext("The spreadsheet states what is physically there; only the difference is posted.")}
@@ -542,6 +542,199 @@ defmodule EstoqueOSWeb.CoreComponents do
     </form>
     """
   end
+
+  @doc """
+  Shows what a counted spreadsheet would do before it is posted: how many lines
+  import, what blocks them, what is already expired and what will be created.
+  Blocked lines can be fixed by creating the product or excluded on the spot, so
+  the rest still imports.
+  """
+  attr :preview, :map, required: true
+  attr :excluded, :list, default: []
+
+  def spreadsheet_preview(assigns) do
+    ~H"""
+    <div class="space-y-4 mt-4">
+      <div class="stats stats-horizontal border border-base-300 w-full">
+        <div class="stat">
+          <div class="stat-title">{gettext("To import")}</div>
+          <div class="stat-value text-success">{@preview.total - length(@preview.blocking)}</div>
+          <div class="stat-desc">{gettext("line(s)")}</div>
+        </div>
+        <div :if={@preview.blocking != []} class="stat">
+          <div class="stat-title">{gettext("Blocked")}</div>
+          <div class="stat-value text-error">{length(@preview.blocking)}</div>
+          <div class="stat-desc">{gettext("fix or exclude them")}</div>
+        </div>
+      </div>
+
+      <div :if={@preview.blocking != []} class="rounded-box border border-error/40 p-4 space-y-2">
+        <p class="font-semibold text-error">{gettext("These lines block the import:")}</p>
+        <div :for={row <- @preview.blocking} class="flex items-start justify-between gap-2 text-sm">
+          <span>
+            {gettext("line %{line}: %{message}",
+              line: row.line,
+              message: preview_issue_messages(row)
+            )}
+          </span>
+          <div class="flex shrink-0 gap-1">
+            <.button
+              :if={unknown_product(row)}
+              phx-click="create_product"
+              phx-value-line={row.line}
+              class="btn-xs"
+            >
+              {gettext("Create product")}
+            </.button>
+            <.button
+              phx-click="exclude"
+              phx-value-line={row.line}
+              class="btn-xs btn-outline btn-error"
+            >
+              {gettext("Exclude")}
+            </.button>
+          </div>
+        </div>
+      </div>
+
+      <details
+        :if={@excluded != []}
+        class="collapse collapse-arrow border border-base-300 rounded-box"
+      >
+        <summary class="collapse-title font-medium flex items-center gap-2">
+          <.icon name="hero-no-symbol" class="size-5" />
+          {gettext("Excluded (%{count})", count: length(@excluded))}
+        </summary>
+        <div class="collapse-content space-y-1">
+          <div :for={row <- @excluded} class="flex items-center justify-between gap-2 text-sm">
+            <span>{gettext("line %{line}: %{product}",
+              line: row.line,
+              product: row.product || gettext("box %{code}", code: row.box)
+            )}</span>
+            <.button phx-click="restore" phx-value-line={row.line} class="btn-xs btn-ghost">
+              {gettext("Restore")}
+            </.button>
+          </div>
+        </div>
+      </details>
+
+      <.preview_group
+        :if={@preview.products_to_create != []}
+        tone="warning"
+        icon="hero-plus-circle"
+        title={gettext("Products to create (%{count})", count: length(@preview.products_to_create))}
+        note={gettext("not in the catalog yet — created when you confirm")}
+        items={@preview.products_to_create}
+      />
+
+      <.preview_group
+        :if={@preview.expired != []}
+        tone="warning"
+        icon="hero-exclamation-triangle"
+        title={gettext("Already expired (%{count})", count: length(@preview.expired))}
+        note={gettext("imported anyway; write them off by adjustment to record the disposal")}
+        items={Enum.map(@preview.expired, &expired_label/1)}
+      />
+
+      <.preview_group
+        :if={@preview.named_only_boxes != []}
+        tone="info"
+        icon="hero-archive-box"
+        title={gettext("Boxes with a name only (%{count})", count: length(@preview.named_only_boxes))}
+        note={gettext("registered empty, with no stock line")}
+        items={@preview.named_only_boxes}
+      />
+
+      <.preview_group
+        :if={@preview.locations_to_create != []}
+        tone="info"
+        icon="hero-map-pin"
+        title={gettext("New places (%{count})", count: length(@preview.locations_to_create))}
+        note={gettext("created when you confirm")}
+        items={@preview.locations_to_create}
+      />
+
+      <.preview_group
+        :if={@preview.boxes_to_create != []}
+        tone="info"
+        icon="hero-cube"
+        title={gettext("New boxes (%{count})", count: length(@preview.boxes_to_create))}
+        note={gettext("created when you confirm")}
+        items={@preview.boxes_to_create}
+      />
+
+      <div class="flex items-center gap-2">
+        <.button
+          variant="primary"
+          class="btn-block"
+          phx-click="confirm"
+          disabled={@preview.blocking != []}
+          phx-disable-with={gettext("Importing...")}
+        >
+          <.icon name="hero-check" class="size-5" />
+          {gettext("Confirm and import")}
+        </.button>
+        <.button phx-click="start_over" class="btn-ghost">
+          {gettext("Start over")}
+        </.button>
+      </div>
+    </div>
+    """
+  end
+
+  attr :title, :string, required: true
+  attr :note, :string, default: nil
+  attr :icon, :string, required: true
+  attr :tone, :string, default: "info"
+  attr :items, :list, required: true
+
+  defp preview_group(assigns) do
+    ~H"""
+    <details class="collapse collapse-arrow border border-base-300 rounded-box">
+      <summary class="collapse-title font-medium flex items-center gap-2">
+        <.icon name={@icon} class={["size-5", @tone == "warning" && "text-warning"]} />
+        {@title}
+      </summary>
+      <div class="collapse-content">
+        <p :if={@note} class="text-sm text-base-content/70 mb-2">{@note}</p>
+        <ul class="list-disc list-inside text-sm space-y-0.5">
+          <li :for={item <- @items}>{item}</li>
+        </ul>
+      </div>
+    </details>
+    """
+  end
+
+  defp expired_label(row) do
+    "#{row.product} — #{Calendar.strftime(row.expires_on, "%d/%m/%Y")}"
+  end
+
+  defp unknown_product(row) do
+    Enum.any?(row.issues, &match?({:product_unknown, _name}, &1))
+  end
+
+  defp preview_issue_messages(row) do
+    row.issues
+    |> Enum.map(&preview_issue_message/1)
+    |> Enum.reject(&is_nil/1)
+    |> Enum.join("; ")
+  end
+
+  defp preview_issue_message(:product_missing), do: gettext("the product name is missing")
+  defp preview_issue_message(:location_missing), do: gettext("the location is missing")
+  defp preview_issue_message(:quantity_missing), do: gettext("the quantity is missing")
+  defp preview_issue_message(:quantity_negative), do: gettext("the quantity is negative")
+
+  defp preview_issue_message({:product_unknown, name}),
+    do: gettext("product \"%{name}\" is not in the catalog", name: name)
+
+  defp preview_issue_message({:location_unknown, name}),
+    do: gettext("location \"%{name}\" does not exist", name: name)
+
+  defp preview_issue_message({:box_elsewhere, location}),
+    do: gettext("the box is at %{location}", location: location)
+
+  defp preview_issue_message(_issue), do: nil
 
   attr :result, :any, default: nil
   attr :errors, :list, default: []
