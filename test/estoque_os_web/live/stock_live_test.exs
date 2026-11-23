@@ -131,7 +131,7 @@ defmodule EstoqueOSWeb.StockLiveTest do
     assert byte_size(response(conn, 200)) > 0
   end
 
-  test "reports bad lines instead of importing them", %{conn: conn, lot: lot} do
+  test "a blocked line is flagged on the preview and nothing is posted", %{conn: conn, lot: lot} do
     binary =
       sheet([
         ["Produto", "Lote", "Local", "Quantidade"],
@@ -152,12 +152,40 @@ defmodule EstoqueOSWeb.StockLiveTest do
 
     html = view |> element("#spreadsheet-import-form") |> render_submit()
 
-    assert html =~ "Nada foi importado"
+    assert html =~ "travam a importação"
     assert html =~ "não está no catálogo"
     assert Decimal.equal?(Inventory.balance(lot_id: lot.id), Decimal.new(300))
   end
 
-  test "a counted spreadsheet adjusts stock", %{conn: conn, lot: lot} do
+  test "excluding the blocked line imports the rest", %{conn: conn, lot: lot} do
+    binary =
+      sheet([
+        ["Produto", "Lote", "Local", "Quantidade"],
+        ["Produto inexistente", "X", "Estoque Principal", 5],
+        ["Eletrodo ECG adulto", "114391U02", "Estoque Principal", 287]
+      ])
+
+    {:ok, view, _html} = live(conn, ~p"/reports/data")
+
+    view
+    |> file_input("#spreadsheet-import-form", :sheet, [
+      %{
+        name: "contagem.xlsx",
+        content: binary,
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      }
+    ])
+    |> render_upload("contagem.xlsx")
+
+    view |> element("#spreadsheet-import-form") |> render_submit()
+    render_click(view, "exclude", %{"line" => "2"})
+    html = render_click(view, "confirm")
+
+    assert html =~ "1 lote(s) ajustado(s)"
+    assert Decimal.equal?(Inventory.balance(lot_id: lot.id), Decimal.new(287))
+  end
+
+  test "a counted spreadsheet adjusts stock after confirming", %{conn: conn, lot: lot} do
     binary =
       sheet([
         ["Produto", "Lote", "Local", "Quantidade"],
@@ -177,7 +205,10 @@ defmodule EstoqueOSWeb.StockLiveTest do
     |> render_upload("contagem.xlsx")
 
     html = view |> element("#spreadsheet-import-form") |> render_submit()
+    refute html =~ "lote(s) ajustado(s)"
+    assert Decimal.equal?(Inventory.balance(lot_id: lot.id), Decimal.new(300))
 
+    html = render_click(view, "confirm")
     assert html =~ "1 lote(s) ajustado(s)"
     assert Decimal.equal?(Inventory.balance(lot_id: lot.id), Decimal.new(287))
   end

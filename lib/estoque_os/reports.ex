@@ -317,10 +317,148 @@ defmodule EstoqueOS.Reports do
   is a typo to catch.
   """
   def import_stock(binary, opts \\ []) do
-    with {:ok, rows} <- StockWorkbook.import_rows(binary),
-         {:ok, resolved} <- resolve_rows(rows, opts) do
+    with {:ok, rows} <- StockWorkbook.import_rows(binary) do
+      import_counted_rows(rows, opts)
+    end
+  end
+
+  @doc """
+  Posts already-parsed count rows, so the preview can confirm the subset the
+  operator kept after excluding bad lines.
+  """
+  def import_counted_rows(rows, opts \\ []) do
+    with {:ok, resolved} <- resolve_rows(rows, opts) do
       post_counted_rows(resolved, opts)
     end
+  end
+
+  @doc """
+  Classifies a counted spreadsheet without writing anything.
+
+  The operator sees, before confirming, what will be created, what is already
+  expired and what blocks the import. The import still validates on confirm, so
+  a preview never commits by itself.
+  """
+  def preview_stock_import(binary, opts \\ []) do
+    with {:ok, rows} <- StockWorkbook.import_rows(binary) do
+      {:ok, preview_rows(rows, opts)}
+    end
+  end
+
+  @doc "Classifies already-parsed rows, rebuilt as the operator excludes lines."
+  def preview_rows(rows, opts \\ []) do
+    rows
+    |> Enum.reject(&blank_row?/1)
+    |> Enum.map(&preview_row(&1, opts))
+    |> summarize_preview(opts)
+  end
+
+  @doc "Creates a product the count refers to but the catalog lacks."
+  def create_import_product(name) when is_binary(name) do
+    %Product{}
+    |> Product.changeset(%{name: String.upcase(name), stock_unit: "UN", segment: "medical"})
+    |> Repo.insert()
+  end
+
+  defp preview_row(row, opts) do
+    issues = row_issues(row, opts)
+
+    row
+    |> Map.take([:line, :product, :lot_number, :expires_on, :box, :location, :quantity])
+    |> Map.merge(%{issues: issues, blocking?: Enum.any?(issues, &blocking_issue?/1)})
+  end
+
+  defp row_issues(row, opts) do
+    create_missing = create_missing?(opts)
+
+    [
+      product_issue(row, create_missing),
+      location_issue(row, create_missing),
+      box_issue(row),
+      quantity_issue(row, create_missing),
+      expiry_issue(row)
+    ]
+    |> Enum.reject(&is_nil/1)
+  end
+
+  defp product_issue(%{product: nil, box: box}, create_missing) when not is_nil(box),
+    do: if(create_missing, do: :named_only_box, else: :product_missing)
+
+  defp product_issue(%{product: nil}, _create_missing), do: :product_missing
+
+  defp product_issue(%{product: name}, create_missing) do
+    cond do
+      get_by_name(Product, name) -> nil
+      create_missing -> :product_new
+      true -> {:product_unknown, name}
+    end
+  end
+
+  defp location_issue(%{location: nil}, _create_missing), do: :location_missing
+
+  defp location_issue(%{location: name}, create_missing) do
+    cond do
+      get_by_name(Location, name) -> nil
+      create_missing -> :location_new
+      true -> {:location_unknown, name}
+    end
+  end
+
+  defp box_issue(%{box: nil}), do: nil
+
+  defp box_issue(%{box: code, location: location}) do
+    case Repo.one(from b in Box, where: fragment("upper(?)", b.code) == ^String.upcase(code)) do
+      nil ->
+        :box_new
+
+      %Box{location_id: location_id} = box ->
+        here = location && get_by_name(Location, location)
+
+        if here && here.id == location_id,
+          do: nil,
+          else: {:box_elsewhere, Repo.get!(Location, box.location_id).name}
+    end
+  end
+
+  defp quantity_issue(%{product: nil}, _create_missing), do: nil
+
+  defp quantity_issue(%{quantity: nil}, create_missing),
+    do: if(create_missing, do: nil, else: :quantity_missing)
+
+  defp quantity_issue(%{quantity: quantity}, _create_missing),
+    do: if(Decimal.negative?(quantity), do: :quantity_negative, else: nil)
+
+  defp expiry_issue(%{expires_on: nil}), do: nil
+
+  defp expiry_issue(%{expires_on: date}),
+    do: if(Date.compare(date, Date.utc_today()) == :lt, do: :expired, else: nil)
+
+  @blocking_issues ~w(product_missing product_unknown location_missing location_unknown box_elsewhere quantity_missing quantity_negative)a
+
+  defp blocking_issue?(issue) when is_tuple(issue), do: elem(issue, 0) in @blocking_issues
+  defp blocking_issue?(issue), do: issue in @blocking_issues
+
+  defp summarize_preview(previews, opts) do
+    %{
+      create_missing: create_missing?(opts),
+      total: length(previews),
+      ready: Enum.count(previews, &(&1.issues == [])),
+      rows: previews,
+      blocking: Enum.filter(previews, & &1.blocking?),
+      products_to_create: distinct_with(previews, :product_new, & &1.product),
+      locations_to_create: distinct_with(previews, :location_new, & &1.location),
+      boxes_to_create: distinct_with(previews, :box_new, & &1.box),
+      named_only_boxes: distinct_with(previews, :named_only_box, & &1.box),
+      expired: Enum.filter(previews, &(:expired in &1.issues))
+    }
+  end
+
+  defp distinct_with(previews, issue, field) do
+    previews
+    |> Enum.filter(&(issue in &1.issues))
+    |> Enum.map(field)
+    |> Enum.reject(&is_nil/1)
+    |> Enum.uniq()
   end
 
   defp resolve_rows(rows, opts) do
@@ -383,13 +521,7 @@ defmodule EstoqueOS.Reports do
   # Upper-cased so one item in two cases is one product. Always surgical; a
   # marketing item is reclassified by hand.
   defp create_missing_product(row) do
-    case %Product{}
-         |> Product.changeset(%{
-           name: String.upcase(row.product),
-           stock_unit: "UN",
-           segment: "medical"
-         })
-         |> Repo.insert() do
+    case create_import_product(row.product) do
       {:ok, product} ->
         {:ok, product}
 

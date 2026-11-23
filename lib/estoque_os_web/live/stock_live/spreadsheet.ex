@@ -4,27 +4,38 @@ defmodule EstoqueOSWeb.StockLive.Spreadsheet do
   back in is a *count*: the sheet states what is physically on the shelf and
   only the difference is posted, as an adjustment. It never adds stock the way
   an invoice does.
+
+  An upload is previewed, never posted straight away. On the preview the
+  operator creates products the catalog lacks and excludes bad lines, so only
+  the lines that are right get imported.
   """
 
   use EstoqueOSWeb, :live_view
 
   alias EstoqueOS.Reports
 
-  # Events a viewer may send; everything else is refused. `import` posts the count.
   def viewer_events, do: ~w(validate)
 
   @impl true
   def mount(_params, _session, socket) do
-    {:ok,
-     socket
-     |> assign(:page_title, gettext("Data"))
-     |> assign(:import_result, nil)
-     |> assign(:import_errors, [])
-     |> allow_upload(:sheet,
-       accept: ~w(.xlsx application/vnd.openxmlformats-officedocument.spreadsheetml.sheet),
-       max_entries: 1,
-       max_file_size: 16_000_000
-     )}
+    {:ok, reset(socket)}
+  end
+
+  defp reset(socket) do
+    socket
+    |> assign(:page_title, gettext("Data"))
+    |> assign(:preview, nil)
+    |> assign(:rows, [])
+    |> assign(:excluded, MapSet.new())
+    |> assign(:excluded_rows, [])
+    |> assign(:create_missing, false)
+    |> assign(:import_result, nil)
+    |> assign(:import_errors, [])
+    |> allow_upload(:sheet,
+      accept: ~w(.xlsx application/vnd.openxmlformats-officedocument.spreadsheetml.sheet),
+      max_entries: 1,
+      max_file_size: 16_000_000
+    )
   end
 
   @impl true
@@ -39,7 +50,7 @@ defmodule EstoqueOSWeb.StockLive.Spreadsheet do
           </:subtitle>
         </.header>
 
-        <div class="rounded-box border border-base-300 p-4 space-y-3">
+        <div :if={is_nil(@preview)} class="rounded-box border border-base-300 p-4 space-y-3">
           <.spreadsheet_actions
             upload={@uploads.sheet}
             export_path={~p"/stock/export.xlsx"}
@@ -48,6 +59,8 @@ defmodule EstoqueOSWeb.StockLive.Spreadsheet do
             id="spreadsheet-import-form"
           />
         </div>
+
+        <.spreadsheet_preview :if={@preview} preview={@preview} excluded={@excluded_rows} />
 
         <.spreadsheet_outcome result={@import_result} errors={@import_errors} />
       </div>
@@ -58,23 +71,74 @@ defmodule EstoqueOSWeb.StockLive.Spreadsheet do
   @impl true
   def handle_event("validate", _params, socket), do: {:noreply, socket}
 
-  def handle_event("import", params, socket) do
-    user_id = socket.assigns.current_scope.user.id
+  def handle_event("preview", params, socket) do
     create_missing = params["create_missing"] == "true"
 
     case consume_uploaded_entries(socket, :sheet, fn %{path: path}, _entry ->
-           {:ok,
-            path
-            |> File.read!()
-            |> Reports.import_stock(user_id: user_id, create_missing: create_missing)}
+           {:ok, File.read!(path)}
          end) do
-      [{:ok, result}] ->
-        {:noreply, socket |> assign(:import_result, result) |> assign(:import_errors, [])}
+      [binary] ->
+        start_preview(socket, binary, create_missing)
 
-      [{:error, errors}] when is_list(errors) ->
-        {:noreply, socket |> assign(:import_errors, errors) |> assign(:import_result, nil)}
+      [] ->
+        {:noreply, put_flash(socket, :error, gettext("Pick a spreadsheet first."))}
+    end
+  end
 
-      [{:error, {:missing_columns, columns}}] ->
+  def handle_event("exclude", %{"line" => line}, socket) do
+    {:noreply, rebuild(socket, MapSet.put(socket.assigns.excluded, to_line(line)))}
+  end
+
+  def handle_event("restore", %{"line" => line}, socket) do
+    {:noreply, rebuild(socket, MapSet.delete(socket.assigns.excluded, to_line(line)))}
+  end
+
+  def handle_event("create_product", %{"line" => line}, socket) do
+    row = Enum.find(socket.assigns.rows, &(&1.line == to_line(line)))
+
+    case row && row.product && Reports.create_import_product(row.product) do
+      {:ok, product} ->
+        {:noreply,
+         socket
+         |> put_flash(:info, gettext("Product \"%{name}\" created.", name: product.name))
+         |> rebuild(socket.assigns.excluded)}
+
+      _ ->
+        {:noreply, put_flash(socket, :error, gettext("The product could not be created."))}
+    end
+  end
+
+  def handle_event("confirm", _params, socket) do
+    %{rows: rows, excluded: excluded, create_missing: create_missing} = socket.assigns
+    user_id = socket.assigns.current_scope.user.id
+    kept = Enum.reject(rows, &MapSet.member?(excluded, &1.line))
+
+    case Reports.import_counted_rows(kept, user_id: user_id, create_missing: create_missing) do
+      {:ok, result} ->
+        {:noreply, socket |> reset() |> assign(:import_result, result)}
+
+      {:error, errors} when is_list(errors) ->
+        {:noreply, socket |> assign(:import_errors, errors) |> assign(:preview, nil)}
+
+      {:error, _reason} ->
+        {:noreply, put_flash(socket, :error, gettext("The spreadsheet could not be read."))}
+    end
+  end
+
+  def handle_event("start_over", _params, socket), do: {:noreply, reset(socket)}
+
+  defp start_preview(socket, binary, create_missing) do
+    case Reports.StockWorkbook.import_rows(binary) do
+      {:ok, rows} ->
+        {:noreply,
+         socket
+         |> assign(:rows, rows)
+         |> assign(:create_missing, create_missing)
+         |> assign(:import_result, nil)
+         |> assign(:import_errors, [])
+         |> rebuild(MapSet.new())}
+
+      {:error, {:missing_columns, columns}} ->
         {:noreply,
          put_flash(
            socket,
@@ -84,11 +148,21 @@ defmodule EstoqueOSWeb.StockLive.Spreadsheet do
            )
          )}
 
-      [{:error, _reason}] ->
+      {:error, _reason} ->
         {:noreply, put_flash(socket, :error, gettext("The spreadsheet could not be read."))}
-
-      [] ->
-        {:noreply, put_flash(socket, :error, gettext("Pick a spreadsheet first."))}
     end
   end
+
+  defp rebuild(socket, excluded) do
+    %{rows: rows, create_missing: create_missing} = socket.assigns
+    {excluded_rows, kept} = Enum.split_with(rows, &MapSet.member?(excluded, &1.line))
+
+    socket
+    |> assign(:excluded, excluded)
+    |> assign(:excluded_rows, excluded_rows)
+    |> assign(:preview, Reports.preview_rows(kept, create_missing: create_missing))
+  end
+
+  defp to_line(line) when is_integer(line), do: line
+  defp to_line(line) when is_binary(line), do: String.to_integer(line)
 end

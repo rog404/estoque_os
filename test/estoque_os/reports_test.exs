@@ -228,6 +228,64 @@ defmodule EstoqueOS.ReportsTest do
     end
   end
 
+  describe "preview_stock_import/2" do
+    test "lists products the catalog does not have yet" do
+      binary =
+        sheet([
+          ["Produto", "Lote", "Validade", "Local", "Quantidade"],
+          ["Produto novo demo", "L1", "", "Estoque Principal", 5]
+        ])
+
+      assert {:ok, preview} = Reports.preview_stock_import(binary, create_missing: true)
+      assert "Produto novo demo" in preview.products_to_create
+      assert preview.blocking == []
+    end
+
+    test "blocks an unknown product when not creating missing items" do
+      binary =
+        sheet([
+          ["Produto", "Lote", "Local", "Quantidade"],
+          ["Produto fantasma", "L1", "Estoque Principal", 5]
+        ])
+
+      assert {:ok, preview} = Reports.preview_stock_import(binary)
+      assert [row] = preview.blocking
+      assert Enum.any?(row.issues, &match?({:product_unknown, _name}, &1))
+    end
+
+    test "flags an already expired lot", %{product: product} do
+      binary =
+        sheet([
+          ["Produto", "Lote", "Validade", "Local", "Quantidade"],
+          [product.name, "L-OLD", "01/01/2020", "Estoque Principal", 5]
+        ])
+
+      assert {:ok, preview} = Reports.preview_stock_import(binary)
+      assert [row] = preview.expired
+      assert row.product == product.name
+    end
+
+    test "registers a box-only row as a named box" do
+      binary =
+        sheet([
+          ["Produto", "Lote", "Local", "Quantidade", "Caixa"],
+          ["", "", "Estoque Principal", "", "OR84"]
+        ])
+
+      assert {:ok, preview} = Reports.preview_stock_import(binary, create_missing: true)
+      assert "OR84" in preview.named_only_boxes
+    end
+  end
+
+  describe "create_import_product/1" do
+    test "creates an upper-cased surgical product" do
+      assert {:ok, product} = Reports.create_import_product("gaze demo")
+      assert product.name == "GAZE DEMO"
+      assert product.segment == "medical"
+      assert product.stock_unit == "UN"
+    end
+  end
+
   defp import_box_elsewhere_sheet do
     counted_sheet([
       %{
