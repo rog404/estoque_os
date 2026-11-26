@@ -72,18 +72,6 @@ defmodule EstoqueOSWeb.Layouts do
               current_scope={@current_scope}
             />
 
-            <button
-              :if={@current_scope && @sees_money?}
-              type="button"
-              class="btn btn-ghost btn-square"
-              phx-click={JS.dispatch("phx:toggle-money")}
-              aria-label={gettext("Show or hide the amounts")}
-              title={gettext("Show or hide the amounts")}
-            >
-              <.icon name="hero-eye" class="size-5 money-real" />
-              <.icon name="hero-eye-slash" class="size-5 money-mask" />
-            </button>
-
             <details :if={@current_scope} class="dropdown dropdown-end lg:hidden">
               <summary class="btn btn-ghost" aria-label={gettext("Open menu")}>
                 <.icon name="hero-bars-3" class="size-5" />
@@ -109,6 +97,14 @@ defmodule EstoqueOSWeb.Layouts do
                   <li><.link navigate={~p"/users/settings"}>{gettext("Settings")}</.link></li>
                   <li :if={admin?(@current_scope)}>
                     <.link navigate={~p"/admin/users"}>{gettext("Manage users")}</.link>
+                  </li>
+                  <%!-- Moved off the navbar: it only matters to money roles and wasted space, most of all on mobile. --%>
+                  <li :if={@sees_money?}>
+                    <button type="button" phx-click={JS.dispatch("phx:toggle-money")}>
+                      <.icon name="hero-eye" class="size-4 money-real" />
+                      <.icon name="hero-eye-slash" class="size-4 money-mask" />
+                      {gettext("Show or hide amounts")}
+                    </button>
                   </li>
                 </ul>
 
