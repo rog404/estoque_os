@@ -98,7 +98,6 @@ defmodule EstoqueOSWeb.HomeLive.Index do
     <Layouts.app flash={@flash} current_scope={@current_scope} current_path={assigns[:current_path]}>
       <.header>
         {gettext("Overview")}
-        <:subtitle>{subtitle(@segment)}</:subtitle>
       </.header>
 
       <div role="tablist" class="tabs tabs-box w-fit">
@@ -487,9 +486,6 @@ defmodule EstoqueOSWeb.HomeLive.Index do
 
   defp shortage_title("marketing"), do: gettext("Time to restock")
   defp shortage_title(_segment), do: gettext("Below the mission minimum")
-
-  defp subtitle("marketing"), do: gettext("What the marketing stock needs today.")
-  defp subtitle(_segment), do: gettext("What needs attention before the next mission.")
 
   # A week is where ordering still works: printing, delivery and putaway take time.
   defp cover_class(days) when days <= 7, do: "text-error"

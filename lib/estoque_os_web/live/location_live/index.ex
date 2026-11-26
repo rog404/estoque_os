@@ -87,9 +87,6 @@ defmodule EstoqueOSWeb.LocationLive.Index do
     <Layouts.app flash={@flash} current_scope={@current_scope} current_path={assigns[:current_path]}>
       <.header>
         {gettext("Locations")}
-        <:subtitle>
-          {gettext("Warehouses, mission sites, and stock that is on its way.")}
-        </:subtitle>
       </.header>
 
       <.write_gate may={@role_may_write?} allowed={@controls_enabled?}>

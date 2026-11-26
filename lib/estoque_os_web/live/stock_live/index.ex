@@ -132,9 +132,6 @@ defmodule EstoqueOSWeb.StockLive.Index do
     <Layouts.app flash={@flash} current_scope={@current_scope} current_path={assigns[:current_path]}>
       <.header>
         {gettext("Stock")}
-        <:subtitle>
-          {gettext("%{count} stored lot(s)", count: @total)}
-        </:subtitle>
       </.header>
 
       <%!-- Two forms in one bar (forms cannot nest): search answers as you type, while the filter panel applies only on submit so ticking several boxes does not reload the list each time. --%>

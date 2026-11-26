@@ -122,9 +122,6 @@ defmodule EstoqueOSWeb.ReturnLive.Index do
     <Layouts.app flash={@flash} current_scope={@current_scope} current_path={assigns[:current_path]}>
       <.header>
         {gettext("Mission return")}
-        <:subtitle>
-          {gettext("Count what came back and say which box it went into.")}
-        </:subtitle>
         <:actions>
           <.reveal_expected
             available?={may_reveal?(assigns) and not @revealed?}

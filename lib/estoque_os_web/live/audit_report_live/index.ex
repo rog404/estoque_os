@@ -73,12 +73,6 @@ defmodule EstoqueOSWeb.AuditReportLive.Index do
     <Layouts.app flash={@flash} current_scope={@current_scope} current_path={assigns[:current_path]}>
       <.header>
         {gettext("Audit report")}
-        <:subtitle>
-          {gettext("Everything that moved between %{from} and %{to}.",
-            from: date(@from),
-            to: date(@to)
-          )}
-        </:subtitle>
       </.header>
 
       <form id="period-form" phx-change="filter" class="field-row mt-4">
