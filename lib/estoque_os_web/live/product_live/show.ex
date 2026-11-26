@@ -99,6 +99,7 @@ defmodule EstoqueOSWeb.ProductLive.Show do
        EstoqueOS.Inventory.average_cost_by_product([history.product.id])[id_of(history)]
      )
      |> assign(:changes, Catalog.product_changes(history.product.id))
+     |> assign(:aliases, Catalog.list_aliases(history.product.id))
      |> assign(:may_box?, may_box?(socket.assigns.current_scope))
      |> assign_positions(history)}
   end
@@ -355,6 +356,49 @@ defmodule EstoqueOSWeb.ProductLive.Show do
       </.panel>
 
       <.panel
+        title={gettext("Other names")}
+        note={gettext("Nicknames and former names. Search finds the product by any of them.")}
+      >
+        <div class="space-y-3">
+          <ul :if={@aliases != []} class="flex flex-wrap gap-2">
+            <li :for={a <- @aliases} class="badge badge-neutral gap-1 py-3">
+              {a.name}
+              <.write_gate may={may_plan?(@current_scope)} allowed={@controls_enabled?}>
+                <button
+                  type="button"
+                  phx-click="remove_alias"
+                  phx-value-id={a.id}
+                  class="btn btn-ghost btn-xs btn-circle"
+                  aria-label={gettext("Remove %{name}", name: a.name)}
+                >
+                  <.icon name="hero-x-mark" class="size-3" />
+                </button>
+              </.write_gate>
+            </li>
+          </ul>
+          <p :if={@aliases == []} class="text-sm text-base-content/60">
+            {gettext("No other name yet.")}
+          </p>
+
+          <.write_gate may={may_plan?(@current_scope)} allowed={@controls_enabled?}>
+            <form id="add-alias-form" phx-submit="add_alias" class="flex items-center gap-2">
+              <input
+                type="text"
+                name="name"
+                placeholder={gettext("another name")}
+                autocomplete="off"
+                class="input input-sm input-bordered w-full max-w-xs"
+                aria-label={gettext("Another name for this product")}
+              />
+              <.button class="btn-sm" phx-disable-with={gettext("Adding...")}>
+                {gettext("Add name")}
+              </.button>
+            </form>
+          </.write_gate>
+        </div>
+      </.panel>
+
+      <.panel
         :if={@sees_money?}
         title={gettext("What was paid")}
         note={gettext("Per unit, newest first. A donation is absent rather than shown as free.")}
@@ -541,6 +585,38 @@ defmodule EstoqueOSWeb.ProductLive.Show do
     else
       {:noreply, put_flash(socket, :error, gettext("You don't have permission to do that."))}
     end
+  end
+
+  def handle_event("add_alias", %{"name" => name}, socket) do
+    with_catalog_rights(socket, fn product, _scope ->
+      case Catalog.add_alias(product, name) do
+        {:ok, _alias} ->
+          {:noreply,
+           socket
+           |> put_flash(:info, gettext("Name added."))
+           |> assign(:aliases, Catalog.list_aliases(product.id))}
+
+        {:error, :blank} ->
+          {:noreply, put_flash(socket, :error, gettext("Type a name."))}
+
+        {:error, :taken} ->
+          {:noreply, put_flash(socket, :error, gettext("That name is already in use."))}
+
+        {:error, _changeset} ->
+          {:noreply, put_flash(socket, :error, gettext("That name could not be added."))}
+      end
+    end)
+  end
+
+  def handle_event("remove_alias", %{"id" => id}, socket) do
+    with_catalog_rights(socket, fn product, _scope ->
+      Catalog.delete_alias(id)
+
+      {:noreply,
+       socket
+       |> put_flash(:info, gettext("Name removed."))
+       |> assign(:aliases, Catalog.list_aliases(product.id))}
+    end)
   end
 
   # `@writable?` (may this session act) and `may_plan?` (does this role plan) are

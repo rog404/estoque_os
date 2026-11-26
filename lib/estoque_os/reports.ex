@@ -9,7 +9,7 @@ defmodule EstoqueOS.Reports do
 
   import Ecto.Query
 
-  alias EstoqueOS.Catalog.{Product, ProductGroup, ProductIdentifier, UnitConversion}
+  alias EstoqueOS.Catalog.{Product, ProductAlias, ProductGroup, ProductIdentifier, UnitConversion}
   alias EstoqueOS.Inventory
   alias EstoqueOS.Inventory.{Box, Location, Lot, StockSnapshot, Transaction, TransactionEntry}
   alias EstoqueOS.Invoices.{Invoice, InvoiceItem}
@@ -72,24 +72,55 @@ defmodule EstoqueOS.Reports do
       quantity: s.quantity
     })
     |> Repo.all()
-    |> Enum.map(fn row ->
-      unit_cost = costs[row.lot_id]
+    |> then(fn rows ->
+      arrival = arrival_by_lot(Enum.map(rows, & &1.lot_id))
 
-      row
-      |> Map.put(:unit_cost, unit_cost)
-      |> Map.put(:total, unit_cost && Decimal.mult(unit_cost, row.quantity))
-      |> Map.put(:packagings, Map.get(packagings, row.product_id, []))
-      # Always booleans: a nil reaches the template as `nil and ...`, which raises.
-      |> Map.put(:expired, !is_nil(row.expires_on) and Date.before?(row.expires_on, today))
-      |> Map.put(
-        :expiring,
-        !is_nil(row.expires_on) and Date.compare(row.expires_on, horizon) != :gt
-      )
-      # "Running low" is about the *product* across the whole warehouse, not this
-      # position, so a filtered or paged view cannot make it look short.
-      |> Map.put(:below_minimum, below_minimum?(row, totals))
+      Enum.map(rows, fn row ->
+        unit_cost = costs[row.lot_id]
+
+        row
+        |> Map.put(:unit_cost, unit_cost)
+        |> Map.put(:total, unit_cost && Decimal.mult(unit_cost, row.quantity))
+        |> Map.put(:packagings, Map.get(packagings, row.product_id, []))
+        |> Map.put(:arrived_by, Map.get(arrival, row.lot_id, :other))
+        # Always booleans: a nil reaches the template as `nil and ...`, which raises.
+        |> Map.put(:expired, !is_nil(row.expires_on) and Date.before?(row.expires_on, today))
+        |> Map.put(
+          :expiring,
+          !is_nil(row.expires_on) and Date.compare(row.expires_on, horizon) != :gt
+        )
+        # "Running low" is about the *product* across the whole warehouse, not this
+        # position, so a filtered or paged view cannot make it look short.
+        |> Map.put(:below_minimum, below_minimum?(row, totals))
+      end)
     end)
     |> sort_rows(opts[:sort])
+  end
+
+  # How each lot's stock got here, from the types of its inbound entries. A
+  # purchase means bought (a price may still be missing); a donation means
+  # donated; stock that only ever arrived through the initial `inventory_import`
+  # is a migration, which is not the same as a donation even though neither has
+  # a cost.
+  defp arrival_by_lot([]), do: %{}
+
+  defp arrival_by_lot(lot_ids) do
+    TransactionEntry
+    |> join(:inner, [e], t in Transaction, on: t.id == e.transaction_id)
+    |> where([e, _t], e.lot_id in ^lot_ids and e.quantity > 0)
+    |> group_by([e], e.lot_id)
+    |> select([e, t], {e.lot_id, fragment("array_agg(DISTINCT ?)", t.type)})
+    |> Repo.all()
+    |> Map.new(fn {lot_id, types} -> {lot_id, classify_arrival(types)} end)
+  end
+
+  defp classify_arrival(types) do
+    cond do
+      "purchase_in" in types -> :bought
+      "donation_in" in types -> :donation
+      "inventory_import" in types -> :migration
+      true -> :other
+    end
   end
 
   @doc """
@@ -169,11 +200,18 @@ defmodule EstoqueOS.Reports do
       |> where([i], i.value == ^trimmed)
       |> select([i], i.product_id)
 
+    # A nickname or former name finds the product too: "equipo" → the macrodrip set.
+    aliased =
+      ProductAlias
+      |> where([a], ilike(a.normalized, ^"%#{ProductAlias.normalize(trimmed)}%"))
+      |> select([a], a.product_id)
+
     where(
       query,
       [s, l, p, _g, b],
       ilike(p.name, ^term) or ilike(l.lot_number, ^term) or ilike(b.code, ^term) or
-        p.id in subquery(coded) or l.id in subquery(invoiced_lots(trimmed))
+        p.id in subquery(coded) or p.id in subquery(aliased) or
+        l.id in subquery(invoiced_lots(trimmed))
     )
   end
 

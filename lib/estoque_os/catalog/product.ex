@@ -8,7 +8,7 @@ defmodule EstoqueOS.Catalog.Product do
 
   import Ecto.Changeset
 
-  alias EstoqueOS.Catalog.{ProductGroup, ProductIdentifier, UnitConversion}
+  alias EstoqueOS.Catalog.{ProductAlias, ProductGroup, ProductIdentifier, UnitConversion}
   alias EstoqueOS.Inventory.Lot
   alias EstoqueOS.Kits.Kit
 
@@ -38,6 +38,7 @@ defmodule EstoqueOS.Catalog.Product do
     belongs_to :kit, Kit
 
     has_many :identifiers, ProductIdentifier
+    has_many :aliases, ProductAlias
     has_many :unit_conversions, UnitConversion
     has_many :lots, Lot
 

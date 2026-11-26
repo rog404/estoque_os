@@ -4,7 +4,7 @@ defmodule EstoqueOS.ReportsTest do
   import EstoqueOS.CatalogFixtures
   import EstoqueOS.InventoryFixtures
 
-  alias EstoqueOS.{Inventory, Reports}
+  alias EstoqueOS.{Catalog, Inventory, Reports}
   alias EstoqueOS.Reports.StockWorkbook
 
   setup do
@@ -79,6 +79,20 @@ defmodule EstoqueOS.ReportsTest do
         })
 
       assert Reports.stock_rows() == []
+    end
+
+    test "search finds a product by one of its aliases", %{
+      lot: lot,
+      warehouse: warehouse,
+      product: product
+    } do
+      receive_stock(lot, warehouse, 10)
+      {:ok, _} = Catalog.add_alias(product, "eletrodinho")
+
+      assert [row] = Reports.stock_rows(search: "eletrodinho")
+      assert row.product == "Eletrodo ECG adulto"
+      # And an accent/case variant of the alias still matches.
+      assert [_] = Reports.stock_rows(search: "ELETRODINHO")
     end
   end
 
