@@ -279,11 +279,6 @@ defmodule EstoqueOSWeb.IssueLive.Index do
     <Layouts.app flash={@flash} current_scope={@current_scope} current_path={assigns[:current_path]}>
       <.header>
         {gettext("Write off")}
-        <:subtitle>
-          {gettext(
-            "Goods leaving without an invoice or a kit. FEFO picks the lot unless you say otherwise."
-          )}
-        </:subtitle>
       </.header>
 
       <%!-- Decided before anything is picked: the price field depends on the destination. --%>

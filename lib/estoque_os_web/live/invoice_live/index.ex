@@ -25,7 +25,6 @@ defmodule EstoqueOSWeb.InvoiceLive.Index do
     <Layouts.app flash={@flash} current_scope={@current_scope} current_path={assigns[:current_path]}>
       <.header>
         {gettext("Invoices")}
-        <:subtitle>{gettext("Everything imported from supplier XMLs.")}</:subtitle>
         <:actions>
           <.button navigate={~p"/invoices/import"} variant="primary">
             {gettext("Import invoice")}

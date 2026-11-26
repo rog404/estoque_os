@@ -26,9 +26,6 @@ defmodule EstoqueOSWeb.ConferenceLive.Index do
     <Layouts.app flash={@flash} current_scope={@current_scope} current_path={assigns[:current_path]}>
       <.header>
         {gettext("Conference")}
-        <:subtitle>
-          {gettext("Deliveries waiting to be checked against what was ordered.")}
-        </:subtitle>
       </.header>
 
       <.panel title={gettext("Waiting")} flush>

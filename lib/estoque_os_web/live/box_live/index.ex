@@ -75,11 +75,6 @@ defmodule EstoqueOSWeb.BoxLive.Index do
     <Layouts.app flash={@flash} current_scope={@current_scope} current_path={assigns[:current_path]}>
       <.header>
         {gettext("Boxes")}
-        <:subtitle>
-          {gettext(
-            "Moving a box moves what it holds. No recount is required. Sending one to a mission is a load-out."
-          )}
-        </:subtitle>
       </.header>
 
       <.write_gate may={@role_may_write?} allowed={@controls_enabled?}>

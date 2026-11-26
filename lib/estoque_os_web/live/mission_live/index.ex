@@ -30,9 +30,6 @@ defmodule EstoqueOSWeb.MissionLive.Index do
     <Layouts.app flash={@flash} current_scope={@current_scope} current_path={assigns[:current_path]}>
       <.header>
         {gettext("Missions")}
-        <:subtitle>
-          {gettext("Each surgical trip, and what it did to the stock.")}
-        </:subtitle>
       </.header>
 
       <.write_gate may={@role_may_write?} allowed={@controls_enabled?}>

@@ -44,7 +44,6 @@ defmodule EstoqueOSWeb.KitLive.Index do
     <Layouts.app flash={@flash} current_scope={@current_scope} current_path={assigns[:current_path]}>
       <.header>
         {gettext("Kits")}
-        <:subtitle>{gettext("What the stock at a location can cover.")}</:subtitle>
       </.header>
 
       <form id="location-form" phx-change="location" class="mt-4">

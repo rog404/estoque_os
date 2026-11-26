@@ -65,12 +65,6 @@ defmodule EstoqueOSWeb.IssueLive.List do
     <Layouts.app flash={@flash} current_scope={@current_scope} current_path={assigns[:current_path]}>
       <.header>
         {gettext("Manual issues")}
-        <:subtitle>
-          {gettext("Goods that left by hand between %{from} and %{to}.",
-            from: date(@from),
-            to: date(@to)
-          )}
-        </:subtitle>
         <:actions>
           <.button navigate={~p"/issue"}>{gettext("New issue")}</.button>
         </:actions>

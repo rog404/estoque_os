@@ -63,12 +63,6 @@ defmodule EstoqueOSWeb.EntryLive.List do
     <Layouts.app flash={@flash} current_scope={@current_scope} current_path={assigns[:current_path]}>
       <.header>
         {gettext("Manual entries")}
-        <:subtitle>
-          {gettext("Goods taken in by hand between %{from} and %{to}.",
-            from: date(@from),
-            to: date(@to)
-          )}
-        </:subtitle>
         <:actions>
           <.button navigate={~p"/entry"}>{gettext("New entry")}</.button>
         </:actions>
