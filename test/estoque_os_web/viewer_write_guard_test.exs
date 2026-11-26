@@ -42,6 +42,19 @@ defmodule EstoqueOSWeb.ViewerWriteGuardTest do
       assert is_nil(Locations.get_box!(box.id).last_verified_at)
     end
 
+    test "cannot empty, rename or retire a box", %{conn: conn, box: box} do
+      {:ok, view, _html} = live(conn, ~p"/boxes/#{box.id}")
+
+      assert render_hook(view, "empty_box", %{"box_code" => "ZZ99"}) =~ "permissão"
+      assert render_hook(view, "rename", %{"code" => "ZZ99"}) =~ "permissão"
+      assert render_hook(view, "retire", %{}) =~ "permissão"
+      assert render_hook(view, "reopen", %{}) =~ "permissão"
+
+      box = Locations.get_box!(box.id)
+      assert box.code == "VG01"
+      assert box.active
+    end
+
     test "cannot create a box", %{conn: conn, warehouse: warehouse} do
       {:ok, view, _html} = live(conn, ~p"/boxes")
 
@@ -151,7 +164,8 @@ defmodule EstoqueOSWeb.ViewerWriteGuardTest do
       "entry_live/list" => ~w(),
       # `search` is declared as a viewer event on the screen itself.
       "box_live/index" => ~w(create move),
-      "box_live/show" => ~w(move verify rebox stow confirm_new_box cancel_new_box),
+      "box_live/show" =>
+        ~w(move verify rebox stow confirm_new_box cancel_new_box empty_box rename retire reopen),
       "location_live/index" =>
         ~w(create edit cancel_rename rename deactivate reactivate set_default),
       "kit_live/index" => ~w(create),
