@@ -225,4 +225,101 @@ defmodule EstoqueOS.Inventory.BoxMovementTest do
       assert Decimal.equal?(Inventory.balance(lot_id: lot.id), Decimal.new(300))
     end
   end
+
+  describe "empty_box_into/3" do
+    test "moves every lot into another box at the same location", %{
+      box: box,
+      warehouse: warehouse,
+      product: product
+    } do
+      other_lot = lot_fixture(%{product_id: product.id, expires_on: ~D[2028-01-31]})
+
+      {:ok, _} =
+        Inventory.post_transaction(%{
+          type: "purchase_in",
+          user_id: actor_id(),
+          entries: [
+            %{
+              lot_id: other_lot.id,
+              box_id: box.id,
+              location_id: warehouse.id,
+              quantity: Decimal.new(40)
+            }
+          ]
+        })
+
+      fresh = box_fixture(%{code: "BM09", location_id: warehouse.id})
+
+      assert {:ok, transaction} = Locations.empty_box_into(box, fresh, user_id: actor_id())
+      assert transaction.type == "transfer"
+
+      assert Locations.box_contents(box) == []
+      assert Decimal.equal?(Inventory.balance(box_id: fresh.id), Decimal.new(340))
+      # Re-boxed, not shipped: the location total stays put.
+      assert Decimal.equal?(Inventory.balance(location_id: warehouse.id), Decimal.new(340))
+    end
+
+    test "does not pretend either box was recounted", %{box: box, warehouse: warehouse} do
+      fresh = box_fixture(%{code: "BM09", location_id: warehouse.id})
+      {:ok, _} = Locations.empty_box_into(box, fresh, user_id: actor_id())
+
+      assert Locations.get_box!(box.id).last_verified_at == nil
+      assert Locations.get_box!(fresh.id).last_verified_at == nil
+    end
+
+    test "refuses to empty a box into itself", %{box: box} do
+      assert {:error, :same_box} = Locations.empty_box_into(box, box, user_id: actor_id())
+    end
+
+    test "refuses when the two boxes sit at different locations", %{box: box, annex: annex} do
+      elsewhere = box_fixture(%{code: "BM09", location_id: annex.id})
+
+      assert {:error, :different_locations} =
+               Locations.empty_box_into(box, elsewhere, user_id: actor_id())
+    end
+
+    test "an already-empty box has nothing to move", %{warehouse: warehouse} do
+      a = box_fixture(%{code: "BM07", location_id: warehouse.id})
+      b = box_fixture(%{code: "BM08", location_id: warehouse.id})
+
+      assert {:error, :empty_box} = Locations.empty_box_into(a, b, user_id: actor_id())
+    end
+  end
+
+  describe "rename_box/2" do
+    test "gives the box a new, upper-cased code", %{box: box} do
+      assert {:ok, renamed} = Locations.rename_box(box, " or84 ")
+      assert renamed.code == "OR84"
+    end
+
+    test "refuses a code another box already wears", %{box: box, warehouse: warehouse} do
+      box_fixture(%{code: "TAKEN", location_id: warehouse.id})
+
+      assert {:error, changeset} = Locations.rename_box(box, "taken")
+      assert %{code: [_ | _]} = errors_on(changeset)
+    end
+  end
+
+  describe "retire_box/1 and reopen_box/1" do
+    test "refuses to retire a box that still holds stock", %{box: box} do
+      assert {:error, :not_empty} = Locations.retire_box(box)
+    end
+
+    test "retires an empty box and keeps it out of the listing", %{warehouse: warehouse} do
+      empty = box_fixture(%{code: "BM05", location_id: warehouse.id})
+
+      assert {:ok, retired} = Locations.retire_box(empty)
+      refute retired.active
+      refute Enum.any?(Locations.list_boxes(warehouse.id), &(&1.id == empty.id))
+    end
+
+    test "reopens a retired box", %{warehouse: warehouse} do
+      empty = box_fixture(%{code: "BM05", location_id: warehouse.id})
+      {:ok, retired} = Locations.retire_box(empty)
+
+      assert {:ok, reopened} = Locations.reopen_box(retired)
+      assert reopened.active
+      assert Enum.any?(Locations.list_boxes(warehouse.id), &(&1.id == empty.id))
+    end
+  end
 end

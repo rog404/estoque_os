@@ -417,6 +417,66 @@ defmodule EstoqueOS.Inventory.Locations do
   end
 
   @doc """
+  Moves everything a box holds into another box at the same location, in one
+  `transfer`.
+
+  The point of this over `rebox/5` one lot at a time: a worn-out box is emptied
+  into a fresh one in a single act, atomically, so the source is never left
+  half-moved. `last_verified_at` is left alone on both, as re-boxing says
+  nothing about the count.
+  """
+  def empty_box_into(%Box{} = from, %Box{} = to, opts \\ []) do
+    cond do
+      from.id == to.id ->
+        {:error, :same_box}
+
+      from.location_id != to.location_id ->
+        {:error, :different_locations}
+
+      true ->
+        case rebox_all_entries(from, to) do
+          [] ->
+            {:error, :empty_box}
+
+          entries ->
+            Inventory.post_transaction(%{
+              type: "transfer",
+              source_location_id: from.location_id,
+              destination_location_id: to.location_id,
+              user_id: opts[:user_id],
+              notes:
+                opts[:notes] ||
+                  gettext("%{from} emptied into %{to}", from: from.code, to: to.code),
+              entries: entries
+            })
+        end
+    end
+  end
+
+  defp rebox_all_entries(from, to) do
+    StockSnapshot
+    |> where([s], s.box_id == ^from.id and s.quantity != 0)
+    |> select([s], %{lot_id: s.lot_id, location_id: s.location_id, quantity: s.quantity})
+    |> Repo.all()
+    |> Enum.flat_map(fn row ->
+      [
+        %{
+          lot_id: row.lot_id,
+          box_id: from.id,
+          location_id: row.location_id,
+          quantity: Decimal.negate(row.quantity)
+        },
+        %{
+          lot_id: row.lot_id,
+          box_id: to.id,
+          location_id: row.location_id,
+          quantity: row.quantity
+        }
+      ]
+    end)
+  end
+
+  @doc """
   Every box, with where it is and how much it is presumed to hold.
   """
   def list_boxes_with_contents do
@@ -650,5 +710,42 @@ defmodule EstoqueOS.Inventory.Locations do
     box
     |> Box.changeset(%{last_verified_at: DateTime.utc_now(:second)})
     |> Repo.update()
+  end
+
+  @doc """
+  Gives a box a new code.
+
+  The code is the box's name on the shelf, so a box put under a code that makes
+  no sense is corrected here. `Box.changeset` upcases and trims it and refuses a
+  code another box already wears.
+  """
+  def rename_box(%Box{} = box, code) do
+    box |> Box.changeset(%{code: code}) |> Repo.update()
+  end
+
+  @doc """
+  Takes a worn-out box out of use without deleting it.
+
+  It keeps its whole history but stops showing up in listings and pickers
+  (`active: false`). Refused while it still holds stock: a retired box that held
+  anything would hide that stock from every box view, so it is emptied first.
+  """
+  def retire_box(%Box{} = box) do
+    if box_empty?(box) do
+      box |> Box.changeset(%{active: false}) |> Repo.update()
+    else
+      {:error, :not_empty}
+    end
+  end
+
+  @doc "Puts a retired box back into use."
+  def reopen_box(%Box{} = box) do
+    box |> Box.changeset(%{active: true}) |> Repo.update()
+  end
+
+  defp box_empty?(%Box{} = box) do
+    not (StockSnapshot
+         |> where([s], s.box_id == ^box.id and s.quantity != 0)
+         |> Repo.exists?())
   end
 end
