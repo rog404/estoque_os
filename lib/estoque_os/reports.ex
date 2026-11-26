@@ -9,7 +9,7 @@ defmodule EstoqueOS.Reports do
 
   import Ecto.Query
 
-  alias EstoqueOS.Catalog.{Product, ProductGroup, ProductIdentifier, UnitConversion}
+  alias EstoqueOS.Catalog.{Product, ProductAlias, ProductGroup, ProductIdentifier, UnitConversion}
   alias EstoqueOS.Inventory
   alias EstoqueOS.Inventory.{Box, Location, Lot, StockSnapshot, Transaction, TransactionEntry}
   alias EstoqueOS.Invoices.{Invoice, InvoiceItem}
@@ -169,11 +169,18 @@ defmodule EstoqueOS.Reports do
       |> where([i], i.value == ^trimmed)
       |> select([i], i.product_id)
 
+    # A nickname or former name finds the product too: "equipo" → the macrodrip set.
+    aliased =
+      ProductAlias
+      |> where([a], ilike(a.normalized, ^"%#{ProductAlias.normalize(trimmed)}%"))
+      |> select([a], a.product_id)
+
     where(
       query,
       [s, l, p, _g, b],
       ilike(p.name, ^term) or ilike(l.lot_number, ^term) or ilike(b.code, ^term) or
-        p.id in subquery(coded) or l.id in subquery(invoiced_lots(trimmed))
+        p.id in subquery(coded) or p.id in subquery(aliased) or
+        l.id in subquery(invoiced_lots(trimmed))
     )
   end
 

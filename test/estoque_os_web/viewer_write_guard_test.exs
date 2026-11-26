@@ -180,7 +180,7 @@ defmodule EstoqueOSWeb.ViewerWriteGuardTest do
       "issue_live/list" => ~w(),
       "audit_report_live/index" => ~w(),
       "user_live/settings" => ~w(),
-      "product_live/show" => ~w(deactivate reactivate set_minimum stow),
+      "product_live/show" => ~w(deactivate reactivate set_minimum stow add_alias remove_alias),
       "mission_live/index" => ~w(create),
       "mission_live/show" => ~w(reschedule donate)
     }
