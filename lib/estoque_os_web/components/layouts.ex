@@ -37,14 +37,9 @@ defmodule EstoqueOSWeb.Layouts do
             navigate={same_live_session?(@current_path, ~p"/") && ~p"/"}
             href={not same_live_session?(@current_path, ~p"/") && ~p"/"}
             class="flex w-fit items-center gap-2.5"
+            aria-label={gettext("Operação Sorriso — home")}
           >
             <.mark />
-            <span class="min-w-0 leading-none">
-              <span class="block text-base font-semibold truncate">{gettext("Estoque")}</span>
-              <span class="eyebrow hidden sm:block opacity-60 truncate">
-                {gettext("Operação Sorriso")}
-              </span>
-            </span>
           </.link>
           <span
             :if={@section && section_label(@current_path, @groups)}
@@ -184,17 +179,14 @@ defmodule EstoqueOSWeb.Layouts do
   """
   def mark(assigns) do
     ~H"""
-    <span class="grid size-9 shrink-0 place-items-center rounded-[0.5rem] bg-primary text-primary-content">
-      <svg viewBox="0 0 24 24" fill="none" class="size-5" aria-hidden="true">
-        <path
-          d="M3 7.5 12 3l9 4.5v9L12 21l-9-4.5v-9Z"
-          stroke="currentColor"
-          stroke-width="1.75"
-          stroke-linejoin="round"
-        />
-        <path d="M3 7.5 12 12l9-4.5M12 12v9" stroke="currentColor" stroke-width="1.75" />
-      </svg>
-    </span>
+    <img
+      src={~p"/images/icon.png"}
+      alt=""
+      aria-hidden="true"
+      width="36"
+      height="36"
+      class="size-9 shrink-0 rounded-[0.5rem]"
+    />
     """
   end
 
