@@ -122,7 +122,7 @@ defmodule EstoqueOSWeb.Router do
         {EstoqueOSWeb.UserAuth, :guard_writes},
         {EstoqueOSWeb.UserAuth, :require_password_not_pending}
       ] do
-      live "/reports/data", StockLive.Spreadsheet, :new
+      live "/stock/sheets", StockLive.Spreadsheet, :new
     end
 
     # Money screens (invoice prices, donation certificate values): closed to

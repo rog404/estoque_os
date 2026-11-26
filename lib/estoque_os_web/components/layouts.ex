@@ -362,6 +362,13 @@ defmodule EstoqueOSWeb.Layouts do
             path: ~p"/kits",
             icon: "hero-rectangle-stack",
             roles: ~w(admin manager logistics auditor marketing)
+          },
+          # Import/export of the stock itself belongs here, not under Reports.
+          %{
+            label: gettext("Spreadsheets"),
+            path: ~p"/stock/sheets",
+            icon: "hero-table-cells",
+            roles: ~w(admin manager)
           }
         ]
       },
@@ -370,13 +377,6 @@ defmodule EstoqueOSWeb.Layouts do
         label: gettext("Reports"),
         icon: "hero-chart-bar",
         items: [
-          # A reporting act, not an entry, and not the logistics partner's.
-          %{
-            label: gettext("Data"),
-            path: ~p"/reports/data",
-            icon: "hero-table-cells",
-            roles: ~w(admin manager)
-          },
           %{
             label: gettext("Sales"),
             path: ~p"/reports/sales",
@@ -502,7 +502,7 @@ defmodule EstoqueOSWeb.Layouts do
   end
 
   # Asks `matching_group/2` rather than testing its own items, which would
-  # light two groups for paths like "/reports/data" vs "/stock".
+  # light two groups for paths like "/stock/sheets" vs "/stock".
   defp group_active?(nil, _group, _groups), do: false
 
   defp group_active?(current_path, group, groups) do

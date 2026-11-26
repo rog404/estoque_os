@@ -49,9 +49,9 @@ defmodule EstoqueOSWeb.AuthorizationTest do
       {:ok, _view, html} = live(conn, ~p"/stock")
 
       refute html =~ "import-form"
-      refute html =~ ~s(href="/reports/data")
+      refute html =~ ~s(href="/stock/sheets")
 
-      assert {:error, {:redirect, %{to: "/"}}} = live(conn, ~p"/reports/data")
+      assert {:error, {:redirect, %{to: "/"}}} = live(conn, ~p"/stock/sheets")
     end
   end
 
@@ -75,9 +75,9 @@ defmodule EstoqueOSWeb.AuthorizationTest do
       {:ok, _view, html} = live(conn, ~p"/stock")
 
       refute html =~ "import-form"
-      assert html =~ ~s(href="/reports/data")
+      assert html =~ ~s(href="/stock/sheets")
 
-      {:ok, _view, data} = live(conn, ~p"/reports/data")
+      {:ok, _view, data} = live(conn, ~p"/stock/sheets")
       assert data =~ "import-form" or data =~ "spreadsheet-import-form"
     end
   end
