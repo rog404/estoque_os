@@ -206,10 +206,6 @@ html { font-size: 17px; }
 [data-section="stock"] { --section-h: 252; }
 [data-section="reports"] { --section-h: 75; }
 
-.page-head {
-  border-bottom: 1px solid oklch(89% 0.045 var(--section-h));
-}
-
 .section-rail { background: oklch(56% 0.15 var(--section-h)); }
 .section-label { color: oklch(44% 0.13 var(--section-h)); }
 .section-mark { background: oklch(74% 0.15 var(--section-h)); }

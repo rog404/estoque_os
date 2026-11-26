@@ -134,9 +134,6 @@ defmodule EstoqueOSWeb.StockLive.Index do
         {gettext("Stock")}
         <:subtitle>
           {gettext("%{count} stored lot(s)", count: @total)}
-          <span :if={@sees_money?}>
-            · <.amount value={money(@total_value)} /> {gettext("on this page")}
-          </span>
         </:subtitle>
       </.header>
 
