@@ -289,6 +289,7 @@ defmodule EstoqueOSWeb.UI do
       :below_minimum,
       :needs_review,
       :donation,
+      :migration,
       :bought,
       :unknown_value,
       :pending,
@@ -380,6 +381,11 @@ defmodule EstoqueOSWeb.UI do
 
   defp status_spec(:donation),
     do: %{class: "is-quiet dot-accent", icon: nil, label: gettext("donation")}
+
+  # Quiet, like donation: migrated stock has no cost, but it came from the old
+  # control sheet, not from a donor.
+  defp status_spec(:migration),
+    do: %{class: "is-quiet dot-info", icon: nil, label: gettext("migration")}
 
   # Quiet, unlike donation: most stock is bought, so the donation is what the eye needs.
   defp status_spec(:bought),

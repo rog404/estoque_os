@@ -632,7 +632,7 @@ msgstr ""
 msgid "not informed"
 msgstr ""
 
-#: lib/estoque_os_web/components/ui.ex:604
+#: lib/estoque_os_web/components/ui.ex:610
 #: lib/estoque_os_web/live/audit_report_live/index.ex:196
 #: lib/estoque_os_web/live/box_live/index.ex:145
 #: lib/estoque_os_web/live/entry_live/new.ex:386
@@ -720,7 +720,7 @@ msgstr ""
 msgid "Stock"
 msgstr ""
 
-#: lib/estoque_os/reports.ex:645
+#: lib/estoque_os/reports.ex:676
 #, elixir-autogen, elixir-format
 msgid "Stock imported from a spreadsheet"
 msgstr ""
@@ -757,7 +757,7 @@ msgstr ""
 msgid "Unit cost"
 msgstr ""
 
-#: lib/estoque_os_web/components/ui.ex:328
+#: lib/estoque_os_web/components/ui.ex:329
 #: lib/estoque_os_web/live/entry_live/new.ex:204
 #, elixir-autogen, elixir-format
 msgid "controlled"
@@ -769,38 +769,38 @@ msgstr ""
 msgid "line %{line}: %{message}"
 msgstr ""
 
-#: lib/estoque_os/reports.ex:573
+#: lib/estoque_os/reports.ex:604
 #: lib/estoque_os_web/components/core_components.ex:786
 #, elixir-autogen, elixir-format
 msgid "location \"%{name}\" does not exist"
 msgstr ""
 
-#: lib/estoque_os/reports.ex:545
+#: lib/estoque_os/reports.ex:576
 #: lib/estoque_os_web/components/core_components.ex:783
 #, elixir-autogen, elixir-format
 msgid "product \"%{name}\" is not in the catalog"
 msgstr ""
 
-#: lib/estoque_os/reports.ex:564
+#: lib/estoque_os/reports.ex:595
 #: lib/estoque_os_web/components/core_components.ex:778
 #, elixir-autogen, elixir-format
 msgid "the location is missing"
 msgstr ""
 
-#: lib/estoque_os/reports.ex:520
-#: lib/estoque_os/reports.ex:536
+#: lib/estoque_os/reports.ex:551
+#: lib/estoque_os/reports.ex:567
 #: lib/estoque_os_web/components/core_components.ex:777
 #, elixir-autogen, elixir-format
 msgid "the product name is missing"
 msgstr ""
 
-#: lib/estoque_os/reports.ex:593
+#: lib/estoque_os/reports.ex:624
 #: lib/estoque_os_web/components/core_components.ex:779
 #, elixir-autogen, elixir-format
 msgid "the quantity is missing"
 msgstr ""
 
-#: lib/estoque_os/reports.ex:594
+#: lib/estoque_os/reports.ex:625
 #: lib/estoque_os_web/components/core_components.ex:780
 #, elixir-autogen, elixir-format
 msgid "the quantity is negative"
@@ -1194,9 +1194,9 @@ msgstr ""
 msgid "in progress"
 msgstr ""
 
-#: lib/estoque_os_web/components/ui.ex:352
-#: lib/estoque_os_web/components/ui.ex:416
-#: lib/estoque_os_web/components/ui.ex:597
+#: lib/estoque_os_web/components/ui.ex:353
+#: lib/estoque_os_web/components/ui.ex:422
+#: lib/estoque_os_web/components/ui.ex:603
 #, elixir-autogen, elixir-format
 msgid "no box"
 msgstr ""
@@ -1384,7 +1384,7 @@ msgstr ""
 msgid "e.g. Missão Tefé"
 msgstr ""
 
-#: lib/estoque_os_web/components/ui.ex:362
+#: lib/estoque_os_web/components/ui.ex:363
 #: lib/estoque_os_web/live/location_live/index.ex:290
 #: lib/estoque_os_web/live/sales_report_live/index.ex:205
 #, elixir-autogen, elixir-format
@@ -1664,7 +1664,7 @@ msgstr ""
 msgid "kits possible"
 msgstr ""
 
-#: lib/estoque_os_web/components/ui.ex:358
+#: lib/estoque_os_web/components/ui.ex:359
 #, elixir-autogen, elixir-format
 msgid "not linked"
 msgstr ""
@@ -1817,12 +1817,12 @@ msgstr ""
 msgid "Recipient"
 msgstr ""
 
-#: lib/estoque_os_web/components/ui.ex:319
+#: lib/estoque_os_web/components/ui.ex:320
 #, elixir-autogen, elixir-format
 msgid "expired"
 msgstr ""
 
-#: lib/estoque_os_web/components/ui.ex:322
+#: lib/estoque_os_web/components/ui.ex:323
 #, elixir-autogen, elixir-format
 msgid "expiring"
 msgstr ""
@@ -2025,7 +2025,7 @@ msgstr ""
 msgid "Reports"
 msgstr ""
 
-#: lib/estoque_os_web/components/ui.ex:498
+#: lib/estoque_os_web/components/ui.ex:504
 #: lib/estoque_os_web/live/box_live/index.ex:114
 #: lib/estoque_os_web/live/box_live/lookup.ex:116
 #: lib/estoque_os_web/live/location_live/index.ex:124
@@ -2759,7 +2759,7 @@ msgstr ""
 msgid "record the number of tables to compare missions"
 msgstr ""
 
-#: lib/estoque_os_web/components/ui.ex:348
+#: lib/estoque_os_web/components/ui.ex:349
 #, elixir-autogen, elixir-format
 msgid "under way"
 msgstr ""
@@ -3032,7 +3032,7 @@ msgstr ""
 msgid "Where it is now"
 msgstr ""
 
-#: lib/estoque_os_web/components/ui.ex:378
+#: lib/estoque_os_web/components/ui.ex:379
 #, elixir-autogen, elixir-format
 msgid "needs review"
 msgstr ""
@@ -3155,37 +3155,37 @@ msgstr ""
 msgid "Try a wider search, or clear the filters to see the whole stock."
 msgstr ""
 
-#: lib/estoque_os_web/components/ui.ex:371
+#: lib/estoque_os_web/components/ui.ex:372
 #, elixir-autogen, elixir-format
 msgid "below minimum"
 msgstr ""
 
-#: lib/estoque_os_web/components/ui.ex:365
+#: lib/estoque_os_web/components/ui.ex:366
 #, elixir-autogen, elixir-format
 msgid "complete"
 msgstr ""
 
-#: lib/estoque_os_web/components/ui.ex:341
+#: lib/estoque_os_web/components/ui.ex:342
 #, elixir-autogen, elixir-format
 msgid "counted"
 msgstr ""
 
-#: lib/estoque_os_web/components/ui.ex:382
+#: lib/estoque_os_web/components/ui.ex:383
 #, elixir-autogen, elixir-format
 msgid "donation"
 msgstr ""
 
-#: lib/estoque_os_web/components/ui.ex:401
+#: lib/estoque_os_web/components/ui.ex:407
 #, elixir-autogen, elixir-format
 msgid "pending"
 msgstr ""
 
-#: lib/estoque_os_web/components/ui.ex:337
+#: lib/estoque_os_web/components/ui.ex:338
 #, elixir-autogen, elixir-format
 msgid "presumed"
 msgstr ""
 
-#: lib/estoque_os_web/components/ui.ex:389
+#: lib/estoque_os_web/components/ui.ex:395
 #, elixir-autogen, elixir-format
 msgid "value not informed"
 msgstr ""
@@ -3854,7 +3854,7 @@ msgstr ""
 msgid "No price is recorded, ever."
 msgstr ""
 
-#: lib/estoque_os_web/components/ui.ex:386
+#: lib/estoque_os_web/components/ui.ex:392
 #, elixir-autogen, elixir-format
 msgid "bought"
 msgstr ""
@@ -3899,7 +3899,7 @@ msgstr ""
 msgid "Say which box the goods went into."
 msgstr ""
 
-#: lib/estoque_os_web/components/ui.ex:597
+#: lib/estoque_os_web/components/ui.ex:603
 #, elixir-autogen, elixir-format
 msgid "which box"
 msgstr ""
@@ -4312,7 +4312,7 @@ msgstr ""
 msgid "count %{n} of %{total}"
 msgstr ""
 
-#: lib/estoque_os_web/components/ui.ex:345
+#: lib/estoque_os_web/components/ui.ex:346
 #, elixir-autogen, elixir-format
 msgid "count again"
 msgstr ""
@@ -4763,12 +4763,12 @@ msgstr ""
 msgid "has none"
 msgstr ""
 
-#: lib/estoque_os_web/components/ui.ex:557
+#: lib/estoque_os_web/components/ui.ex:563
 #, elixir-autogen, elixir-format
 msgid "Remove filter"
 msgstr ""
 
-#: lib/estoque_os_web/components/ui.ex:499
+#: lib/estoque_os_web/components/ui.ex:505
 #, elixir-autogen, elixir-format
 msgid "Search %{group}"
 msgstr ""
@@ -5244,7 +5244,7 @@ msgstr ""
 msgid "Search by the name, or by the kind of place it is."
 msgstr ""
 
-#: lib/estoque_os_web/components/ui.ex:393
+#: lib/estoque_os_web/components/ui.ex:399
 #, elixir-autogen, elixir-format
 msgid "deactivated"
 msgstr ""
@@ -5365,7 +5365,7 @@ msgstr ""
 msgid "mission or event"
 msgstr ""
 
-#: lib/estoque_os_web/components/ui.ex:398
+#: lib/estoque_os_web/components/ui.ex:404
 #, elixir-autogen, elixir-format
 msgid "no recent count"
 msgstr ""
@@ -5528,7 +5528,7 @@ msgstr ""
 msgid "What is in this box"
 msgstr ""
 
-#: lib/estoque_os/reports.ex:618
+#: lib/estoque_os/reports.ex:649
 #, elixir-autogen, elixir-format
 msgid "box \"%{code}\" is at %{location} — move it before counting it here"
 msgstr ""
@@ -5553,12 +5553,12 @@ msgstr ""
 msgid "The template could not be generated."
 msgstr ""
 
-#: lib/estoque_os/reports.ex:586
+#: lib/estoque_os/reports.ex:617
 #, elixir-autogen, elixir-format
 msgid "location \"%{name}\" could not be created"
 msgstr ""
 
-#: lib/estoque_os/reports.ex:557
+#: lib/estoque_os/reports.ex:588
 #, elixir-autogen, elixir-format
 msgid "product \"%{name}\" could not be created"
 msgstr ""
@@ -5943,4 +5943,9 @@ msgstr ""
 #: lib/estoque_os_web/live/issue_live/index.ex:606
 #, elixir-autogen, elixir-format
 msgid "other name"
+msgstr ""
+
+#: lib/estoque_os_web/components/ui.ex:388
+#, elixir-autogen, elixir-format
+msgid "migration"
 msgstr ""
