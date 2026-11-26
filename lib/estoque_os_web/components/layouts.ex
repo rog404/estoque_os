@@ -42,13 +42,6 @@ defmodule EstoqueOSWeb.Layouts do
             >
               <.mark />
             </.link>
-            <span
-              :if={@section && section_label(@current_path, @groups)}
-              class="lg:hidden ml-3 hidden sm:inline-flex items-center gap-1.5 text-sm opacity-80 min-w-0"
-            >
-              <span class="section-mark h-3.5 w-0.5 rounded-full" aria-hidden="true" />
-              <span class="truncate">{section_label(@current_path, @groups)}</span>
-            </span>
           </div>
 
           <nav
@@ -177,13 +170,15 @@ defmodule EstoqueOSWeb.Layouts do
   """
   def mark(assigns) do
     ~H"""
+    <%!-- Bigger and "almost out" of the bar on desktop via transform, so the bar
+    keeps its height (and the sticky offset) — safe, no layout shift. --%>
     <img
       src={~p"/images/icon.png"}
       alt=""
       aria-hidden="true"
       width="36"
       height="36"
-      class="size-9 shrink-0 rounded-[0.5rem]"
+      class="size-9 shrink-0 rounded-[0.5rem] lg:origin-top-left lg:scale-[1.8] lg:relative lg:z-20"
     />
     """
   end
