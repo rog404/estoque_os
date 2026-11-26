@@ -131,6 +131,17 @@ defmodule EstoqueOSWeb.StockLiveTest do
     assert byte_size(response(conn, 200)) > 0
   end
 
+  test "downloads the count sheet", %{conn: conn} do
+    conn = get(conn, ~p"/stock/count-sheet.xlsx")
+
+    assert response_content_type(conn, :xlsx) =~ "spreadsheetml"
+
+    assert ["attachment; filename=\"contagem-" <> _] =
+             get_resp_header(conn, "content-disposition")
+
+    assert byte_size(response(conn, 200)) > 0
+  end
+
   test "a blocked line is flagged on the preview and nothing is posted", %{conn: conn, lot: lot} do
     binary =
       sheet([

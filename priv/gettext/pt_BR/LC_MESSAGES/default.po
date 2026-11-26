@@ -672,12 +672,12 @@ msgstr "Validade"
 msgid "Location"
 msgstr "Local"
 
-#: lib/estoque_os_web/components/core_components.ex:752
+#: lib/estoque_os_web/components/core_components.ex:769
 #, elixir-autogen, elixir-format
 msgid "Nothing was imported. Fix these lines:"
 msgstr "Nada foi importado. Corrija estas linhas:"
 
-#: lib/estoque_os_web/live/stock_live/spreadsheet.ex:84
+#: lib/estoque_os_web/live/stock_live/spreadsheet.ex:85
 #, elixir-autogen, elixir-format
 msgid "Pick a spreadsheet first."
 msgstr "Escolha uma planilha primeiro."
@@ -701,7 +701,7 @@ msgstr "Escolha uma planilha primeiro."
 msgid "Quantity"
 msgstr "Quantidade"
 
-#: lib/estoque_os_web/components/core_components.ex:535
+#: lib/estoque_os_web/components/core_components.ex:547
 #, elixir-autogen, elixir-format
 msgid "Reading the spreadsheet..."
 msgstr "Lendo a planilha..."
@@ -720,7 +720,7 @@ msgstr "Lendo a planilha..."
 msgid "Stock"
 msgstr "Estoque"
 
-#: lib/estoque_os/reports.ex:617
+#: lib/estoque_os/reports.ex:638
 #, elixir-autogen, elixir-format
 msgid "Stock imported from a spreadsheet"
 msgstr "Estoque importado de planilha"
@@ -731,22 +731,23 @@ msgid "Stock is empty."
 msgstr "O estoque está vazio."
 
 #: lib/estoque_os_web/controllers/stock_controller.ex:40
+#: lib/estoque_os_web/controllers/stock_controller.ex:70
 #, elixir-autogen, elixir-format
 msgid "The spreadsheet could not be generated."
 msgstr "Não foi possível gerar a planilha."
 
-#: lib/estoque_os_web/live/stock_live/spreadsheet.ex:124
-#: lib/estoque_os_web/live/stock_live/spreadsheet.ex:152
+#: lib/estoque_os_web/live/stock_live/spreadsheet.ex:125
+#: lib/estoque_os_web/live/stock_live/spreadsheet.ex:153
 #, elixir-autogen, elixir-format
 msgid "The spreadsheet could not be read."
 msgstr "Não foi possível ler a planilha."
 
-#: lib/estoque_os_web/live/stock_live/spreadsheet.ex:146
+#: lib/estoque_os_web/live/stock_live/spreadsheet.ex:147
 #, elixir-autogen, elixir-format
 msgid "The spreadsheet is missing these columns: %{columns}"
 msgstr "Faltam estas colunas na planilha: %{columns}"
 
-#: lib/estoque_os_web/components/core_components.ex:540
+#: lib/estoque_os_web/components/core_components.ex:552
 #, elixir-autogen, elixir-format
 msgid "The spreadsheet states what is physically there; only the difference is posted."
 msgstr "A planilha diz o que existe fisicamente; só a diferença é lançada."
@@ -762,45 +763,45 @@ msgstr "Custo unitário"
 msgid "controlled"
 msgstr "controlado"
 
-#: lib/estoque_os_web/components/core_components.ex:575
-#: lib/estoque_os_web/components/core_components.ex:755
+#: lib/estoque_os_web/components/core_components.ex:592
+#: lib/estoque_os_web/components/core_components.ex:772
 #, elixir-autogen, elixir-format
 msgid "line %{line}: %{message}"
 msgstr "linha %{line}: %{message}"
 
-#: lib/estoque_os/reports.ex:545
-#: lib/estoque_os_web/components/core_components.ex:732
+#: lib/estoque_os/reports.ex:566
+#: lib/estoque_os_web/components/core_components.ex:749
 #, elixir-autogen, elixir-format
 msgid "location \"%{name}\" does not exist"
 msgstr "o local \"%{name}\" não existe"
 
-#: lib/estoque_os/reports.ex:517
-#: lib/estoque_os_web/components/core_components.ex:729
+#: lib/estoque_os/reports.ex:538
+#: lib/estoque_os_web/components/core_components.ex:746
 #, elixir-autogen, elixir-format
 msgid "product \"%{name}\" is not in the catalog"
 msgstr "o produto \"%{name}\" não está no catálogo"
 
-#: lib/estoque_os/reports.ex:536
-#: lib/estoque_os_web/components/core_components.ex:724
+#: lib/estoque_os/reports.ex:557
+#: lib/estoque_os_web/components/core_components.ex:741
 #, elixir-autogen, elixir-format
 msgid "the location is missing"
 msgstr "falta o local"
 
-#: lib/estoque_os/reports.ex:492
-#: lib/estoque_os/reports.ex:508
-#: lib/estoque_os_web/components/core_components.ex:723
+#: lib/estoque_os/reports.ex:513
+#: lib/estoque_os/reports.ex:529
+#: lib/estoque_os_web/components/core_components.ex:740
 #, elixir-autogen, elixir-format
 msgid "the product name is missing"
 msgstr "falta o nome do produto"
 
-#: lib/estoque_os/reports.ex:565
-#: lib/estoque_os_web/components/core_components.ex:725
+#: lib/estoque_os/reports.ex:586
+#: lib/estoque_os_web/components/core_components.ex:742
 #, elixir-autogen, elixir-format
 msgid "the quantity is missing"
 msgstr "falta a quantidade"
 
-#: lib/estoque_os/reports.ex:566
-#: lib/estoque_os_web/components/core_components.ex:726
+#: lib/estoque_os/reports.ex:587
+#: lib/estoque_os_web/components/core_components.ex:743
 #, elixir-autogen, elixir-format
 msgid "the quantity is negative"
 msgstr "a quantidade é negativa"
@@ -2105,11 +2106,6 @@ msgstr "Enviar esta carga?"
 #, elixir-autogen, elixir-format
 msgid "Whatever did not come back is written off as used during the mission, unless you unchecked that."
 msgstr "O que não voltou é baixado como consumido na missão, a menos que você tenha desmarcado."
-
-#: lib/estoque_os_web/components/core_components.ex:519
-#, elixir-autogen, elixir-format
-msgid "Export stock"
-msgstr "Exportar estoque"
 
 #: lib/estoque_os_web/live/entry_live/list.ex:117
 #: lib/estoque_os_web/live/mission_live/index.ex:55
@@ -4787,7 +4783,7 @@ msgstr "Por segurança, trocar seu e-mail ou senha precisa de uma entrada recent
 msgid "Log out and in again to change your email or password."
 msgstr "Saia e entre de novo para trocar seu e-mail ou senha."
 
-#: lib/estoque_os_web/components/core_components.ex:745
+#: lib/estoque_os_web/components/core_components.ex:762
 #, elixir-autogen, elixir-format
 msgid "%{counted} line(s) read, %{adjusted} lot(s) adjusted."
 msgstr "%{counted} linha(s) lida(s), %{adjusted} lote(s) ajustado(s)."
@@ -5532,7 +5528,7 @@ msgstr "Este navegador não lê QR aqui — digite o código."
 msgid "What is in this box"
 msgstr "O que tem nesta caixa"
 
-#: lib/estoque_os/reports.ex:590
+#: lib/estoque_os/reports.ex:611
 #, elixir-autogen, elixir-format
 msgid "box \"%{code}\" is at %{location} — move it before counting it here"
 msgstr "a caixa \"%{code}\" está em %{location} — mova-a antes de contá-la aqui"
@@ -5542,163 +5538,188 @@ msgstr "a caixa \"%{code}\" está em %{location} — mova-a antes de contá-la a
 msgid "Look up a box"
 msgstr "Consultar caixa"
 
-#: lib/estoque_os_web/components/core_components.ex:524
+#: lib/estoque_os_web/components/core_components.ex:536
 #, elixir-autogen, elixir-format
 msgid "Download example spreadsheet"
 msgstr "Baixar planilha de exemplo"
 
-#: lib/estoque_os_web/components/core_components.ex:532
+#: lib/estoque_os_web/components/core_components.ex:544
 #, elixir-autogen, elixir-format
 msgid "Initial import: create products, places and boxes that do not exist yet"
 msgstr "Importação inicial: criar produtos, locais e caixas que ainda não existem"
 
-#: lib/estoque_os_web/controllers/stock_controller.ex:56
+#: lib/estoque_os_web/controllers/stock_controller.ex:86
 #, elixir-autogen, elixir-format
 msgid "The template could not be generated."
 msgstr "Não foi possível gerar o modelo."
 
-#: lib/estoque_os/reports.ex:558
+#: lib/estoque_os/reports.ex:579
 #, elixir-autogen, elixir-format
 msgid "location \"%{name}\" could not be created"
 msgstr "não foi possível criar o local \"%{name}\""
 
-#: lib/estoque_os/reports.ex:529
+#: lib/estoque_os/reports.ex:550
 #, elixir-autogen, elixir-format
 msgid "product \"%{name}\" could not be created"
 msgstr "não foi possível criar o produto \"%{name}\""
 
-#: lib/estoque_os_web/components/core_components.ex:634
+#: lib/estoque_os_web/components/core_components.ex:651
 #, elixir-autogen, elixir-format
 msgid "Already expired (%{count})"
 msgstr "Já vencidos (%{count})"
 
-#: lib/estoque_os_web/components/core_components.ex:565
+#: lib/estoque_os_web/components/core_components.ex:577
 #, elixir-autogen, elixir-format
 msgid "Blocked"
 msgstr "Bloqueadas"
 
-#: lib/estoque_os_web/components/core_components.ex:643
+#: lib/estoque_os_web/components/core_components.ex:660
 #, elixir-autogen, elixir-format
 msgid "Boxes with a name only (%{count})"
 msgstr "Caixas só com nome (%{count})"
 
-#: lib/estoque_os_web/components/core_components.ex:675
+#: lib/estoque_os_web/components/core_components.ex:692
 #, elixir-autogen, elixir-format
 msgid "Confirm and import"
 msgstr "Confirmar e importar"
 
-#: lib/estoque_os_web/components/core_components.ex:672
+#: lib/estoque_os_web/components/core_components.ex:689
 #, elixir-autogen, elixir-format
 msgid "Importing..."
 msgstr "Importando..."
 
-#: lib/estoque_os_web/components/core_components.ex:661
+#: lib/estoque_os_web/components/core_components.ex:678
 #, elixir-autogen, elixir-format
 msgid "New boxes (%{count})"
 msgstr "Caixas novas (%{count})"
 
-#: lib/estoque_os_web/components/core_components.ex:652
+#: lib/estoque_os_web/components/core_components.ex:669
 #, elixir-autogen, elixir-format
 msgid "New places (%{count})"
 msgstr "Locais novos (%{count})"
 
-#: lib/estoque_os_web/components/core_components.ex:537
+#: lib/estoque_os_web/components/core_components.ex:549
 #, elixir-autogen, elixir-format
 msgid "Preview the count"
 msgstr "Conferir contagem"
 
-#: lib/estoque_os_web/components/core_components.ex:625
+#: lib/estoque_os_web/components/core_components.ex:642
 #, elixir-autogen, elixir-format
 msgid "Products to create (%{count})"
 msgstr "Produtos a criar (%{count})"
 
-#: lib/estoque_os_web/components/core_components.ex:678
+#: lib/estoque_os_web/components/core_components.ex:695
 #, elixir-autogen, elixir-format
 msgid "Start over"
 msgstr "Recomeçar"
 
-#: lib/estoque_os_web/components/core_components.ex:572
+#: lib/estoque_os_web/components/core_components.ex:589
 #, elixir-autogen, elixir-format
 msgid "These lines block the import:"
 msgstr "Estas linhas travam a importação:"
 
-#: lib/estoque_os_web/components/core_components.ex:560
+#: lib/estoque_os_web/components/core_components.ex:572
 #, elixir-autogen, elixir-format
 msgid "To import"
 msgstr "A importar"
 
-#: lib/estoque_os_web/components/core_components.ex:653
-#: lib/estoque_os_web/components/core_components.ex:662
+#: lib/estoque_os_web/components/core_components.ex:670
+#: lib/estoque_os_web/components/core_components.ex:679
 #, elixir-autogen, elixir-format
 msgid "created when you confirm"
 msgstr "criados ao confirmar"
 
-#: lib/estoque_os_web/components/core_components.ex:635
+#: lib/estoque_os_web/components/core_components.ex:652
 #, elixir-autogen, elixir-format
 msgid "imported anyway; write them off by adjustment to record the disposal"
 msgstr "importados mesmo assim; dê baixa por ajuste para registrar o descarte"
 
-#: lib/estoque_os_web/components/core_components.ex:562
+#: lib/estoque_os_web/components/core_components.ex:574
 #, elixir-autogen, elixir-format
 msgid "line(s)"
 msgstr "linha(s)"
 
-#: lib/estoque_os_web/components/core_components.ex:626
+#: lib/estoque_os_web/components/core_components.ex:643
 #, elixir-autogen, elixir-format
 msgid "not in the catalog yet — created when you confirm"
 msgstr "ainda não estão no catálogo — criados ao confirmar"
 
-#: lib/estoque_os_web/components/core_components.ex:644
+#: lib/estoque_os_web/components/core_components.ex:661
 #, elixir-autogen, elixir-format
 msgid "registered empty, with no stock line"
 msgstr "registradas vazias, sem linha de estoque"
 
-#: lib/estoque_os_web/components/core_components.ex:735
+#: lib/estoque_os_web/components/core_components.ex:752
 #, elixir-autogen, elixir-format
 msgid "the box is at %{location}"
 msgstr "a caixa está em %{location}"
 
-#: lib/estoque_os_web/components/core_components.ex:587
+#: lib/estoque_os_web/components/core_components.ex:604
 #, elixir-autogen, elixir-format
 msgid "Create product"
 msgstr "Criar produto"
 
-#: lib/estoque_os_web/components/core_components.ex:594
+#: lib/estoque_os_web/components/core_components.ex:611
 #, elixir-autogen, elixir-format
 msgid "Exclude"
 msgstr "Excluir"
 
-#: lib/estoque_os_web/components/core_components.ex:606
+#: lib/estoque_os_web/components/core_components.ex:623
 #, elixir-autogen, elixir-format
 msgid "Excluded (%{count})"
 msgstr "Excluídas (%{count})"
 
-#: lib/estoque_os_web/live/stock_live/spreadsheet.ex:103
+#: lib/estoque_os_web/live/stock_live/spreadsheet.ex:104
 #, elixir-autogen, elixir-format
 msgid "Product \"%{name}\" created."
 msgstr "Produto \"%{name}\" criado."
 
-#: lib/estoque_os_web/components/core_components.ex:615
+#: lib/estoque_os_web/components/core_components.ex:632
 #, elixir-autogen, elixir-format
 msgid "Restore"
 msgstr "Restaurar"
 
-#: lib/estoque_os_web/live/stock_live/spreadsheet.ex:107
+#: lib/estoque_os_web/live/stock_live/spreadsheet.ex:108
 #, elixir-autogen, elixir-format
 msgid "The product could not be created."
 msgstr "Não foi possível criar o produto."
 
-#: lib/estoque_os_web/components/core_components.ex:612
+#: lib/estoque_os_web/components/core_components.ex:629
 #, elixir-autogen, elixir-format
 msgid "box %{code}"
 msgstr "caixa %{code}"
 
-#: lib/estoque_os_web/components/core_components.ex:567
+#: lib/estoque_os_web/components/core_components.ex:579
 #, elixir-autogen, elixir-format
 msgid "fix or exclude them"
 msgstr "corrija ou exclua"
 
-#: lib/estoque_os_web/components/core_components.ex:610
+#: lib/estoque_os_web/components/core_components.ex:627
 #, elixir-autogen, elixir-format
 msgid "line %{line}: %{product}"
 msgstr "linha %{line}: %{product}"
+
+#: lib/estoque_os_web/components/core_components.ex:526
+#, elixir-autogen, elixir-format
+msgid "Current stock locked, with an empty column to count in the field and import back."
+msgstr "Estoque atual travado, com uma coluna vazia para contar no campo e reimportar."
+
+#: lib/estoque_os_web/components/core_components.ex:523
+#, elixir-autogen, elixir-format
+msgid "Export count sheet"
+msgstr "Exportar folha de contagem"
+
+#: lib/estoque_os_web/components/core_components.ex:531
+#, elixir-autogen, elixir-format
+msgid "Export full stock"
+msgstr "Exportar estoque completo"
+
+#: lib/estoque_os_web/components/core_components.ex:582
+#, elixir-autogen, elixir-format
+msgid "Not counted"
+msgstr "Não contados"
+
+#: lib/estoque_os_web/components/core_components.ex:584
+#, elixir-autogen, elixir-format
+msgid "left untouched"
+msgstr "ficam intactas"

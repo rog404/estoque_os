@@ -23,8 +23,25 @@ defmodule EstoqueOS.Reports.StockWorkbook do
     {:total, "Total"}
   ]
 
-  @required_on_import [:product, :quantity, :location]
   @money_columns [:unit_cost, :total]
+
+  # The count sheet: identity + the current balance (locked, the "before") + an
+  # empty Contagem column to fill in the field (the "after"). Only Contagem is
+  # read back; a blank Contagem means "not counted".
+  @count_columns [
+    {:product, "Produto"},
+    {:lot_number, "Lote"},
+    {:expires_on, "Validade"},
+    {:box, "Caixa"},
+    {:location, "Local"},
+    {:current, "Saldo atual"},
+    {:counted, "Contagem"}
+  ]
+
+  # Headers recognised on import: the export's own, plus the count sheet's
+  # Contagem (read as the quantity) and Saldo atual (ignored — it is the
+  # reference the counter reads, not what they typed).
+  @import_columns @columns ++ [{:counted, "Contagem"}, {:current, "Saldo atual"}]
 
   @doc "Column keys and the headers they are written with."
   def columns, do: @columns
@@ -55,6 +72,47 @@ defmodule EstoqueOS.Reports.StockWorkbook do
       other -> other
     end
   end
+
+  @doc """
+  Builds a count sheet: every position with its current balance and an empty
+  Contagem column.
+
+  Everything but Contagem is shaded, so the one white column is the only thing
+  to type in. The shading is a cue, not a lock — correctness comes from the
+  import reading Contagem alone (Elixlsx cannot protect cells), so an edit to a
+  shaded column is simply ignored.
+  """
+  def to_count_sheet(rows) do
+    header =
+      Enum.map(@count_columns, fn
+        {:counted, header} -> [header, bold: true, bg_color: "#dcfce7"]
+        {_key, header} -> [header, bold: true]
+      end)
+
+    sheet = %Sheet{
+      name: "Contagem",
+      rows: [header | Enum.map(rows, &count_row/1)],
+      col_widths: %{1 => 45.0, 2 => 16.0, 3 => 12.0, 5 => 22.0, 6 => 12.0, 7 => 12.0}
+    }
+
+    %Workbook{sheets: [sheet]}
+    |> Elixlsx.write_to_memory("contagem.xlsx")
+    |> case do
+      {:ok, {~c"contagem.xlsx", binary}} -> {:ok, binary}
+      other -> other
+    end
+  end
+
+  defp count_row(row) do
+    Enum.map(@count_columns, fn
+      {:counted, _header} -> ""
+      {:current, _header} -> locked(cell(:quantity, Map.get(row, :quantity)))
+      {key, _header} -> locked(cell(key, Map.get(row, key)))
+    end)
+  end
+
+  # Shaded and greyed: "reference only, do not edit".
+  defp locked(value), do: [value, bg_color: "#eef2f7", color: "#475569"]
 
   @doc """
   An example sheet to fill in, showing the conventions: a dated lot, the
@@ -159,11 +217,17 @@ defmodule EstoqueOS.Reports.StockWorkbook do
       |> Map.new(fn {value, index} -> {normalize(value), index} end)
 
     index =
-      Map.new(@columns, fn {key, label} -> {key, Map.get(normalized, normalize(label))} end)
+      Map.new(@import_columns, fn {key, label} -> {key, Map.get(normalized, normalize(label))} end)
 
-    case Enum.filter(@required_on_import, &is_nil(index[&1])) do
+    # Product and location are always required; the count number comes from
+    # either the stock export's "Quantidade" or the count sheet's "Contagem".
+    missing =
+      Enum.filter([:product, :location], &is_nil(index[&1])) ++
+        if(is_nil(index[:quantity]) and is_nil(index[:counted]), do: [:quantity], else: [])
+
+    case missing do
       [] -> index
-      missing -> {:error, Enum.map(missing, &header_for/1)}
+      keys -> {:error, Enum.map(keys, &header_for/1)}
     end
   end
 
@@ -186,6 +250,12 @@ defmodule EstoqueOS.Reports.StockWorkbook do
   defp parse_row({cells, line}, index) do
     value = fn key -> index[key] && Enum.at(cells, index[key]) end
 
+    # A count sheet carries the "Contagem" column; its value is the quantity,
+    # and a blank one means "not counted". Otherwise the quantity is the stock
+    # export's own "Quantidade".
+    counted_sheet? = not is_nil(index[:counted])
+    quantity = if counted_sheet?, do: decimal(value.(:counted)), else: decimal(value.(:quantity))
+
     %{
       line: line,
       product: text(value.(:product)),
@@ -194,8 +264,9 @@ defmodule EstoqueOS.Reports.StockWorkbook do
       expires_on: date(value.(:expires_on)),
       box: text(value.(:box)),
       location: text(value.(:location)),
-      quantity: decimal(value.(:quantity)),
-      unit_cost: decimal(value.(:unit_cost))
+      quantity: quantity,
+      unit_cost: decimal(value.(:unit_cost)),
+      counted_sheet?: counted_sheet?
     }
   end
 

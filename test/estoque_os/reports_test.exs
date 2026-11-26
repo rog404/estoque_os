@@ -277,6 +277,78 @@ defmodule EstoqueOS.ReportsTest do
     end
   end
 
+  describe "count sheet" do
+    test "exports the balance locked and an empty Contagem column", %{
+      lot: lot,
+      warehouse: warehouse
+    } do
+      receive_stock(lot, warehouse, 300, unit_cost: "0.2695")
+
+      assert {:ok, binary} = Reports.export_count_sheet()
+      assert {:ok, [row]} = StockWorkbook.import_rows(binary)
+
+      assert row.product == "Eletrodo ECG adulto"
+      assert row.counted_sheet?
+      # Contagem is blank on export: the current balance is the reference only.
+      assert row.quantity == nil
+    end
+
+    test "a blank Contagem leaves that line untouched", %{lot: lot, warehouse: warehouse} do
+      receive_stock(lot, warehouse, 300, unit_cost: "0.2695")
+
+      binary =
+        sheet([
+          ["Produto", "Lote", "Local", "Saldo atual", "Contagem"],
+          ["Eletrodo ECG adulto", "114391U02", "Estoque Principal", 300, ""]
+        ])
+
+      assert {:ok, result} = Reports.import_stock(binary, user_id: actor_id())
+      assert result.adjusted == 0
+      assert result.transaction == nil
+      assert Decimal.equal?(Inventory.balance(lot_id: lot.id), Decimal.new(300))
+    end
+
+    test "a filled Contagem reconciles only its own line", %{lot: lot, warehouse: warehouse} do
+      receive_stock(lot, warehouse, 300, unit_cost: "0.2695")
+
+      gaze = product_fixture(%{name: "Gaze estéril"})
+      gaze_lot = lot_fixture(%{product_id: gaze.id, lot_number: "G-1"})
+      receive_stock(gaze_lot, warehouse, 40)
+
+      binary =
+        sheet([
+          ["Produto", "Lote", "Local", "Saldo atual", "Contagem"],
+          ["Eletrodo ECG adulto", "114391U02", "Estoque Principal", 300, 287],
+          ["Gaze estéril", "G-1", "Estoque Principal", 40, ""]
+        ])
+
+      assert {:ok, result} = Reports.import_stock(binary, user_id: actor_id())
+      assert result.adjusted == 1
+      assert Decimal.equal?(Inventory.balance(lot_id: lot.id), Decimal.new(287))
+      # The uncounted gaze line is left exactly as it was.
+      assert Decimal.equal?(Inventory.balance(lot_id: gaze_lot.id), Decimal.new(40))
+    end
+
+    test "the preview counts how many lines went uncounted", %{lot: lot, warehouse: warehouse} do
+      receive_stock(lot, warehouse, 300, unit_cost: "0.2695")
+      gaze = product_fixture(%{name: "Gaze estéril"})
+      gaze_lot = lot_fixture(%{product_id: gaze.id, lot_number: "G-1"})
+      receive_stock(gaze_lot, warehouse, 40)
+
+      binary =
+        sheet([
+          ["Produto", "Lote", "Local", "Saldo atual", "Contagem"],
+          ["Eletrodo ECG adulto", "114391U02", "Estoque Principal", 300, 287],
+          ["Gaze estéril", "G-1", "Estoque Principal", 40, ""]
+        ])
+
+      assert {:ok, preview} = Reports.preview_stock_import(binary)
+      assert preview.not_counted == 1
+      assert preview.total == 1
+      assert preview.blocking == []
+    end
+  end
+
   describe "create_import_product/1" do
     test "creates an upper-cased surgical product" do
       assert {:ok, product} = Reports.create_import_product("gaze demo")

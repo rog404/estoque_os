@@ -54,6 +54,7 @@ defmodule EstoqueOSWeb.StockLive.Spreadsheet do
           <.spreadsheet_actions
             upload={@uploads.sheet}
             export_path={~p"/stock/export.xlsx"}
+            count_sheet_path={~p"/stock/count-sheet.xlsx"}
             template_path={~p"/stock/template.xlsx"}
             initial_import={true}
             id="spreadsheet-import-form"

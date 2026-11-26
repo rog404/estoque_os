@@ -142,6 +142,7 @@ defmodule EstoqueOSWeb.Router do
     # export is trimmed rather than refused (see `StockController.export/2`).
     pipe_through [:require_password_not_pending]
     get "/stock/export.xlsx", StockController, :export
+    get "/stock/count-sheet.xlsx", StockController, :count_sheet
     get "/stock/template.xlsx", StockController, :template
   end
 

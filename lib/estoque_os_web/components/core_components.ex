@@ -508,15 +508,27 @@ defmodule EstoqueOSWeb.CoreComponents do
   attr :id, :string, default: "import-form"
   attr :template_path, :string, default: nil, doc: "a blank example sheet to download"
 
+  attr :count_sheet_path, :string,
+    default: nil,
+    doc: "the count sheet: stock with the balance locked and an empty Contagem column"
+
   attr :initial_import, :boolean,
     default: false,
     doc: "offer the initial-migration option, which creates items the catalog does not have yet"
 
   def spreadsheet_actions(assigns) do
     ~H"""
-    <a href={@export_path} class="btn btn-block">
-      <.icon name="hero-arrow-down-tray" class="size-5" />
-      {gettext("Export stock")}
+    <a :if={@count_sheet_path} href={@count_sheet_path} class="btn btn-block">
+      <.icon name="hero-clipboard-document-check" class="size-5" />
+      {gettext("Export count sheet")}
+    </a>
+    <p :if={@count_sheet_path} class="text-sm text-base-content/70 -mt-1">
+      {gettext("Current stock locked, with an empty column to count in the field and import back.")}
+    </p>
+
+    <a href={@export_path} class="btn btn-ghost btn-block btn-sm">
+      <.icon name="hero-arrow-down-tray" class="size-4" />
+      {gettext("Export full stock")}
     </a>
 
     <a :if={@template_path} href={@template_path} class="btn btn-ghost btn-block btn-sm">
@@ -565,6 +577,11 @@ defmodule EstoqueOSWeb.CoreComponents do
           <div class="stat-title">{gettext("Blocked")}</div>
           <div class="stat-value text-error">{length(@preview.blocking)}</div>
           <div class="stat-desc">{gettext("fix or exclude them")}</div>
+        </div>
+        <div :if={Map.get(@preview, :not_counted, 0) > 0} class="stat">
+          <div class="stat-title">{gettext("Not counted")}</div>
+          <div class="stat-value">{@preview.not_counted}</div>
+          <div class="stat-desc">{gettext("left untouched")}</div>
         </div>
       </div>
 

@@ -304,6 +304,17 @@ defmodule EstoqueOS.Reports do
   end
 
   @doc """
+  Builds the count sheet: the current stock with its balance locked and an empty
+  Contagem column to fill in offline, then import back.
+  """
+  def export_count_sheet(opts \\ []) do
+    opts
+    |> Keyword.take([:location_id, :segment, :search, :only_expiring, :only_controlled])
+    |> stock_rows()
+    |> StockWorkbook.to_count_sheet()
+  end
+
+  @doc """
   Imports a counted stock spreadsheet.
 
   The spreadsheet states what is physically there; the *difference* is posted
@@ -347,10 +358,13 @@ defmodule EstoqueOS.Reports do
 
   @doc "Classifies already-parsed rows, rebuilt as the operator excludes lines."
   def preview_rows(rows, opts \\ []) do
+    not_counted = Enum.count(rows, &uncounted_line?/1)
+
     rows
     |> Enum.reject(&blank_row?/1)
     |> Enum.map(&preview_row(&1, opts))
     |> summarize_preview(opts)
+    |> Map.put(:not_counted, not_counted)
   end
 
   @doc "Creates a product the count refers to but the catalog lacks."
@@ -478,7 +492,14 @@ defmodule EstoqueOS.Reports do
   defp create_missing?(opts), do: Keyword.get(opts, :create_missing, false)
 
   defp blank_row?(row) do
-    is_nil(row.product) and is_nil(row.quantity) and is_nil(row.location)
+    (is_nil(row.product) and is_nil(row.quantity) and is_nil(row.location)) or
+      uncounted_line?(row)
+  end
+
+  # A count sheet line with a product but a blank Contagem: "not counted". Left
+  # out of the import entirely, so a partial count never zeroes what it skipped.
+  defp uncounted_line?(row) do
+    Map.get(row, :counted_sheet?, false) and not is_nil(row.product) and is_nil(row.quantity)
   end
 
   # A box-only row registers an empty box, so it exists before its contents are written down.
