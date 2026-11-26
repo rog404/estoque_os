@@ -5859,12 +5859,6 @@ msgstr "Folha de contagem (offline)"
 msgid "Full data"
 msgstr "Dados completos"
 
-#: lib/estoque_os_web/components/layouts.ex:368
-#: lib/estoque_os_web/live/stock_live/spreadsheet.ex:26
-#, elixir-autogen, elixir-format
-msgid "Import/export"
-msgstr "Importar/exportar"
-
 #: lib/estoque_os_web/components/core_components.ex:533
 #, elixir-autogen, elixir-format
 msgid "The stock with the balance locked and an empty column to fill in the field. No internet needed; bring it back in below."
@@ -5874,3 +5868,9 @@ msgstr "O estoque com o saldo travado e uma coluna vazia pra preencher no campo.
 #, elixir-autogen, elixir-format
 msgid "The whole stock, every column."
 msgstr "O estoque inteiro, todas as colunas."
+
+#: lib/estoque_os_web/components/layouts.ex:368
+#: lib/estoque_os_web/live/stock_live/spreadsheet.ex:26
+#, elixir-autogen, elixir-format
+msgid "Spreadsheets"
+msgstr "Planilhas"

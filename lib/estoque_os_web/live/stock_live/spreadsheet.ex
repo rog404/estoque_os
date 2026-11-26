@@ -23,7 +23,7 @@ defmodule EstoqueOSWeb.StockLive.Spreadsheet do
 
   defp reset(socket) do
     socket
-    |> assign(:page_title, gettext("Import/export"))
+    |> assign(:page_title, gettext("Spreadsheets"))
     |> assign(:preview, nil)
     |> assign(:rows, [])
     |> assign(:excluded, MapSet.new())

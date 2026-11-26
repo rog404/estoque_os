@@ -365,7 +365,7 @@ defmodule EstoqueOSWeb.Layouts do
           },
           # Import/export of the stock itself belongs here, not under Reports.
           %{
-            label: gettext("Import/export"),
+            label: gettext("Spreadsheets"),
             path: ~p"/stock/sheets",
             icon: "hero-table-cells",
             roles: ~w(admin manager)
