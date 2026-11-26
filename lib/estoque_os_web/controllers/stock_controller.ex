@@ -6,6 +6,7 @@ defmodule EstoqueOSWeb.StockController do
 
   use EstoqueOSWeb, :controller
 
+  alias EstoqueOS.Accounts.Scope
   alias EstoqueOS.Reports
 
   def export(conn, params) do
@@ -22,7 +23,7 @@ defmodule EstoqueOSWeb.StockController do
 
     # Same narrowing as the stock screen: the file and the page must agree.
     segment =
-      EstoqueOS.Accounts.Scope.segment(
+      Scope.segment(
         conn.assigns[:current_scope],
         segment_param(params["segment"])
       )
@@ -52,7 +53,7 @@ defmodule EstoqueOSWeb.StockController do
       end
 
     segment =
-      EstoqueOS.Accounts.Scope.segment(
+      Scope.segment(
         conn.assigns[:current_scope],
         segment_param(params["segment"])
       )
