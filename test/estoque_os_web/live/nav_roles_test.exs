@@ -74,18 +74,18 @@ defmodule EstoqueOSWeb.NavRolesTest do
   # A spreadsheet import writes counts for the whole warehouse at once: a planning act.
   test "importing data belongs to the admin and the manager", %{conn: conn} do
     for role <- ~w(admin manager) do
-      assert Layouts.may_access?(scope_for(role), "/reports/data")
+      assert Layouts.may_access?(scope_for(role), "/stock/sheets")
     end
 
     for role <- ~w(logistics auditor) do
-      refute Layouts.may_access?(scope_for(role), "/reports/data")
+      refute Layouts.may_access?(scope_for(role), "/stock/sheets")
     end
 
     %{conn: conn} = register_and_log_in_logistics(%{conn: conn})
     {:ok, _view, html} = live(conn, ~p"/")
-    refute html =~ ~s(href="/reports/data")
+    refute html =~ ~s(href="/stock/sheets")
 
-    assert {:error, {:redirect, %{to: "/"}}} = live(conn, ~p"/reports/data")
+    assert {:error, {:redirect, %{to: "/"}}} = live(conn, ~p"/stock/sheets")
   end
 
   test "the auditor keeps a menu worth opening", %{conn: conn} do

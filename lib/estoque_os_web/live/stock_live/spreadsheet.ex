@@ -23,7 +23,7 @@ defmodule EstoqueOSWeb.StockLive.Spreadsheet do
 
   defp reset(socket) do
     socket
-    |> assign(:page_title, gettext("Data"))
+    |> assign(:page_title, gettext("Import/export"))
     |> assign(:preview, nil)
     |> assign(:rows, [])
     |> assign(:excluded, MapSet.new())
@@ -50,7 +50,7 @@ defmodule EstoqueOSWeb.StockLive.Spreadsheet do
           </:subtitle>
         </.header>
 
-        <div :if={is_nil(@preview)} class="rounded-box border border-base-300 p-4 space-y-3">
+        <div :if={is_nil(@preview)}>
           <.spreadsheet_actions
             upload={@uploads.sheet}
             export_path={~p"/stock/export.xlsx"}

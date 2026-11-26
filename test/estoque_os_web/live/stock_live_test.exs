@@ -149,7 +149,7 @@ defmodule EstoqueOSWeb.StockLiveTest do
         ["Produto inexistente", "X", "Estoque Principal", 5]
       ])
 
-    {:ok, view, _html} = live(conn, ~p"/reports/data")
+    {:ok, view, _html} = live(conn, ~p"/stock/sheets")
 
     view
     |> file_input("#spreadsheet-import-form", :sheet, [
@@ -176,7 +176,7 @@ defmodule EstoqueOSWeb.StockLiveTest do
         ["Eletrodo ECG adulto", "114391U02", "Estoque Principal", 287]
       ])
 
-    {:ok, view, _html} = live(conn, ~p"/reports/data")
+    {:ok, view, _html} = live(conn, ~p"/stock/sheets")
 
     view
     |> file_input("#spreadsheet-import-form", :sheet, [
@@ -203,7 +203,7 @@ defmodule EstoqueOSWeb.StockLiveTest do
         ["Eletrodo ECG adulto", "114391U02", "Estoque Principal", 287]
       ])
 
-    {:ok, view, _html} = live(conn, ~p"/reports/data")
+    {:ok, view, _html} = live(conn, ~p"/stock/sheets")
 
     view
     |> file_input("#spreadsheet-import-form", :sheet, [

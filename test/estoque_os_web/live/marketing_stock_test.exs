@@ -161,7 +161,7 @@ defmodule EstoqueOSWeb.MarketingStockTest do
     # Writing the whole warehouse at once is a planning act (admin/manager),
     # independent of which stock the role works in.
     test "still cannot import a whole spreadsheet", %{conn: conn} do
-      assert {:error, {:redirect, %{to: _}}} = live(conn, ~p"/reports/data")
+      assert {:error, {:redirect, %{to: _}}} = live(conn, ~p"/stock/sheets")
     end
 
     test "opens the invoices, listing its own deliveries first", %{

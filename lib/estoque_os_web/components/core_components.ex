@@ -499,9 +499,10 @@ defmodule EstoqueOSWeb.CoreComponents do
   end
 
   @doc """
-  The two halves of the spreadsheet round trip: export the stock, import a
-  count. Shared by two screens; the upload belongs to each LiveView, so it
-  arrives as an attribute.
+  The spreadsheet round trip, in three stacked cards: the offline count sheet,
+  the full data export, and bringing a sheet back in. Mobile-first — one column,
+  the common count flow first. The upload belongs to each LiveView, so it arrives
+  as an attribute.
   """
   attr :upload, :any, required: true, doc: "the `@uploads.<name>` struct of the calling view"
   attr :export_path, :string, required: true
@@ -518,40 +519,76 @@ defmodule EstoqueOSWeb.CoreComponents do
 
   def spreadsheet_actions(assigns) do
     ~H"""
-    <a :if={@count_sheet_path} href={@count_sheet_path} class="btn btn-block">
-      <.icon name="hero-clipboard-document-check" class="size-5" />
-      {gettext("Export count sheet")}
-    </a>
-    <p :if={@count_sheet_path} class="text-sm text-base-content/70 -mt-1">
-      {gettext("Current stock locked, with an empty column to count in the field and import back.")}
-    </p>
+    <div class="space-y-4">
+      <%!-- The offline count is the everyday field flow, so it leads. --%>
+      <section
+        :if={@count_sheet_path}
+        class="rounded-box border border-base-300 bg-base-200/40 p-4 space-y-3"
+      >
+        <div class="flex items-center gap-2">
+          <.icon name="hero-clipboard-document-check" class="size-5 text-primary" />
+          <h3 class="font-semibold">{gettext("Count sheet (offline)")}</h3>
+        </div>
+        <p class="text-sm text-base-content/70">
+          {gettext(
+            "The stock with the balance locked and an empty column to fill in the field. No internet needed; bring it back in below."
+          )}
+        </p>
+        <a href={@count_sheet_path} class="btn btn-primary btn-block">
+          <.icon name="hero-arrow-down-tray" class="size-5" />
+          {gettext("Export count sheet")}
+        </a>
+      </section>
 
-    <a href={@export_path} class="btn btn-ghost btn-block btn-sm">
-      <.icon name="hero-arrow-down-tray" class="size-4" />
-      {gettext("Export full stock")}
-    </a>
+      <%!-- The full export, for anyone who wants every column. --%>
+      <section class="rounded-box border border-base-300 p-4 space-y-3">
+        <div class="flex items-center gap-2">
+          <.icon name="hero-table-cells" class="size-5" />
+          <h3 class="font-semibold">{gettext("Full data")}</h3>
+        </div>
+        <p class="text-sm text-base-content/70">
+          {gettext("The whole stock, every column.")}
+        </p>
+        <a href={@export_path} class="btn btn-block">
+          <.icon name="hero-arrow-down-tray" class="size-5" />
+          {gettext("Export full stock")}
+        </a>
+        <a :if={@template_path} href={@template_path} class="btn btn-ghost btn-block btn-sm">
+          <.icon name="hero-document-arrow-down" class="size-4" />
+          {gettext("Download example spreadsheet")}
+        </a>
+      </section>
 
-    <a :if={@template_path} href={@template_path} class="btn btn-ghost btn-block btn-sm">
-      <.icon name="hero-document-arrow-down" class="size-4" />
-      {gettext("Download example spreadsheet")}
-    </a>
+      <%!-- Bringing a sheet back in — shared by both exports above. --%>
+      <section class="rounded-box border border-base-300 p-4 space-y-3">
+        <div class="flex items-center gap-2">
+          <.icon name="hero-arrow-up-tray" class="size-5" />
+          <h3 class="font-semibold">{gettext("Bring a sheet back in")}</h3>
+        </div>
+        <form id={@id} phx-submit="preview" phx-change="validate" class="space-y-2">
+          <.live_file_input upload={@upload} class="file-input file-input-bordered w-full" />
 
-    <form id={@id} phx-submit="preview" phx-change="validate" class="space-y-2">
-      <.live_file_input upload={@upload} class="file-input file-input-bordered w-full" />
+          <label :if={@initial_import} class="flex items-center gap-2 text-sm">
+            <input type="checkbox" name="create_missing" value="true" class="checkbox checkbox-sm" />
+            {gettext("Initial import: create products, places and boxes that do not exist yet")}
+          </label>
 
-      <label :if={@initial_import} class="flex items-center gap-2 text-sm">
-        <input type="checkbox" name="create_missing" value="true" class="checkbox checkbox-sm" />
-        {gettext("Initial import: create products, places and boxes that do not exist yet")}
-      </label>
-
-      <.button class="btn-block" phx-disable-with={gettext("Reading the spreadsheet...")}>
-        <.icon name="hero-arrow-up-tray" class="size-5" />
-        {gettext("Preview the count")}
-      </.button>
-      <p class="text-sm text-base-content/80">
-        {gettext("The spreadsheet states what is physically there; only the difference is posted.")}
-      </p>
-    </form>
+          <.button
+            variant="primary"
+            class="btn-block"
+            phx-disable-with={gettext("Reading the spreadsheet...")}
+          >
+            <.icon name="hero-eye" class="size-5" />
+            {gettext("Preview the count")}
+          </.button>
+          <p class="text-sm text-base-content/70">
+            {gettext(
+              "The spreadsheet states what is physically there; only the difference is posted."
+            )}
+          </p>
+        </form>
+      </section>
+    </div>
     """
   end
 

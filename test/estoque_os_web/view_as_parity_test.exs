@@ -22,7 +22,7 @@ defmodule EstoqueOSWeb.ViewAsParityTest do
   @paths ~w(
     / /stock /boxes /locations /kits /missions /conferences /load-out /returns
     /entry /entries /issue /issues /invoices /invoices/import
-    /reports/sales /reports/transit /reports/audit /reports/data /admin/users
+    /reports/sales /reports/transit /reports/audit /stock/sheets /admin/users
   )
 
   setup do
