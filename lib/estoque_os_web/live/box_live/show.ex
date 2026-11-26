@@ -179,6 +179,72 @@ defmodule EstoqueOSWeb.BoxLive.Show do
         </.data_table>
       </.panel>
 
+      <.panel :if={@role_may_write?} title={gettext("Tidy the box")} flush>
+        <div class="flex flex-col gap-6 p-4">
+          <div :if={not @box.active} class="alert alert-warning text-sm">
+            {gettext("This box is retired: it is hidden from listings and pickers.")}
+          </div>
+
+          <.write_gate
+            :if={@contents != [] and @siblings != []}
+            may={true}
+            allowed={@controls_enabled?}
+          >
+            <form id="empty-box-form" phx-submit="empty_box" class="flex flex-wrap items-end gap-2">
+              <div class="flex flex-col gap-1">
+                <span class="text-sm font-medium">{gettext("Empty this box into another")}</span>
+                <.box_picker
+                  name="box_code"
+                  boxes={@siblings}
+                  list_id="sibling-boxes"
+                  label={gettext("Box to move everything into")}
+                />
+              </div>
+              <.button class="btn-sm" phx-disable-with={gettext("Moving...")}>
+                {gettext("Move everything")}
+              </.button>
+            </form>
+          </.write_gate>
+
+          <.write_gate may={true} allowed={@controls_enabled?}>
+            <form id="rename-box-form" phx-submit="rename" class="flex flex-wrap items-end gap-2">
+              <div class="flex flex-col gap-1">
+                <span class="text-sm font-medium">{gettext("Rename this box")}</span>
+                <input
+                  type="text"
+                  name="code"
+                  value={@box.code}
+                  class="input input-sm input-bordered w-32"
+                  aria-label={gettext("New box code")}
+                />
+              </div>
+              <.button class="btn-sm" phx-disable-with={gettext("Renaming...")}>
+                {gettext("Rename")}
+              </.button>
+            </form>
+          </.write_gate>
+
+          <.write_gate may={true} allowed={@controls_enabled?}>
+            <div class="flex flex-wrap items-center gap-2">
+              <.button
+                :if={@box.active}
+                phx-click="retire"
+                class="btn-sm btn-outline"
+                disabled={@contents != []}
+              >
+                {gettext("Retire this box")}
+              </.button>
+              <span :if={@box.active and @contents != []} class="text-sm text-base-content/60">
+                {gettext("Empty it first.")}
+              </span>
+              <.button :if={not @box.active} phx-click="reopen" class="btn-sm">
+                {gettext("Reopen this box")}
+              </.button>
+            </div>
+          </.write_gate>
+        </div>
+      </.panel>
+
       <.box_options id="sibling-boxes" boxes={@siblings} />
     </Layouts.app>
     """
@@ -309,6 +375,117 @@ defmodule EstoqueOSWeb.BoxLive.Show do
      socket
      |> put_flash(:info, gettext("Box marked as counted today."))
      |> assign_box(Locations.get_box!(box.id))}
+  end
+
+  def handle_event("empty_box", %{"box_code" => code}, socket) do
+    box = socket.assigns.box
+
+    case Locations.resolve_box(code, box.location_id, create: false) do
+      {:ok, nil} ->
+        {:noreply, put_flash(socket, :error, gettext("Say which box to empty it into."))}
+
+      {:ok, target} ->
+        do_empty(socket, target)
+
+      {:unknown, _code} ->
+        {:noreply,
+         put_flash(
+           socket,
+           :error,
+           gettext("No box here wears that code. Create it on the Boxes screen first.")
+         )}
+
+      {:error, {:box_elsewhere, elsewhere}} ->
+        {:noreply,
+         put_flash(
+           socket,
+           :error,
+           gettext("Box %{code} is somewhere else. Move it first, or use another.",
+             code: elsewhere.code
+           )
+         )}
+
+      {:error, _reason} ->
+        {:noreply, put_flash(socket, :error, gettext("That box code could not be used."))}
+    end
+  end
+
+  def handle_event("rename", %{"code" => code}, socket) do
+    case Locations.rename_box(socket.assigns.box, code) do
+      {:ok, renamed} ->
+        {:noreply,
+         socket
+         |> assign(:page_title, gettext("Box %{code}", code: renamed.code))
+         |> put_flash(:info, gettext("Box renamed to %{code}.", code: renamed.code))
+         |> assign_box(Locations.get_box!(renamed.id))}
+
+      {:error, changeset} ->
+        {:noreply, put_flash(socket, :error, rename_error(changeset))}
+    end
+  end
+
+  def handle_event("retire", _params, socket) do
+    box = socket.assigns.box
+
+    case Locations.retire_box(box) do
+      {:ok, retired} ->
+        {:noreply,
+         socket
+         |> put_flash(:info, gettext("Box %{code} retired.", code: retired.code))
+         |> assign_box(Locations.get_box!(retired.id))}
+
+      {:error, :not_empty} ->
+        {:noreply, put_flash(socket, :error, gettext("Empty the box before retiring it."))}
+
+      {:error, _reason} ->
+        {:noreply, put_flash(socket, :error, gettext("The box could not be retired."))}
+    end
+  end
+
+  def handle_event("reopen", _params, socket) do
+    {:ok, reopened} = Locations.reopen_box(socket.assigns.box)
+
+    {:noreply,
+     socket
+     |> put_flash(:info, gettext("Box %{code} reopened.", code: reopened.code))
+     |> assign_box(Locations.get_box!(reopened.id))}
+  end
+
+  defp do_empty(socket, target) do
+    box = socket.assigns.box
+    user_id = socket.assigns.current_scope.user.id
+
+    case Locations.empty_box_into(box, target, user_id: user_id) do
+      {:ok, _transaction} ->
+        {:noreply,
+         socket
+         |> put_flash(:info, gettext("Everything moved into %{code}.", code: target.code))
+         |> assign_box(Locations.get_box!(box.id))}
+
+      {:error, :same_box} ->
+        {:noreply, put_flash(socket, :error, gettext("That is this very box."))}
+
+      {:error, :empty_box} ->
+        {:noreply, put_flash(socket, :error, gettext("This box is already empty."))}
+
+      {:error, _reason} ->
+        {:noreply, put_flash(socket, :error, gettext("The goods could not be moved."))}
+    end
+  end
+
+  # The box code is required and unique; say which rule the typed code broke.
+  defp rename_error(%Ecto.Changeset{errors: errors}) do
+    case errors[:code] do
+      {_message, opts} ->
+        if opts[:constraint] == :unique do
+          gettext("Another box already uses that code.")
+        else
+          gettext("Type a code for the box.")
+        end
+
+      _ ->
+        gettext("The box could not be renamed.")
+    end
   end
 
   defp rebox(socket, lot_id, params, opts) do

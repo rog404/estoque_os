@@ -280,6 +280,68 @@ defmodule EstoqueOSWeb.BoxLiveTest do
       assert Repo.reload!(box).last_verified_at
       assert Decimal.equal?(Inventory.balance(lot_id: lot.id), Decimal.new(300))
     end
+
+    test "empties the whole box into another in one move", %{
+      conn: conn,
+      box: box,
+      warehouse: warehouse
+    } do
+      fresh = box_fixture(%{code: "BL06", location_id: warehouse.id})
+
+      {:ok, view, _html} = live(conn, ~p"/boxes/#{box}")
+
+      html = view |> element("#empty-box-form") |> render_submit(%{"box_code" => fresh.code})
+
+      assert html =~ "Tudo movido para BL06"
+      assert Decimal.equal?(Inventory.balance(box_id: fresh.id), Decimal.new(300))
+      assert Locations.box_contents(box) == []
+    end
+
+    test "renames the box from its own page", %{conn: conn, box: box} do
+      {:ok, view, _html} = live(conn, ~p"/boxes/#{box}")
+
+      html = view |> element("#rename-box-form") |> render_submit(%{"code" => "or84"})
+
+      assert html =~ "Caixa renomeada para OR84"
+      assert Repo.reload!(box).code == "OR84"
+    end
+
+    test "refuses to rename onto a code another box wears", %{
+      conn: conn,
+      box: box,
+      warehouse: warehouse
+    } do
+      box_fixture(%{code: "BL06", location_id: warehouse.id})
+
+      {:ok, view, _html} = live(conn, ~p"/boxes/#{box}")
+
+      html = view |> element("#rename-box-form") |> render_submit(%{"code" => "BL06"})
+
+      assert html =~ "Outra caixa já usa esse código"
+      assert Repo.reload!(box).code == "BL01"
+    end
+
+    test "says to empty a box before it can be retired", %{conn: conn, box: box} do
+      {:ok, view, _html} = live(conn, ~p"/boxes/#{box}")
+
+      assert render(view) =~ "Esvazie-a primeiro"
+    end
+
+    test "retires an empty box and reopens it", %{conn: conn, warehouse: warehouse} do
+      empty = box_fixture(%{code: "BL07", location_id: warehouse.id})
+
+      {:ok, view, _html} = live(conn, ~p"/boxes/#{empty}")
+
+      html = view |> element("button", "Aposentar esta caixa") |> render_click()
+
+      assert html =~ "aposentada"
+      refute Repo.reload!(empty).active
+
+      html = view |> element("button", "Reabrir esta caixa") |> render_click()
+
+      assert html =~ "reaberta"
+      assert Repo.reload!(empty).active
+    end
   end
 
   describe "loose stock" do

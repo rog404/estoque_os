@@ -730,8 +730,8 @@ msgstr ""
 msgid "Stock is empty."
 msgstr ""
 
-#: lib/estoque_os_web/controllers/stock_controller.ex:40
-#: lib/estoque_os_web/controllers/stock_controller.ex:70
+#: lib/estoque_os_web/controllers/stock_controller.ex:41
+#: lib/estoque_os_web/controllers/stock_controller.ex:71
 #, elixir-autogen, elixir-format
 msgid "The spreadsheet could not be generated."
 msgstr ""
@@ -984,7 +984,7 @@ msgstr ""
 
 #: lib/estoque_os_web/live/box_live/count.ex:242
 #: lib/estoque_os_web/live/box_live/lookup.ex:88
-#: lib/estoque_os_web/live/box_live/show.ex:226
+#: lib/estoque_os_web/live/box_live/show.ex:292
 #: lib/estoque_os_web/live/home_live/index.ex:553
 #, elixir-autogen, elixir-format
 msgid "counted on %{date}"
@@ -1012,7 +1012,7 @@ msgstr ""
 #: lib/estoque_os_web/live/box_live/count.ex:239
 #: lib/estoque_os_web/live/box_live/index.ex:230
 #: lib/estoque_os_web/live/box_live/lookup.ex:85
-#: lib/estoque_os_web/live/box_live/show.ex:223
+#: lib/estoque_os_web/live/box_live/show.ex:289
 #: lib/estoque_os_web/live/home_live/index.ex:550
 #, elixir-autogen, elixir-format
 msgid "never counted"
@@ -1216,6 +1216,7 @@ msgstr ""
 #: lib/estoque_os_web/live/box_live/lookup.ex:183
 #: lib/estoque_os_web/live/box_live/show.ex:18
 #: lib/estoque_os_web/live/box_live/show.ex:42
+#: lib/estoque_os_web/live/box_live/show.ex:418
 #, elixir-autogen, elixir-format
 msgid "Box %{code}"
 msgstr ""
@@ -1226,7 +1227,7 @@ msgid "Box %{code} created."
 msgstr ""
 
 #: lib/estoque_os_web/live/box_live/index.ex:265
-#: lib/estoque_os_web/live/box_live/show.ex:282
+#: lib/estoque_os_web/live/box_live/show.ex:348
 #, elixir-autogen, elixir-format
 msgid "Box %{code} moved to %{location}."
 msgstr ""
@@ -1237,7 +1238,7 @@ msgstr ""
 msgid "Box code"
 msgstr ""
 
-#: lib/estoque_os_web/live/box_live/show.ex:310
+#: lib/estoque_os_web/live/box_live/show.ex:376
 #, elixir-autogen, elixir-format
 msgid "Box marked as counted today."
 msgstr ""
@@ -1329,6 +1330,7 @@ msgstr ""
 #: lib/estoque_os_web/live/box_live/index.ex:201
 #: lib/estoque_os_web/live/box_live/show.ex:70
 #: lib/estoque_os_web/live/box_live/show.ex:123
+#: lib/estoque_os_web/live/box_live/show.ex:203
 #, elixir-autogen, elixir-format
 msgid "Moving..."
 msgstr ""
@@ -1355,13 +1357,13 @@ msgid "Presumed contents"
 msgstr ""
 
 #: lib/estoque_os_web/live/box_live/index.ex:284
-#: lib/estoque_os_web/live/box_live/show.ex:301
+#: lib/estoque_os_web/live/box_live/show.ex:367
 #, elixir-autogen, elixir-format
 msgid "The box could not be moved."
 msgstr ""
 
 #: lib/estoque_os_web/live/box_live/index.ex:273
-#: lib/estoque_os_web/live/box_live/show.ex:290
+#: lib/estoque_os_web/live/box_live/show.ex:356
 #, elixir-autogen, elixir-format
 msgid "The box is already there."
 msgstr ""
@@ -1763,7 +1765,7 @@ msgstr ""
 msgid "The return could not be recorded."
 msgstr ""
 
-#: lib/estoque_os_web/live/box_live/show.ex:249
+#: lib/estoque_os_web/live/box_live/show.ex:315
 #: lib/estoque_os_web/live/issue_live/index.ex:682
 #: lib/estoque_os_web/live/issue_live/index.ex:686
 #: lib/estoque_os_web/live/issue_live/index.ex:791
@@ -2350,6 +2352,7 @@ msgstr ""
 msgid "Now called %{name}."
 msgstr ""
 
+#: lib/estoque_os_web/live/box_live/show.ex:222
 #: lib/estoque_os_web/live/location_live/index.ex:221
 #, elixir-autogen, elixir-format
 msgid "Rename"
@@ -3432,7 +3435,7 @@ msgstr ""
 msgid "Pick another location, or bring goods in first."
 msgstr ""
 
-#: lib/estoque_os_web/live/box_live/show.ex:330
+#: lib/estoque_os_web/live/box_live/show.ex:507
 #: lib/estoque_os_web/live/entry_live/new.ex:566
 #: lib/estoque_os_web/live/kit_live/show.ex:759
 #: lib/estoque_os_web/live/receipt_live/show.ex:574
@@ -3445,7 +3448,8 @@ msgstr ""
 msgid "Box %{code} is at %{location}. Move it first, or use another."
 msgstr ""
 
-#: lib/estoque_os_web/live/box_live/show.ex:338
+#: lib/estoque_os_web/live/box_live/show.ex:403
+#: lib/estoque_os_web/live/box_live/show.ex:515
 #: lib/estoque_os_web/live/kit_live/show.ex:767
 #: lib/estoque_os_web/live/product_live/show.ex:55
 #: lib/estoque_os_web/live/receipt_live/show.ex:582
@@ -3463,7 +3467,8 @@ msgstr ""
 msgid "New box(es) created here: %{codes}"
 msgstr ""
 
-#: lib/estoque_os_web/live/box_live/show.ex:344
+#: lib/estoque_os_web/live/box_live/show.ex:409
+#: lib/estoque_os_web/live/box_live/show.ex:521
 #: lib/estoque_os_web/live/entry_live/new.ex:581
 #: lib/estoque_os_web/live/kit_live/show.ex:773
 #: lib/estoque_os_web/live/receipt_live/show.ex:588
@@ -3503,7 +3508,7 @@ msgid "per %{unit}"
 msgstr ""
 
 #: lib/estoque_os_web/live/box_live/index.ex:280
-#: lib/estoque_os_web/live/box_live/show.ex:297
+#: lib/estoque_os_web/live/box_live/show.ex:363
 #, elixir-autogen, elixir-format
 msgid "A box goes to a mission through the load-out, which records the trip."
 msgstr ""
@@ -3627,7 +3632,7 @@ msgstr ""
 msgid "%{from} → %{to}"
 msgstr ""
 
-#: lib/estoque_os_web/live/box_live/show.ex:197
+#: lib/estoque_os_web/live/box_live/show.ex:263
 #, elixir-autogen, elixir-format
 msgid "%{quantity} moved into %{code}."
 msgstr ""
@@ -3642,27 +3647,28 @@ msgstr ""
 msgid "How much to move"
 msgstr ""
 
-#: lib/estoque_os_web/live/box_live/show.ex:323
+#: lib/estoque_os_web/live/box_live/show.ex:500
 #, elixir-autogen, elixir-format
 msgid "Say which box it moves into."
 msgstr ""
 
-#: lib/estoque_os_web/live/box_live/show.ex:216
+#: lib/estoque_os_web/live/box_live/show.ex:282
 #, elixir-autogen, elixir-format
 msgid "That is the box it is already in."
 msgstr ""
 
-#: lib/estoque_os_web/live/box_live/show.ex:219
+#: lib/estoque_os_web/live/box_live/show.ex:285
+#: lib/estoque_os_web/live/box_live/show.ex:472
 #, elixir-autogen, elixir-format
 msgid "The goods could not be moved."
 msgstr ""
 
-#: lib/estoque_os_web/live/box_live/show.ex:209
+#: lib/estoque_os_web/live/box_live/show.ex:275
 #, elixir-autogen, elixir-format
 msgid "This box only holds %{available}."
 msgstr ""
 
-#: lib/estoque_os_web/live/box_live/show.ex:213
+#: lib/estoque_os_web/live/box_live/show.ex:279
 #, elixir-autogen, elixir-format
 msgid "Type how much to move."
 msgstr ""
@@ -4611,7 +4617,7 @@ msgstr ""
 msgid "Put in %{box}"
 msgstr ""
 
-#: lib/estoque_os_web/live/box_live/show.ex:238
+#: lib/estoque_os_web/live/box_live/show.ex:304
 #: lib/estoque_os_web/live/product_live/show.ex:74
 #, elixir-autogen, elixir-format
 msgid "Stored in %{box}."
@@ -4623,14 +4629,14 @@ msgstr ""
 msgid "Storing..."
 msgstr ""
 
-#: lib/estoque_os_web/live/box_live/show.ex:252
+#: lib/estoque_os_web/live/box_live/show.ex:318
 #: lib/estoque_os_web/live/product_live/show.ex:61
 #: lib/estoque_os_web/live/product_live/show.ex:89
 #, elixir-autogen, elixir-format
 msgid "That could not be stored."
 msgstr ""
 
-#: lib/estoque_os_web/live/box_live/show.ex:245
+#: lib/estoque_os_web/live/box_live/show.ex:311
 #: lib/estoque_os_web/live/product_live/show.ex:82
 #, elixir-autogen, elixir-format
 msgid "There is only %{available} loose here."
@@ -5548,7 +5554,7 @@ msgstr ""
 msgid "Initial import: create products, places and boxes that do not exist yet"
 msgstr ""
 
-#: lib/estoque_os_web/controllers/stock_controller.ex:86
+#: lib/estoque_os_web/controllers/stock_controller.ex:87
 #, elixir-autogen, elixir-format
 msgid "The template could not be generated."
 msgstr ""
@@ -5697,6 +5703,131 @@ msgstr ""
 #: lib/estoque_os_web/components/core_components.ex:627
 #, elixir-autogen, elixir-format
 msgid "line %{line}: %{product}"
+msgstr ""
+
+#: lib/estoque_os/inventory/locations.ex:449
+#, elixir-autogen, elixir-format
+msgid "%{from} emptied into %{to}"
+msgstr ""
+
+#: lib/estoque_os_web/live/box_live/show.ex:481
+#, elixir-autogen, elixir-format
+msgid "Another box already uses that code."
+msgstr ""
+
+#: lib/estoque_os_web/live/box_live/show.ex:450
+#, elixir-autogen, elixir-format
+msgid "Box %{code} reopened."
+msgstr ""
+
+#: lib/estoque_os_web/live/box_live/show.ex:434
+#, elixir-autogen, elixir-format
+msgid "Box %{code} retired."
+msgstr ""
+
+#: lib/estoque_os_web/live/box_live/show.ex:419
+#, elixir-autogen, elixir-format
+msgid "Box renamed to %{code}."
+msgstr ""
+
+#: lib/estoque_os_web/live/box_live/show.ex:200
+#, elixir-autogen, elixir-format
+msgid "Box to move everything into"
+msgstr ""
+
+#: lib/estoque_os_web/live/box_live/show.ex:238
+#, elixir-autogen, elixir-format
+msgid "Empty it first."
+msgstr ""
+
+#: lib/estoque_os_web/live/box_live/show.ex:438
+#, elixir-autogen, elixir-format
+msgid "Empty the box before retiring it."
+msgstr ""
+
+#: lib/estoque_os_web/live/box_live/show.ex:195
+#, elixir-autogen, elixir-format
+msgid "Empty this box into another"
+msgstr ""
+
+#: lib/estoque_os_web/live/box_live/show.ex:462
+#, elixir-autogen, elixir-format
+msgid "Everything moved into %{code}."
+msgstr ""
+
+#: lib/estoque_os_web/live/box_live/show.ex:204
+#, elixir-autogen, elixir-format
+msgid "Move everything"
+msgstr ""
+
+#: lib/estoque_os_web/live/box_live/show.ex:218
+#, elixir-autogen, elixir-format
+msgid "New box code"
+msgstr ""
+
+#: lib/estoque_os_web/live/box_live/show.ex:395
+#, elixir-autogen, elixir-format
+msgid "No box here wears that code. Create it on the Boxes screen first."
+msgstr ""
+
+#: lib/estoque_os_web/live/box_live/show.ex:212
+#, elixir-autogen, elixir-format
+msgid "Rename this box"
+msgstr ""
+
+#: lib/estoque_os_web/live/box_live/show.ex:221
+#, elixir-autogen, elixir-format
+msgid "Renaming..."
+msgstr ""
+
+#: lib/estoque_os_web/live/box_live/show.ex:241
+#, elixir-autogen, elixir-format
+msgid "Reopen this box"
+msgstr ""
+
+#: lib/estoque_os_web/live/box_live/show.ex:235
+#, elixir-autogen, elixir-format
+msgid "Retire this box"
+msgstr ""
+
+#: lib/estoque_os_web/live/box_live/show.ex:385
+#, elixir-autogen, elixir-format
+msgid "Say which box to empty it into."
+msgstr ""
+
+#: lib/estoque_os_web/live/box_live/show.ex:466
+#, elixir-autogen, elixir-format
+msgid "That is this very box."
+msgstr ""
+
+#: lib/estoque_os_web/live/box_live/show.ex:487
+#, elixir-autogen, elixir-format
+msgid "The box could not be renamed."
+msgstr ""
+
+#: lib/estoque_os_web/live/box_live/show.ex:441
+#, elixir-autogen, elixir-format
+msgid "The box could not be retired."
+msgstr ""
+
+#: lib/estoque_os_web/live/box_live/show.ex:469
+#, elixir-autogen, elixir-format
+msgid "This box is already empty."
+msgstr ""
+
+#: lib/estoque_os_web/live/box_live/show.ex:185
+#, elixir-autogen, elixir-format
+msgid "This box is retired: it is hidden from listings and pickers."
+msgstr ""
+
+#: lib/estoque_os_web/live/box_live/show.ex:182
+#, elixir-autogen, elixir-format
+msgid "Tidy the box"
+msgstr ""
+
+#: lib/estoque_os_web/live/box_live/show.ex:483
+#, elixir-autogen, elixir-format
+msgid "Type a code for the box."
 msgstr ""
 
 #: lib/estoque_os_web/components/core_components.ex:526
