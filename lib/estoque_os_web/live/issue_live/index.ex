@@ -603,6 +603,7 @@ defmodule EstoqueOSWeb.IssueLive.Index do
   defp match_label(:gtin), do: gettext("GTIN")
   defp match_label(:supplier_code), do: gettext("supplier code")
   defp match_label(:synonym), do: gettext("synonym")
+  defp match_label(:alias), do: gettext("other name")
 
   defp available(product, location_id) do
     Inventory.balance(product_id: product.id, location_id: location_id)

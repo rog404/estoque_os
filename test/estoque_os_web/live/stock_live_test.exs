@@ -92,6 +92,28 @@ defmodule EstoqueOSWeb.StockLiveTest do
       refute cell =~ "doação"
     end
 
+    test "stock brought in by migration reads as migration, not donation", %{
+      conn: conn,
+      warehouse: warehouse
+    } do
+      product = product_fixture(%{name: "Compressa migrada"})
+      lot = lot_fixture(%{product_id: product.id})
+
+      {:ok, _} =
+        Inventory.post_transaction(%{
+          type: "inventory_import",
+          user_id: actor_id(),
+          entries: [%{lot_id: lot.id, location_id: warehouse.id, quantity: Decimal.new(30)}]
+        })
+
+      {:ok, _view, html} = live(conn, ~p"/stock?search=Compressa+migrada")
+
+      cell = flags_cell(html, "Compressa migrada")
+
+      assert cell =~ "migração"
+      refute cell =~ "doação"
+    end
+
     test "running low is a fact about the product, not about one box", %{
       conn: conn,
       warehouse: warehouse

@@ -13,6 +13,7 @@ defmodule EstoqueOS.Catalog do
   alias EstoqueOS.Catalog.{
     Carrier,
     Product,
+    ProductAlias,
     ProductChange,
     ProductGroup,
     ProductGroupSynonym,
@@ -61,6 +62,53 @@ defmodule EstoqueOS.Catalog do
   end
 
   def get_product!(id), do: Repo.get!(Product, id)
+
+  @doc "Every alternative name of a product, by name."
+  def list_aliases(%Product{id: id}), do: list_aliases(id)
+
+  def list_aliases(product_id) do
+    ProductAlias
+    |> where([a], a.product_id == ^product_id)
+    |> order_by([a], asc: a.name)
+    |> Repo.all()
+  end
+
+  @doc """
+  Records another name a product goes by.
+
+  Refused when the name is blank or already in use — by this or any product, so
+  one name never points at two products (`{:error, :taken}`).
+  """
+  def add_alias(%Product{} = product, name) do
+    normalized = ProductAlias.normalize(name)
+
+    cond do
+      normalized == "" ->
+        {:error, :blank}
+
+      alias_taken?(normalized) ->
+        {:error, :taken}
+
+      true ->
+        %ProductAlias{}
+        |> ProductAlias.changeset(%{name: name, product_id: product.id})
+        |> Repo.insert()
+    end
+  end
+
+  @doc "Drops an alternative name."
+  def delete_alias(%ProductAlias{} = product_alias), do: Repo.delete(product_alias)
+
+  def delete_alias(id) when is_integer(id) or is_binary(id) do
+    case Repo.get(ProductAlias, id) do
+      nil -> {:error, :not_found}
+      product_alias -> Repo.delete(product_alias)
+    end
+  end
+
+  defp alias_taken?(normalized) do
+    Repo.exists?(from a in ProductAlias, where: a.normalized == ^normalized)
+  end
 
   @doc """
   The product, or `:error` when there is no such id.
@@ -514,7 +562,18 @@ defmodule EstoqueOS.Catalog do
       |> Repo.all()
       |> Enum.map(&%{product: &1, matched: :name})
 
-    (synonyms ++ named)
+    aliased =
+      ProductAlias
+      |> where([a], ilike(a.normalized, ^"%#{ProductAlias.normalize(term)}%"))
+      |> join(:inner, [a], p in Product, on: p.id == a.product_id)
+      |> where([_a, p], p.active)
+      |> segment_scope(opts[:segment])
+      |> select([_a, p], %{product: p, matched: :alias})
+      |> limit(^limit)
+      |> Repo.all()
+
+    # Name before alias so a direct hit keeps the stronger `:name` reason.
+    (synonyms ++ named ++ aliased)
     |> Enum.uniq_by(& &1.product.id)
     |> Enum.take(limit)
   end

@@ -544,12 +544,17 @@ defmodule EstoqueOSWeb.StockLive.Index do
       # Above the shortage on purpose: with the cap at two, "controlled" must not be dropped.
       row.controlled && :controlled,
       row.below_minimum && :below_minimum,
-      is_nil(row.unit_cost) && :donation,
-      not is_nil(row.unit_cost) && :bought
+      arrival_flag(row)
     ]
     |> Enum.filter(& &1)
     |> Enum.take(2)
   end
+
+  # How it arrived, as one flag. Migrated stock has no cost either, but it is not
+  # a donation, so it is told apart before the cost falls back to "donation".
+  defp arrival_flag(%{arrived_by: :migration}), do: :migration
+  defp arrival_flag(%{unit_cost: nil}), do: :donation
+  defp arrival_flag(_row), do: :bought
 
   defp expiry_class(%{expired: true}), do: "text-error"
   defp expiry_class(%{expiring: true}), do: "text-warning"

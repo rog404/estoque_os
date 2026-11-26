@@ -368,6 +368,32 @@ defmodule EstoqueOSWeb.ProductLiveTest do
     end
   end
 
+  describe "other names" do
+    test "adds and then removes an alias", %{conn: conn, gauze: gauze} do
+      {:ok, view, _html} = live(conn, ~p"/products/#{gauze.id}")
+
+      html = view |> element("#add-alias-form") |> render_submit(%{"name" => "compressa"})
+      assert html =~ "compressa"
+      assert [added] = Catalog.list_aliases(gauze.id)
+
+      html = render_click(view, "remove_alias", %{"id" => added.id})
+      refute text_of(html) =~ "compressa"
+      assert Catalog.list_aliases(gauze.id) == []
+    end
+
+    test "refuses a name another product already wears", %{conn: conn, gauze: gauze} do
+      other = product_fixture(%{name: "Esparadrapo"})
+      {:ok, _} = Catalog.add_alias(other, "micropore")
+
+      {:ok, view, _html} = live(conn, ~p"/products/#{gauze.id}")
+
+      html = view |> element("#add-alias-form") |> render_submit(%{"name" => "micropore"})
+
+      assert html =~ "já está em uso"
+      assert Catalog.list_aliases(gauze.id) == []
+    end
+  end
+
   # Strip tags first: "300" lives inside `border-base-300`.
   defp text_of(html), do: String.replace(html, ~r{<[^>]*>}s, " ")
 
