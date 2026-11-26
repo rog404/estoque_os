@@ -37,7 +37,7 @@ defmodule EstoqueOSWeb.Layouts do
             navigate={same_live_session?(@current_path, ~p"/") && ~p"/"}
             href={not same_live_session?(@current_path, ~p"/") && ~p"/"}
             class="flex w-fit items-center gap-2.5"
-            aria-label={gettext("Operação Sorriso — home")}
+            aria-label={gettext("Home")}
           >
             <.mark />
           </.link>
