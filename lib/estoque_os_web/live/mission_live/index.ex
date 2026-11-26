@@ -88,7 +88,15 @@ defmodule EstoqueOSWeb.MissionLive.Index do
       <.panel title={gettext("Missions")} flush>
         <.data_table rows={@missions} row_id={&"mission-#{&1.id}"}>
           <:empty>
-            <p class="opacity-80">{gettext("No mission recorded yet.")}</p>
+            <.empty
+              icon="hero-map"
+              title={gettext("No mission recorded yet.")}
+              note={
+                gettext(
+                  "Register the first surgical trip above to track what it carries and brings back."
+                )
+              }
+            />
           </:empty>
 
           <:col :let={mission} label={gettext("Mission")} emphasis={:identity}>
