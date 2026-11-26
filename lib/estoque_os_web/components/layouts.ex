@@ -31,115 +31,112 @@ defmodule EstoqueOSWeb.Layouts do
 
     ~H"""
     <div data-section={@section}>
-      <header class="app-bar navbar gap-2 px-4 sm:px-6 lg:px-8">
-        <div class="flex-1 min-w-0">
-          <.link
-            navigate={same_live_session?(@current_path, ~p"/") && ~p"/"}
-            href={not same_live_session?(@current_path, ~p"/") && ~p"/"}
-            class="flex w-fit items-center gap-2.5"
-          >
-            <.mark />
-            <span class="min-w-0 leading-none">
-              <span class="block text-base font-semibold truncate">{gettext("Estoque")}</span>
-              <span class="eyebrow hidden sm:block opacity-60 truncate">
-                {gettext("Operação Sorriso")}
-              </span>
+      <header class="app-bar navbar px-4 sm:px-6 lg:px-8">
+        <div class="mx-auto flex w-full max-w-6xl items-center gap-2">
+          <div class="flex-1 min-w-0">
+            <.link
+              navigate={same_live_session?(@current_path, ~p"/") && ~p"/"}
+              href={not same_live_session?(@current_path, ~p"/") && ~p"/"}
+              class="flex w-fit items-center gap-2.5"
+              aria-label={gettext("Home")}
+            >
+              <.mark />
+            </.link>
+            <span
+              :if={@section && section_label(@current_path, @groups)}
+              class="lg:hidden ml-3 hidden sm:inline-flex items-center gap-1.5 text-sm opacity-80 min-w-0"
+            >
+              <span class="section-mark h-3.5 w-0.5 rounded-full" aria-hidden="true" />
+              <span class="truncate">{section_label(@current_path, @groups)}</span>
             </span>
-          </.link>
-          <span
-            :if={@section && section_label(@current_path, @groups)}
-            class="lg:hidden ml-3 hidden sm:inline-flex items-center gap-1.5 text-sm opacity-80 min-w-0"
+          </div>
+
+          <nav
+            :if={@current_scope}
+            class="hidden lg:flex items-center gap-1"
+            aria-label={gettext("Main")}
           >
-            <span class="section-mark h-3.5 w-0.5 rounded-full" aria-hidden="true" />
-            <span class="truncate">{section_label(@current_path, @groups)}</span>
-          </span>
-        </div>
+            <.nav_group
+              :for={group <- @groups}
+              group={group}
+              groups={@groups}
+              current_path={@current_path}
+            />
+          </nav>
 
-        <nav
-          :if={@current_scope}
-          class="hidden lg:flex items-center gap-1"
-          aria-label={gettext("Main")}
-        >
-          <.nav_group
-            :for={group <- @groups}
-            group={group}
-            groups={@groups}
-            current_path={@current_path}
-          />
-        </nav>
+          <div class="flex-none flex items-center gap-1">
+            <.live_component
+              :if={@current_scope && EstoqueOS.Alerts.visible_to?(@current_scope)}
+              module={EstoqueOSWeb.AlertsBell}
+              id="alerts-bell"
+              current_scope={@current_scope}
+            />
 
-        <div class="flex-none flex items-center gap-1">
-          <.live_component
-            :if={@current_scope && EstoqueOS.Alerts.visible_to?(@current_scope)}
-            module={EstoqueOSWeb.AlertsBell}
-            id="alerts-bell"
-            current_scope={@current_scope}
-          />
+            <button
+              :if={@current_scope && @sees_money?}
+              type="button"
+              class="btn btn-ghost btn-square"
+              phx-click={JS.dispatch("phx:toggle-money")}
+              aria-label={gettext("Show or hide the amounts")}
+              title={gettext("Show or hide the amounts")}
+            >
+              <.icon name="hero-eye" class="size-5 money-real" />
+              <.icon name="hero-eye-slash" class="size-5 money-mask" />
+            </button>
 
-          <button
-            :if={@current_scope && @sees_money?}
-            type="button"
-            class="btn btn-ghost btn-square"
-            phx-click={JS.dispatch("phx:toggle-money")}
-            aria-label={gettext("Show or hide the amounts")}
-            title={gettext("Show or hide the amounts")}
-          >
-            <.icon name="hero-eye" class="size-5 money-real" />
-            <.icon name="hero-eye-slash" class="size-5 money-mask" />
-          </button>
-
-          <details :if={@current_scope} class="dropdown dropdown-end lg:hidden">
-            <summary class="btn btn-ghost" aria-label={gettext("Open menu")}>
-              <.icon name="hero-bars-3" class="size-5" />
-            </summary>
-            <div class="dropdown-content z-50 mt-2 w-64 rounded-box bg-base-100 shadow-lg border border-base-300 max-h-[80vh] overflow-y-auto text-base-content">
-              <ul :for={group <- @groups} class="menu w-full" data-section={group.section}>
-                <li class="menu-title section-label">{group.label}</li>
-                <li :for={item <- group.items}>
-                  <.nav_link item={item} current_path={@current_path} />
-                </li>
-              </ul>
-            </div>
-          </details>
-
-          <details :if={@current_scope} class="dropdown dropdown-end">
-            <summary class="btn btn-ghost" aria-label={gettext("Account")}>
-              <.icon name="hero-user-circle" class="size-5" />
-            </summary>
-            <%!-- Theme toggle sits beside the menu list: daisyUI makes a menu item's direct children `display: grid`, breaking its flex layout. --%>
-            <div class="dropdown-content z-50 mt-2 w-56 rounded-box bg-base-100 shadow-lg border border-base-300 text-base-content">
-              <ul class="menu w-full">
-                <li class="menu-title truncate">{@current_scope.user.email}</li>
-                <li><.link navigate={~p"/users/settings"}>{gettext("Settings")}</.link></li>
-                <li :if={admin?(@current_scope)}>
-                  <.link navigate={~p"/admin/users"}>{gettext("Manage users")}</.link>
-                </li>
-              </ul>
-
-              <div class="px-4 pb-1">
-                <p class="eyebrow text-base-content/60">{gettext("Appearance")}</p>
-                <.theme_toggle />
+            <details :if={@current_scope} class="dropdown dropdown-end lg:hidden">
+              <summary class="btn btn-ghost" aria-label={gettext("Open menu")}>
+                <.icon name="hero-bars-3" class="size-5" />
+              </summary>
+              <div class="dropdown-content z-50 mt-2 w-64 rounded-box bg-base-100 shadow-lg border border-base-300 max-h-[80vh] overflow-y-auto text-base-content">
+                <ul :for={group <- @groups} class="menu w-full" data-section={group.section}>
+                  <li class="menu-title section-label">{group.label}</li>
+                  <li :for={item <- group.items}>
+                    <.nav_link item={item} current_path={@current_path} />
+                  </li>
+                </ul>
               </div>
+            </details>
 
-              <ul :if={admin?(@current_scope)} class="menu w-full">
-                <li class="menu-title">{gettext("View as")}</li>
-                <li :for={role <- ~w(manager marketing logistics auditor)}>
-                  <.link href={~p"/users/view-as?role=#{role}"} method="post">
-                    {EstoqueOSWeb.ViewAsController.label(role)}
-                  </.link>
-                </li>
-              </ul>
+            <details :if={@current_scope} class="dropdown dropdown-end">
+              <summary class="btn btn-ghost" aria-label={gettext("Account")}>
+                <.icon name="hero-user-circle" class="size-5" />
+              </summary>
+              <%!-- Theme toggle sits beside the menu list: daisyUI makes a menu item's direct children `display: grid`, breaking its flex layout. --%>
+              <div class="dropdown-content z-50 mt-2 w-56 rounded-box bg-base-100 shadow-lg border border-base-300 text-base-content">
+                <ul class="menu w-full">
+                  <li class="menu-title truncate">{@current_scope.user.email}</li>
+                  <li><.link navigate={~p"/users/settings"}>{gettext("Settings")}</.link></li>
+                  <li :if={admin?(@current_scope)}>
+                    <.link navigate={~p"/admin/users"}>{gettext("Manage users")}</.link>
+                  </li>
+                </ul>
 
-              <ul class="menu w-full">
-                <li>
-                  <.link href={~p"/users/log-out"} method="delete">{gettext("Log out")}</.link>
-                </li>
-              </ul>
+                <div class="px-4 pb-1">
+                  <p class="eyebrow text-base-content/60">{gettext("Appearance")}</p>
+                  <.theme_toggle />
+                </div>
+
+                <ul :if={admin?(@current_scope)} class="menu w-full">
+                  <li class="menu-title">{gettext("View as")}</li>
+                  <li :for={role <- ~w(manager marketing logistics auditor)}>
+                    <.link href={~p"/users/view-as?role=#{role}"} method="post">
+                      {EstoqueOSWeb.ViewAsController.label(role)}
+                    </.link>
+                  </li>
+                </ul>
+
+                <ul class="menu w-full">
+                  <li>
+                    <.link href={~p"/users/log-out"} method="delete">{gettext("Log out")}</.link>
+                  </li>
+                </ul>
+              </div>
+            </details>
+
+            <div :if={is_nil(@current_scope)} class="flex items-center gap-1">
+              <.link navigate={~p"/users/log-in"} class="btn btn-sm">{gettext("Log in")}</.link>
             </div>
-          </details>
-
-          <div :if={is_nil(@current_scope)} class="flex items-center gap-1">
-            <.link navigate={~p"/users/log-in"} class="btn btn-sm">{gettext("Log in")}</.link>
           </div>
         </div>
       </header>
@@ -184,17 +181,14 @@ defmodule EstoqueOSWeb.Layouts do
   """
   def mark(assigns) do
     ~H"""
-    <span class="grid size-9 shrink-0 place-items-center rounded-[0.5rem] bg-primary text-primary-content">
-      <svg viewBox="0 0 24 24" fill="none" class="size-5" aria-hidden="true">
-        <path
-          d="M3 7.5 12 3l9 4.5v9L12 21l-9-4.5v-9Z"
-          stroke="currentColor"
-          stroke-width="1.75"
-          stroke-linejoin="round"
-        />
-        <path d="M3 7.5 12 12l9-4.5M12 12v9" stroke="currentColor" stroke-width="1.75" />
-      </svg>
-    </span>
+    <img
+      src={~p"/images/icon.png"}
+      alt=""
+      aria-hidden="true"
+      width="36"
+      height="36"
+      class="size-9 shrink-0 rounded-[0.5rem]"
+    />
     """
   end
 
