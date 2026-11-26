@@ -137,7 +137,11 @@ defmodule EstoqueOSWeb.AuditReportLive.Index do
       <.panel title={gettext("Movements by type")}>
         <.data_table rows={@summary} row_id={&"summary-#{&1.type}"}>
           <:empty>
-            <p class="opacity-80">{gettext("Nothing moved in this period.")}</p>
+            <.empty
+              icon="hero-arrows-right-left"
+              title={gettext("Nothing moved in this period.")}
+              note={gettext("No stock came in or went out within the chosen dates.")}
+            />
           </:empty>
 
           <:col :let={row} label={gettext("Type")} emphasis={:identity}>
@@ -162,7 +166,13 @@ defmodule EstoqueOSWeb.AuditReportLive.Index do
       >
         <.data_table rows={@adjustments} row_id={&"reason-#{&1.reason_code}"}>
           <:empty>
-            <p class="opacity-80">{gettext("No adjustment in this period.")}</p>
+            <.empty
+              icon="hero-wrench-screwdriver"
+              title={gettext("No adjustment in this period.")}
+              note={
+                gettext("No count correction, loss or expiry was recorded within the chosen dates.")
+              }
+            />
           </:empty>
 
           <:col :let={row} label={gettext("Reason")} emphasis={:identity}>
@@ -186,7 +196,11 @@ defmodule EstoqueOSWeb.AuditReportLive.Index do
       >
         <.data_table rows={@controlled}>
           <:empty>
-            <p class="opacity-80">{gettext("No controlled substance in stock.")}</p>
+            <.empty
+              icon="hero-shield-check"
+              title={gettext("No controlled substance in stock.")}
+              note={gettext("Nothing under Portaria 344 is on the shelf right now.")}
+            />
           </:empty>
 
           <:col :let={row} label={gettext("Product")} emphasis={:identity}>{row.product}</:col>
@@ -211,7 +225,11 @@ defmodule EstoqueOSWeb.AuditReportLive.Index do
       >
         <.data_table rows={@log} row_id={&"transaction-#{&1.transaction.id}"}>
           <:empty>
-            <p class="opacity-80">{gettext("Nothing to show.")}</p>
+            <.empty
+              icon="hero-document-magnifying-glass"
+              title={gettext("Nothing to show.")}
+              note={gettext("No movement matches the current filters.")}
+            />
           </:empty>
 
           <:col :let={row} label={gettext("When")} emphasis={:identity}>
